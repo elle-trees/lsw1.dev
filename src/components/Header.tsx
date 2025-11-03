@@ -44,7 +44,7 @@ export function Header() {
             <nav className="hidden md:flex space-x-6">
                 <Link 
                   to="/" 
-                  className="text-[hsl(222,15%,60%)] hover:text-[hsl(220,17%,92%)] flex items-center gap-1 transition-all duration-300 relative group"
+                  className="text-[#cba6f7] hover:text-[#cba6f7] flex items-center gap-1 transition-all duration-300 relative group"
                 >
                   <Home className="h-4 w-4 transition-transform duration-300 group-hover:scale-110" />
                   <span>Home</span>
@@ -52,51 +52,51 @@ export function Header() {
                 </Link>
                 <Link 
                   to="/leaderboards" 
-                  className="text-[hsl(222,15%,60%)] hover:text-[hsl(220,17%,92%)] transition-all duration-300 relative group"
+                  className="text-[#cdd6f4] hover:text-[#cdd6f4] transition-all duration-300 relative group"
                 >
                   <span>Leaderboards</span>
-                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#cba6f7] transition-all duration-300 group-hover:w-full"></span>
+                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#cdd6f4] transition-all duration-300 group-hover:w-full"></span>
                 </Link>
                 <Link 
                   to="/points" 
-                  className="text-[hsl(222,15%,60%)] hover:text-[hsl(220,17%,92%)] flex items-center gap-1 transition-all duration-300 relative group"
+                  className="text-[#f9e2af] hover:text-[#f9e2af] flex items-center gap-1 transition-all duration-300 relative group"
                 >
                   <Trophy className="h-4 w-4 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12" />
                   <span>Points</span>
-                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#cba6f7] transition-all duration-300 group-hover:w-full"></span>
+                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#f9e2af] transition-all duration-300 group-hover:w-full"></span>
                 </Link>
                 <Link 
                   to="/submit" 
-                  className="text-[hsl(222,15%,60%)] hover:text-[hsl(220,17%,92%)] flex items-center gap-1 transition-all duration-300 relative group"
+                  className="text-[#f5c2e7] hover:text-[#f5c2e7] flex items-center gap-1 transition-all duration-300 relative group"
                 >
                   <Upload className="h-4 w-4 transition-transform duration-300 group-hover:scale-110 group-hover:translate-y-[-2px]" />
                   <span>Submit Run</span>
-                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#cba6f7] transition-all duration-300 group-hover:w-full"></span>
+                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#f5c2e7] transition-all duration-300 group-hover:w-full"></span>
                 </Link>
                 <Link 
                   to="/live" 
-                  className="text-[hsl(222,15%,60%)] hover:text-[hsl(220,17%,92%)] flex items-center gap-1 transition-all duration-300 relative group"
+                  className="text-[#89b4fa] hover:text-[#89b4fa] flex items-center gap-1 transition-all duration-300 relative group"
                 >
                   <Radio className="h-4 w-4 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12" />
                   <span>Live</span>
-                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#cba6f7] transition-all duration-300 group-hover:w-full"></span>
+                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#89b4fa] transition-all duration-300 group-hover:w-full"></span>
                 </Link>
                 <Link 
                   to="/downloads" 
-                  className="text-[hsl(222,15%,60%)] hover:text-[hsl(220,17%,92%)] flex items-center gap-1 transition-all duration-300 relative group"
+                  className="text-[#a6e3a1] hover:text-[#a6e3a1] flex items-center gap-1 transition-all duration-300 relative group"
                 >
                   <Download className="h-4 w-4 transition-transform duration-300 group-hover:scale-110 group-hover:translate-y-[2px]" />
                   <span>Downloads</span>
-                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#cba6f7] transition-all duration-300 group-hover:w-full"></span>
+                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#a6e3a1] transition-all duration-300 group-hover:w-full"></span>
                 </Link>
                 {currentUser?.isAdmin && ( // Conditionally render Admin link
                   <Link 
                     to="/admin" 
-                    className="text-[hsl(222,15%,60%)] hover:text-[hsl(220,17%,92%)] flex items-center gap-1 transition-all duration-300 relative group"
+                    className="text-[#f38ba8] hover:text-[#f38ba8] flex items-center gap-1 transition-all duration-300 relative group"
                   >
                     <ShieldAlert className="h-4 w-4 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12" />
                     <span>Admin</span>
-                    <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#cba6f7] transition-all duration-300 group-hover:w-full"></span>
+                    <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#f38ba8] transition-all duration-300 group-hover:w-full"></span>
                   </Link>
                 )}
               </nav>
@@ -135,7 +135,7 @@ export function Header() {
                   <Button 
                     variant="outline" 
                     asChild
-                    className="text-[hsl(220,17%,92%)] border-[hsl(235,13%,30%)] hover:bg-[hsl(234,14%,29%)] transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                    className="text-[hsl(220,17%,92%)] border-[hsl(235,13%,30%)] hover:bg-[#89b4fa] hover:border-[#89b4fa] transition-all duration-300 hover:scale-105 hover:shadow-lg"
                   >
                     <Link to="/settings">
                       <Settings className="h-4 w-4 mr-2 transition-transform duration-300 group-hover:rotate-90" />
@@ -145,7 +145,7 @@ export function Header() {
                   <Button 
                     variant="outline" 
                     onClick={handleLogout}
-                    className="text-[hsl(220,17%,92%)] border-[hsl(235,13%,30%)] hover:bg-[hsl(234,14%,29%)] transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                    className="text-[hsl(220,17%,92%)] border-[hsl(235,13%,30%)] hover:bg-[#89b4fa] hover:border-[#89b4fa] transition-all duration-300 hover:scale-105 hover:shadow-lg"
                   >
                     Logout
                   </Button>
@@ -154,7 +154,7 @@ export function Header() {
                 <Button 
                   variant="outline" 
                   onClick={() => setIsLoginOpen(true)}
-                  className="text-[hsl(220,17%,92%)] border-[hsl(235,13%,30%)] hover:bg-[hsl(234,14%,29%)] flex items-center gap-2 transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                  className="text-[hsl(220,17%,92%)] border-[hsl(235,13%,30%)] hover:bg-[#89b4fa] hover:border-[#89b4fa] flex items-center gap-2 transition-all duration-300 hover:scale-105 hover:shadow-lg"
                 >
                   <User className="h-4 w-4 transition-transform duration-300 group-hover:scale-110" />
                   Sign In

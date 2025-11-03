@@ -85,11 +85,11 @@ const PointsLeaderboard = () => {
                       <div
                         className={`relative overflow-hidden rounded-xl transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl animate-fade-in ${
                           rank === 1
-                            ? "bg-gradient-to-br from-[#FFD700]/20 via-[#FFA500]/15 to-[#FFD700]/10 border-2 border-[#FFD700]/50 hover:border-[#FFD700] hover:shadow-[#FFD700]/30"
+                            ? "bg-gradient-to-br from-[#89b4fa]/20 via-[#89b4fa]/15 to-[#89b4fa]/10 border-2 border-[#89b4fa]/50 hover:border-[#89b4fa] hover:shadow-[#89b4fa]/30"
                             : rank === 2
-                            ? "bg-gradient-to-br from-[#bac2de]/20 via-[#89b4fa]/15 to-[#bac2de]/10 border-2 border-[#89b4fa]/50 hover:border-[#89b4fa] hover:shadow-[#89b4fa]/30"
+                            ? "bg-gradient-to-br from-[#74c7ec]/20 via-[#74c7ec]/15 to-[#74c7ec]/10 border-2 border-[#74c7ec]/50 hover:border-[#74c7ec] hover:shadow-[#74c7ec]/30"
                             : rank === 3
-                            ? "bg-gradient-to-br from-[#4ab8d0]/20 via-[#209fb5]/15 to-[#4ab8d0]/10 border-2 border-[#209fb5]/50 hover:border-[#209fb5] hover:shadow-[#209fb5]/30"
+                            ? "bg-gradient-to-br from-[#89dceb]/20 via-[#89dceb]/15 to-[#89dceb]/10 border-2 border-[#89dceb]/50 hover:border-[#89dceb] hover:shadow-[#89dceb]/30"
                             : "bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border border-[hsl(235,13%,30%)] hover:border-[hsl(var(--mocha-mauve))] hover:shadow-[hsl(var(--mocha-mauve))]/20"
                         }`}
                         style={{ animationDelay: `${index * 0.05}s` }}
