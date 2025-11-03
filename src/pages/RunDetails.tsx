@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, User, Users, Timer, Calendar, CheckCircle, UserCircle, Trophy, Edit2, Save, X, Trash2 } from "lucide-react";
-import { getLeaderboardEntryById, getPlayerByUid, getPlayerByUsername, getCategories, getPlatforms, runTypes, updateLeaderboardEntry, deleteLeaderboardEntry } from "@/lib/db";
+import { getLeaderboardEntryById, getPlayerByUid, getPlayerByDisplayName, getCategories, getPlatforms, runTypes, updateLeaderboardEntry, deleteLeaderboardEntry } from "@/lib/db";
 import { LeaderboardEntry, Player } from "@/types/database";
 import { VideoEmbed } from "@/components/VideoEmbed";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
