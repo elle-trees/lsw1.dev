@@ -105,7 +105,7 @@ const PlayerDetails = () => {
           nameColor={player.nameColor}
         />
 
-        <Card className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] mt-8">
+        <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] mt-8 shadow-xl">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Trophy className="h-5 w-5 text-[#cba6f7]" />
@@ -142,7 +142,7 @@ const PlayerDetails = () => {
                           <td className="py-3 px-4">
                             <Badge 
                               variant={run.rank && run.rank <= 3 ? "default" : "secondary"} 
-                              className={run.rank === 1 ? "bg-[#f9e2af]" : run.rank === 2 ? "bg-[#bac2de]" : run.rank === 3 ? "bg-[#fab387]" : ""}
+                              className={run.rank === 1 ? "bg-gradient-to-br from-[#f9e2af] to-[#f5c2e7]" : run.rank === 2 ? "bg-gradient-to-br from-[#bac2de] to-[#89b4fa]" : run.rank === 3 ? "bg-gradient-to-br from-[#fab387] to-[#74c7ec]" : ""}
                             >
                               #{run.rank}
                             </Badge>

@@ -19,12 +19,12 @@ const Live = () => {
     <div className="min-h-screen bg-gradient-to-b from-[hsl(240,21%,15%)] to-[hsl(235,19%,13%)] text-[hsl(220,17%,92%)] py-8">
       <div className="max-w-7xl mx-auto px-4">
         {/* Animated Header */}
-        <div className={`text-center mb-8 transition-all duration-1000 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
-          <div className="flex items-center justify-center gap-4 mb-6">
-            <div className={`p-3 rounded-xl bg-gradient-to-br from-[#89b4fa] to-[#74c7ec] shadow-lg transition-all duration-1000 ${isLoaded ? 'rotate-0 scale-100' : 'rotate-180 scale-0'}`}>
-              <Radio className="h-10 w-10 text-[hsl(240,21%,15%)]" />
+        <div className={`text-center mb-6 transition-all duration-1000 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <div className={`p-2 rounded-xl bg-gradient-to-br from-[#89b4fa] to-[#74c7ec] shadow-lg transition-all duration-1000 ${isLoaded ? 'rotate-0 scale-100' : 'rotate-180 scale-0'}`}>
+              <Radio className="h-6 w-6 text-[hsl(240,21%,15%)]" />
             </div>
-            <h1 className={`text-5xl md:text-6xl font-bold bg-gradient-to-r from-[#89b4fa] via-[#74c7ec] to-[#89dceb] bg-clip-text text-transparent animate-gradient bg-[length:200%_auto] transition-all duration-1000 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}>
+            <h1 className={`text-3xl md:text-4xl font-bold bg-gradient-to-r from-[#89b4fa] via-[#74c7ec] to-[#89dceb] bg-clip-text text-transparent animate-gradient bg-[length:200%_auto] transition-all duration-1000 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}>
               Live Stream
             </h1>
           </div>
@@ -43,62 +43,54 @@ const Live = () => {
         <div className={`grid grid-cols-1 lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_450px] gap-6 transition-all duration-1000 delay-500 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
           {/* Stream Player */}
           <div className="w-full h-[600px] lg:h-[calc(100vh-200px)] min-h-[400px] animate-fade-in-up">
-            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-2xl overflow-hidden group hover:shadow-[#89b4fa]/20 transition-all duration-500 hover:scale-[1.01]">
-              <div className="relative">
-                {/* Decorative gradient overlay */}
-                <div className="absolute inset-0 bg-gradient-to-r from-[#89b4fa]/5 via-transparent to-[#74c7ec]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-10 pointer-events-none"></div>
-                
-                {/* Streaming indicator */}
-                <div className="absolute top-4 left-4 z-20 flex items-center gap-2 bg-black/70 backdrop-blur-sm rounded-full px-3 py-1.5 border border-[#89b4fa]/30">
-                  <div className="relative">
-                    <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                    <div className="absolute top-0 left-0 w-2 h-2 bg-red-500 rounded-full animate-ping"></div>
-                  </div>
-                  <span className="text-xs font-semibold text-white">LIVE</span>
+            <div className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border border-[hsl(235,13%,30%)] rounded-lg overflow-hidden shadow-2xl group hover:shadow-[#89b4fa]/20 transition-all duration-500 hover:scale-[1.01] relative h-full">
+              {/* Decorative gradient overlay */}
+              <div className="absolute inset-0 bg-gradient-to-r from-[#89b4fa]/5 via-transparent to-[#74c7ec]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-10 pointer-events-none"></div>
+              
+              {/* Streaming indicator */}
+              <div className="absolute top-4 left-4 z-20 flex items-center gap-2 bg-black/70 backdrop-blur-sm rounded-full px-3 py-1.5 border border-[#89b4fa]/30">
+                <div className="relative">
+                  <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                  <div className="absolute top-0 left-0 w-2 h-2 bg-red-500 rounded-full animate-ping"></div>
                 </div>
-
-                <CardContent className="p-0 h-full">
-                  <div className="bg-[hsl(240,21%,15%)] rounded-lg overflow-hidden w-full h-full relative">
-                    <iframe
-                      src={`https://player.twitch.tv/?channel=${channel}&parent=${parentDomain}&autoplay=false&muted=false`}
-                      height="100%"
-                      width="100%"
-                      allowFullScreen
-                      className="w-full h-full transition-transform duration-500 group-hover:scale-[1.005]"
-                      title={`${channel} Twitch Stream`}
-                    ></iframe>
-                  </div>
-                </CardContent>
+                <span className="text-xs font-semibold text-white">LIVE</span>
               </div>
-            </Card>
+
+              <div className="bg-[hsl(240,21%,15%)] rounded-lg overflow-hidden w-full h-full relative">
+                <iframe
+                  src={`https://player.twitch.tv/?channel=${channel}&parent=${parentDomain}&autoplay=false&muted=false`}
+                  height="100%"
+                  width="100%"
+                  allowFullScreen
+                  className="w-full h-full transition-transform duration-500 group-hover:scale-[1.005]"
+                  title={`${channel} Twitch Stream`}
+                ></iframe>
+              </div>
+            </div>
           </div>
 
           {/* Chat */}
           <div className="w-full h-[400px] lg:h-[calc(100vh-200px)] min-h-[400px] hidden lg:block animate-fade-in-up delay-300">
-            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-2xl overflow-hidden group hover:shadow-[#89b4fa]/20 transition-all duration-500 hover:scale-[1.01]">
-              <div className="relative">
-                {/* Decorative gradient overlay */}
-                <div className="absolute inset-0 bg-gradient-to-r from-[#74c7ec]/5 via-transparent to-[#89dceb]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-10 pointer-events-none"></div>
-                
-                {/* Chat header indicator */}
-                <div className="absolute top-4 left-4 z-20 flex items-center gap-2 bg-black/70 backdrop-blur-sm rounded-full px-3 py-1.5 border border-[#74c7ec]/30">
-                  <Users className="h-4 w-4 text-[#74c7ec]" />
-                  <span className="text-xs font-semibold text-white">Chat</span>
-                </div>
-
-                <CardContent className="p-0 h-full">
-                  <div className="bg-[hsl(240,21%,15%)] rounded-lg overflow-hidden w-full h-full relative">
-                    <iframe
-                      src={`https://www.twitch.tv/embed/${channel}/chat?parent=${parentDomain}&darkpopout`}
-                      height="100%"
-                      width="100%"
-                      className="w-full h-full transition-transform duration-500 group-hover:scale-[1.005]"
-                      title={`${channel} Twitch Chat`}
-                    ></iframe>
-                  </div>
-                </CardContent>
+            <div className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border border-[hsl(235,13%,30%)] rounded-lg overflow-hidden shadow-2xl group hover:shadow-[#89b4fa]/20 transition-all duration-500 hover:scale-[1.01] relative h-full">
+              {/* Decorative gradient overlay */}
+              <div className="absolute inset-0 bg-gradient-to-r from-[#74c7ec]/5 via-transparent to-[#89dceb]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-10 pointer-events-none"></div>
+              
+              {/* Chat header indicator */}
+              <div className="absolute top-4 left-4 z-20 flex items-center gap-2 bg-black/70 backdrop-blur-sm rounded-full px-3 py-1.5 border border-[#74c7ec]/30">
+                <Users className="h-4 w-4 text-[#74c7ec]" />
+                <span className="text-xs font-semibold text-white">Chat</span>
               </div>
-            </Card>
+
+              <div className="bg-[hsl(240,21%,15%)] rounded-lg overflow-hidden w-full h-full relative">
+                <iframe
+                  src={`https://www.twitch.tv/embed/${channel}/chat?parent=${parentDomain}&darkpopout`}
+                  height="100%"
+                  width="100%"
+                  className="w-full h-full transition-transform duration-500 group-hover:scale-[1.005]"
+                  title={`${channel} Twitch Chat`}
+                ></iframe>
+              </div>
+            </div>
           </div>
 
           {/* Mobile Chat Indicator */}

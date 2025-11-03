@@ -59,7 +59,7 @@ const Index = () => {
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col lg:flex-row items-center lg:items-start gap-8 lg:gap-6">
             {/* Left Card - Verified Runs */}
-            <Card className="bg-card border-border w-full lg:w-[250px] lg:flex-shrink-0 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-[hsl(var(--mocha-green))]/20 hover:border-[hsl(var(--mocha-green))]/50 group order-2 lg:order-1">
+            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] w-full lg:w-[250px] lg:flex-shrink-0 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-[#a6e3a1]/30 hover:border-[#a6e3a1]/50 group order-2 lg:order-1">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-card-foreground">
                   <CheckCircle className="h-5 w-5 text-[hsl(var(--mocha-green))] transition-transform duration-300 group-hover:scale-125 group-hover:rotate-12" />
@@ -89,17 +89,17 @@ const Index = () => {
                 Compete for the fastest times in the galaxy. Track your progress and climb the ranks!
               </p>
               <div className="flex flex-col sm:flex-row justify-center gap-4 animate-fade-in-delay-2">
-                <Button size="lg" className="bg-primary hover:bg-[hsl(var(--mocha-mauve))]/80 text-primary-foreground font-bold transition-all duration-300 hover:scale-110 hover:shadow-xl hover:shadow-[hsl(var(--mocha-mauve))]/50" asChild>
+                <Button size="lg" className="bg-gradient-to-r from-[#cba6f7] via-[#f5c2e7] to-[#cba6f7] hover:from-[#f5c2e7] hover:via-[#cba6f7] hover:to-[#f5c2e7] text-[hsl(240,21%,15%)] font-bold transition-all duration-300 hover:scale-110 hover:shadow-xl hover:shadow-[#cba6f7]/50 animate-gradient bg-[length:200%_auto]" asChild>
                   <Link to="/submit">Submit Run</Link>
                 </Button>
-                <Button size="lg" variant="outline" className="text-[hsl(220,17%,92%)] border-border hover:bg-muted transition-all duration-300 hover:scale-110 hover:shadow-xl" asChild>
+                <Button size="lg" variant="outline" className="text-[hsl(220,17%,92%)] border-[hsl(235,13%,30%)] bg-gradient-to-r from-transparent via-[hsl(237,16%,24%)]/50 to-transparent hover:from-[hsl(237,16%,24%)] hover:via-[hsl(237,16%,28%)] hover:to-[hsl(237,16%,24%)] transition-all duration-300 hover:scale-110 hover:shadow-xl hover:border-[#cba6f7]/50" asChild>
                   <Link to="/leaderboards">View All Leaderboards</Link>
                 </Button>
               </div>
             </div>
 
             {/* Right Card - Total Time */}
-            <Card className="bg-card border-border w-full lg:w-[250px] lg:flex-shrink-0 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-[hsl(var(--mocha-mauve))]/20 hover:border-[hsl(var(--mocha-mauve))]/50 group order-3 lg:order-3">
+            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] w-full lg:w-[250px] lg:flex-shrink-0 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-[#cba6f7]/30 hover:border-[#cba6f7]/50 group order-3 lg:order-3">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-card-foreground">
                   <Clock className="h-5 w-5 text-[hsl(var(--mocha-mauve))] transition-transform duration-300 group-hover:scale-125 group-hover:rotate-12" />
@@ -145,7 +145,7 @@ const Index = () => {
               <RecentRuns runs={recentRunsData} loading={loading} showRankBadge={false} />
 
               <div className="mt-8 text-center">
-                <Button variant="outline" className="text-[hsl(220,17%,92%)] border-border hover:bg-muted transition-all duration-300 hover:scale-110 hover:shadow-lg" asChild>
+                <Button variant="outline" className="text-[hsl(220,17%,92%)] border-[hsl(235,13%,30%)] bg-gradient-to-r from-transparent via-[hsl(237,16%,24%)]/50 to-transparent hover:from-[hsl(237,16%,24%)] hover:via-[hsl(237,16%,28%)] hover:to-[hsl(237,16%,24%)] transition-all duration-300 hover:scale-110 hover:shadow-lg hover:border-[#cba6f7]/50" asChild>
                   <Link to="/leaderboards">View Full Leaderboards</Link>
                 </Button>
               </div>

@@ -257,7 +257,7 @@ const SubmitRun = () => {
                       onChange={handleChange}
                       placeholder="Enter your username"
                       required
-                      className="bg-[hsl(240,21%,18%)] border-[hsl(235,13%,30%)] h-12 text-base hover:border-[hsl(var(--mocha-mauve))] transition-colors"
+                      className="bg-gradient-to-br from-[hsl(240,21%,18%)] to-[hsl(240,21%,16%)] border-[hsl(235,13%,30%)] h-12 text-base hover:border-[#cba6f7] hover:bg-gradient-to-br hover:from-[hsl(240,21%,20%)] hover:to-[hsl(240,21%,18%)] transition-all duration-300"
                     />
                   </div>
                   <div>
@@ -271,7 +271,7 @@ const SubmitRun = () => {
                         onChange={handleChange}
                         placeholder="HH:MM:SS"
                         required
-                        className="bg-[hsl(240,21%,18%)] border-[hsl(235,13%,30%)] h-12 text-base pl-11 hover:border-[hsl(var(--mocha-mauve))] transition-colors"
+                        className="bg-gradient-to-br from-[hsl(240,21%,18%)] to-[hsl(240,21%,16%)] border-[hsl(235,13%,30%)] h-12 text-base pl-11 hover:border-[#cba6f7] hover:bg-gradient-to-br hover:from-[hsl(240,21%,20%)] hover:to-[hsl(240,21%,18%)] transition-all duration-300"
                       />
                     </div>
                   </div>
@@ -286,7 +286,7 @@ const SubmitRun = () => {
                       onChange={handleChange}
                       placeholder="Enter second player's username"
                       required
-                      className="bg-[hsl(240,21%,18%)] border-[hsl(235,13%,30%)] h-12 text-base hover:border-[hsl(var(--mocha-mauve))] transition-colors"
+                      className="bg-gradient-to-br from-[hsl(240,21%,18%)] to-[hsl(240,21%,16%)] border-[hsl(235,13%,30%)] h-12 text-base hover:border-[#cba6f7] hover:bg-gradient-to-br hover:from-[hsl(240,21%,20%)] hover:to-[hsl(240,21%,18%)] transition-all duration-300"
                     />
                   </div>
                 )}
@@ -364,7 +364,7 @@ const SubmitRun = () => {
                           onChange={handleChange}
                           placeholder="https://youtube.com/watch?v=..."
                           required={isVideoRequired}
-                          className="bg-[hsl(240,21%,18%)] border-[hsl(235,13%,30%)] h-12 text-base hover:border-[hsl(var(--mocha-mauve))] transition-colors"
+                          className="bg-gradient-to-br from-[hsl(240,21%,18%)] to-[hsl(240,21%,16%)] border-[hsl(235,13%,30%)] h-12 text-base hover:border-[#cba6f7] hover:bg-gradient-to-br hover:from-[hsl(240,21%,20%)] hover:to-[hsl(240,21%,18%)] transition-all duration-300"
                         />
                         <p className="text-sm text-[hsl(222,15%,70%)] mt-2 flex items-center gap-1">
                           {isNocutsNoships ? (
@@ -389,7 +389,7 @@ const SubmitRun = () => {
                     value={formData.comment}
                     onChange={handleChange}
                     placeholder="Add a comment about your run (optional)..."
-                    className="bg-[hsl(240,21%,18%)] border-[hsl(235,13%,30%)] hover:border-[hsl(var(--mocha-mauve))] transition-colors min-h-[120px] resize-none text-base"
+                    className="bg-gradient-to-br from-[hsl(240,21%,18%)] to-[hsl(240,21%,16%)] border-[hsl(235,13%,30%)] hover:border-[#cba6f7] hover:bg-gradient-to-br hover:from-[hsl(240,21%,20%)] hover:to-[hsl(240,21%,18%)] transition-all duration-300 min-h-[120px] resize-none text-base"
                     rows={4}
                   />
                   <p className="text-sm text-[hsl(222,15%,70%)] mt-2">
@@ -401,7 +401,7 @@ const SubmitRun = () => {
                   <Button 
                     type="submit" 
                     disabled={loading}
-                    className="w-full bg-gradient-to-r from-[#cba6f7] to-[#b4a0e2] hover:from-[#b4a0e2] hover:to-[#cba6f7] text-[hsl(240,21%,15%)] font-bold py-6 text-lg transition-all duration-300 hover:scale-[1.02] hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full bg-gradient-to-r from-[#cba6f7] via-[#f5c2e7] to-[#cba6f7] hover:from-[#f5c2e7] hover:via-[#cba6f7] hover:to-[#f5c2e7] text-[hsl(240,21%,15%)] font-bold py-6 text-lg transition-all duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-[#cba6f7]/50 disabled:opacity-50 disabled:cursor-not-allowed animate-gradient bg-[length:200%_auto]"
                   >
                     {loading ? "Submitting..." : "Submit Run for Review"}
                   </Button>

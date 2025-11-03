@@ -95,7 +95,7 @@ export function RecentRuns({ runs, loading, showRankBadge = true }: RecentRunsPr
                         ) : (
                           <Badge 
                             variant="secondary"
-                            className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold bg-[hsl(235,13%,25%)] text-[hsl(222,15%,70%)]"
+                            className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold bg-gradient-to-br from-[hsl(235,13%,25%)] to-[hsl(235,13%,22%)] text-[hsl(222,15%,70%)] border border-[hsl(235,13%,30%)]"
                           >
                             #{index + 1}
                           </Badge>

@@ -32,7 +32,7 @@ export function Header() {
 
   return (
     <>
-      <header className="bg-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
+      <header className="bg-gradient-to-r from-[hsl(240,21%,15%)] via-[hsl(240,21%,14%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)] shadow-lg">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center space-x-10 px-4">
             <Link to="/" className="flex items-center space-x-2 group transition-transform duration-300 hover:scale-105">
@@ -48,14 +48,14 @@ export function Header() {
                 >
                   <Home className="h-4 w-4 transition-transform duration-300 group-hover:scale-110" />
                   <span>Home</span>
-                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#cba6f7] transition-all duration-300 group-hover:w-full"></span>
+                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-[#cba6f7] via-[#f5c2e7] to-[#cba6f7] transition-all duration-300 group-hover:w-full"></span>
                 </Link>
                 <Link 
                   to="/leaderboards" 
                   className="text-[#cdd6f4] hover:text-[#cdd6f4] transition-all duration-300 relative group"
                 >
                   <span>Leaderboards</span>
-                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#cdd6f4] transition-all duration-300 group-hover:w-full"></span>
+                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-[#cdd6f4] via-[#89b4fa] to-[#cdd6f4] transition-all duration-300 group-hover:w-full"></span>
                 </Link>
                 <Link 
                   to="/points" 
@@ -63,7 +63,7 @@ export function Header() {
                 >
                   <Trophy className="h-4 w-4 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12" />
                   <span>Points</span>
-                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#f9e2af] transition-all duration-300 group-hover:w-full"></span>
+                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-[#f9e2af] via-[#f5c2e7] to-[#f9e2af] transition-all duration-300 group-hover:w-full"></span>
                 </Link>
                 <Link 
                   to="/submit" 
@@ -71,7 +71,7 @@ export function Header() {
                 >
                   <Upload className="h-4 w-4 transition-transform duration-300 group-hover:scale-110 group-hover:translate-y-[-2px]" />
                   <span>Submit Run</span>
-                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#f5c2e7] transition-all duration-300 group-hover:w-full"></span>
+                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-[#f5c2e7] via-[#cba6f7] to-[#f5c2e7] transition-all duration-300 group-hover:w-full"></span>
                 </Link>
                 <Link 
                   to="/live" 
@@ -79,7 +79,7 @@ export function Header() {
                 >
                   <Radio className="h-4 w-4 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12" />
                   <span>Live</span>
-                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#89b4fa] transition-all duration-300 group-hover:w-full"></span>
+                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-[#89b4fa] via-[#74c7ec] to-[#89b4fa] transition-all duration-300 group-hover:w-full"></span>
                 </Link>
                 <Link 
                   to="/downloads" 
@@ -87,7 +87,7 @@ export function Header() {
                 >
                   <Download className="h-4 w-4 transition-transform duration-300 group-hover:scale-110 group-hover:translate-y-[2px]" />
                   <span>Downloads</span>
-                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#a6e3a1] transition-all duration-300 group-hover:w-full"></span>
+                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-[#a6e3a1] via-[#89dceb] to-[#a6e3a1] transition-all duration-300 group-hover:w-full"></span>
                 </Link>
                 {currentUser?.isAdmin && ( // Conditionally render Admin link
                   <Link 
@@ -96,7 +96,7 @@ export function Header() {
                   >
                     <ShieldAlert className="h-4 w-4 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12" />
                     <span>Admin</span>
-                    <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#f38ba8] transition-all duration-300 group-hover:w-full"></span>
+                    <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-[#f38ba8] via-[#f5c2e7] to-[#f38ba8] transition-all duration-300 group-hover:w-full"></span>
                   </Link>
                 )}
               </nav>

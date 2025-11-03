@@ -358,7 +358,7 @@ const RunDetails = () => {
           </div>
 
           <div className="w-full lg:w-[24rem] flex-shrink-0">
-            <Card ref={detailsCardRef} className="bg-card border-border overflow-y-auto">
+            <Card ref={detailsCardRef} className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] overflow-y-auto shadow-xl">
               <CardHeader className="pb-6 px-6 pt-6">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-2xl text-card-foreground">Run Details</CardTitle>
@@ -368,7 +368,7 @@ const RunDetails = () => {
                         variant="outline"
                         size="sm"
                         onClick={handleEditClick}
-                        className="border-border"
+                        className="border-[hsl(235,13%,30%)] bg-gradient-to-r from-transparent via-[hsl(237,16%,24%)]/50 to-transparent hover:from-[hsl(237,16%,24%)] hover:via-[hsl(237,16%,28%)] hover:to-[hsl(237,16%,24%)] hover:border-[#cba6f7]/50"
                       >
                         <Edit2 className="h-4 w-4 mr-2" />
                         Edit
@@ -378,7 +378,7 @@ const RunDetails = () => {
                         size="sm"
                         onClick={handleDeleteRun}
                         disabled={deleting}
-                        className="border-red-500 text-red-500 hover:bg-red-500 hover:text-white"
+                        className="border-red-500/50 text-red-500 bg-gradient-to-r from-transparent via-red-500/10 to-transparent hover:from-red-500/20 hover:via-red-500/30 hover:to-red-500/20 hover:bg-red-500 hover:text-white hover:border-red-500"
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
                         {deleting ? "Deleting..." : "Delete"}
