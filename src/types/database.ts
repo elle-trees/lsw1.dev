@@ -1,0 +1,67 @@
+export interface LeaderboardEntry {
+  id: string;
+  playerId: string;
+  playerName: string;
+  player2Name?: string; // New optional field for the second player's name
+  category: string;
+  platform: string;
+  runType: 'solo' | 'co-op'; // New field for run type
+  time: string; // Format: HH:MM:SS
+  date: string; // Format: YYYY-MM-DD
+  videoUrl?: string;
+  comment?: string; // Optional comment from the runner
+  verified: boolean;
+  verifiedBy?: string; // UID or name of who verified the run
+  rank?: number;
+  isObsolete?: boolean; // New field to mark runs as obsolete
+  nameColor?: string; // Player's name color
+  player2Color?: string; // Player 2's name color (for co-op)
+}
+
+export interface Player {
+  id: string;
+  uid: string; // Firebase user ID
+  displayName: string;
+  email: string;
+  joinDate: string; // Format: YYYY-MM-DD
+  totalRuns: number;
+  bestRank: number | null;
+  favoriteCategory: string | null;
+  favoritePlatform: string | null;
+  nameColor?: string; // New field for player's name color
+  isAdmin?: boolean; // New field to identify admin users
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  order?: number; // Order for displaying categories (lower numbers appear first)
+}
+
+export interface Platform {
+  id: string;
+  name: string;
+  order?: number; // Order for displaying platforms (lower numbers appear first)
+}
+
+export interface RunType { // New interface for RunType
+  id: 'solo' | 'co-op';
+  name: string;
+}
+
+export interface DownloadEntry { // New interface for download entries
+  id: string;
+  name: string;
+  description: string;
+  url: string;
+  category: string; // e.g., "Tools", "Guides", "Save Files"
+  addedBy: string; // Player ID or Admin ID
+  dateAdded: string; // YYYY-MM-DD
+  order?: number; // Order for displaying downloads (lower numbers appear first)
+}
+
+// Define a custom user type that extends Firebase's User and adds isAdmin
+import { User as FirebaseAuthUser } from "firebase/auth";
+export interface CustomUser extends FirebaseAuthUser {
+  isAdmin?: boolean;
+}

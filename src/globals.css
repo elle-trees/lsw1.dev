@@ -1,0 +1,149 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  /* Fade in animations */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes gradient {
+    0%, 100% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.6s ease-out forwards;
+  }
+
+  .animate-fade-in-delay {
+    animation: fadeIn 0.8s ease-out 0.2s forwards;
+    opacity: 0;
+  }
+
+  .animate-fade-in-delay-2 {
+    animation: fadeIn 1s ease-out 0.4s forwards;
+    opacity: 0;
+  }
+
+  .animate-gradient {
+    animation: gradient 3s ease infinite;
+  }
+
+  /* Smooth transitions for all interactive elements */
+  * {
+    @apply transition-colors duration-200;
+  }
+
+  /* Card hover effects */
+  .card-hover {
+    @apply transition-all duration-300 hover:scale-105 hover:shadow-xl;
+  }
+
+  /* Link hover effects */
+  .link-hover {
+    @apply transition-all duration-300 relative;
+  }
+
+  .link-hover::after {
+    content: '';
+    @apply absolute bottom-0 left-0 w-0 h-0.5 bg-[hsl(var(--mocha-mauve))] transition-all duration-300;
+  }
+
+  .link-hover:hover::after {
+    @apply w-full;
+  }
+}
+
+@layer base {
+  :root {
+    /* Catppuccin Mocha Base Colors */
+    --background: 234 21% 18%; /* base #1e1e2e */
+    --foreground: 222 23% 90%; /* text #cdd6f4 */
+    
+    --card: 234 21% 18%; /* base #1e1e2e */
+    --card-foreground: 222 23% 90%; /* text #cdd6f4 */
+
+    --popover: 235 23% 15%; /* mantle #181825 */
+    --popover-foreground: 222 23% 90%; /* text #cdd6f4 */
+
+    --primary: 267 84% 73%; /* mauve #cba6f7 */
+    --primary-foreground: 240 25% 11%; /* crust #11111b */
+
+    --secondary: 316 72% 86%; /* pink #f5c2e7 */
+    --secondary-foreground: 240 25% 11%; /* crust #11111b */
+
+    --muted: 237 16% 24%; /* surface0 #313244 */
+    --muted-foreground: 222 16% 79%; /* subtext1 #bac2de */
+
+    --accent: 199 89% 74%; /* sapphire #74c7ec */
+    --accent-foreground: 240 25% 11%; /* crust #11111b */
+
+    --destructive: 343 81% 75%; /* red #f38ba8 */
+    --destructive-foreground: 240 25% 11%; /* crust #11111b */
+
+    --border: 234 13% 31%; /* surface1 #45475a */
+    --input: 234 13% 31%; /* surface1 #45475a */
+    --ring: 267 84% 73%; /* mauve #cba6f7 */
+
+    --radius: 0.5rem;
+
+    /* Additional Catppuccin Mocha Colors */
+    --mocha-mantle: 235 23% 15%; /* mantle #181825 */
+    --mocha-crust: 240 25% 11%; /* crust #11111b */
+    --mocha-surface0: 237 16% 24%; /* surface0 #313244 */
+    --mocha-surface1: 234 13% 31%; /* surface1 #45475a */
+    --mocha-surface2: 233 10% 40%; /* surface2 #585b70 */
+    --mocha-overlay0: 236 12% 50%; /* overlay0 #6c7086 */
+    --mocha-overlay1: 238 11% 59%; /* overlay1 #7f849c */
+    --mocha-overlay2: 239 10% 66%; /* overlay2 #9399b2 */
+    --mocha-text: 222 23% 90%; /* text #cdd6f4 */
+    --mocha-subtext1: 222 16% 79%; /* subtext1 #bac2de */
+    --mocha-subtext0: 223 13% 72%; /* subtext0 #a6adc8 */
+    --mocha-blue: 217 92% 76%; /* blue #89b4fa */
+    --mocha-lavender: 232 97% 85%; /* lavender #b4befe */
+    --mocha-sapphire: 199 89% 74%; /* sapphire #74c7ec */
+    --mocha-sky: 187 85% 81%; /* sky #89dceb */
+    --mocha-teal: 170 58% 76%; /* teal #94e2d5 */
+    --mocha-green: 115 54% 76%; /* green #a6e3a1 */
+    --mocha-yellow: 41 86% 83%; /* yellow #f9e2af */
+    --mocha-peach: 23 92% 75%; /* peach #fab387 */
+    --mocha-maroon: 349 67% 76%; /* maroon #eba0ac */
+    --mocha-red: 343 81% 75%; /* red #f38ba8 */
+    --mocha-mauve: 267 84% 73%; /* mauve #cba6f7 */
+    --mocha-pink: 316 72% 86%; /* pink #f5c2e7 */
+    --mocha-flamingo: 350 65% 84%; /* flamingo #f2cdcd */
+    --mocha-rosewater: 10 56% 91%; /* rosewater #f5e0dc */
+
+    --sidebar-background: 234 21% 18%; /* base #1e1e2e */
+    --sidebar-foreground: 222 23% 90%; /* text #cdd6f4 */
+    --sidebar-primary: 267 84% 73%; /* mauve #cba6f7 */
+    --sidebar-primary-foreground: 240 25% 11%; /* crust #11111b */
+    --sidebar-accent: 316 72% 86%; /* pink #f5c2e7 */
+    --sidebar-accent-foreground: 240 25% 11%; /* crust #11111b */
+    --sidebar-border: 234 13% 31%; /* surface1 #45475a */
+    --sidebar-ring: 267 84% 73%; /* mauve #cba6f7 */
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}

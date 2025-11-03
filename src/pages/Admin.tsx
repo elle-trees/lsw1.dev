@@ -1,0 +1,1657 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { CheckCircle, XCircle, ShieldAlert, ExternalLink, Download, PlusCircle, Trash2, Wrench, Edit2, FolderTree, Play, ArrowUp, ArrowDown, Gamepad2, UserPlus, UserMinus } from "lucide-react";
+import { useAuth } from "@/components/AuthProvider";
+import { useToast } from "@/hooks/use-toast";
+import { 
+  getUnverifiedLeaderboardEntries, 
+  updateRunVerificationStatus, 
+  deleteLeaderboardEntry,
+  addLeaderboardEntry,
+  getPlayerByUsername,
+  getPlayerByUid,
+  setPlayerAdminStatus,
+  getDownloadEntries,
+  addDownloadEntry,
+  deleteDownloadEntry as deleteDownloadEntryDb,
+  moveDownloadUp,
+  moveDownloadDown,
+  getCategoriesFromFirestore,
+  addCategory,
+  updateCategory,
+  deleteCategory,
+  moveCategoryUp,
+  moveCategoryDown,
+  getPlatformsFromFirestore,
+  addPlatform,
+  updatePlatform,
+  deletePlatform,
+  movePlatformUp,
+  movePlatformDown,
+} from "@/lib/db";
+import { LeaderboardEntry, DownloadEntry } from "@/types/database";
+import { useNavigate } from "react-router-dom";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
+
+const downloadCategories = [
+  { id: "tools", name: "Tools" },
+  { id: "guides", name: "Guides" },
+  { id: "save_files", name: "Save Files" },
+  { id: "other", name: "Other" },
+];
+
+const Admin = () => {
+  const { currentUser, loading: authLoading } = useAuth();
+  const { toast } = useToast();
+  const navigate = useNavigate();
+
+  const [unverifiedRuns, setUnverifiedRuns] = useState<LeaderboardEntry[]>([]);
+  const [downloadEntries, setDownloadEntries] = useState<DownloadEntry[]>([]);
+  const [pageLoading, setLoading] = useState(true);
+  const [newDownload, setNewDownload] = useState({
+    name: "",
+    description: "",
+    url: "",
+    category: downloadCategories[0].id,
+  });
+  const [addingDownload, setAddingDownload] = useState(false);
+  const [reorderingDownload, setReorderingDownload] = useState<string | null>(null);
+  
+  const [firestoreCategories, setFirestoreCategories] = useState<{ id: string; name: string }[]>([]);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [editingCategory, setEditingCategory] = useState<{ id: string; name: string } | null>(null);
+  const [editingCategoryName, setEditingCategoryName] = useState("");
+  const [addingCategory, setAddingCategory] = useState(false);
+  const [updatingCategory, setUpdatingCategory] = useState(false);
+  const [reorderingCategory, setReorderingCategory] = useState<string | null>(null);
+  
+  const [firestorePlatforms, setFirestorePlatforms] = useState<{ id: string; name: string }[]>([]);
+  const [newPlatformName, setNewPlatformName] = useState("");
+  const [editingPlatform, setEditingPlatform] = useState<{ id: string; name: string } | null>(null);
+  const [editingPlatformName, setEditingPlatformName] = useState("");
+  const [addingPlatform, setAddingPlatform] = useState(false);
+  const [updatingPlatform, setUpdatingPlatform] = useState(false);
+  const [reorderingPlatform, setReorderingPlatform] = useState<string | null>(null);
+  
+  const [manualRun, setManualRun] = useState({
+    playerName: "",
+    playerUsername: "",
+    player2Name: "",
+    category: "",
+    platform: "",
+    runType: "solo" as 'solo' | 'co-op',
+    time: "",
+    date: new Date().toISOString().split('T')[0],
+    videoUrl: "",
+    comment: "",
+    verified: true,
+    verifiedBy: "",
+  });
+  const [addingManualRun, setAddingManualRun] = useState(false);
+  const [hasFetchedData, setHasFetchedData] = useState(false);
+  
+  const [adminUserInput, setAdminUserInput] = useState("");
+  const [adminSearchType, setAdminSearchType] = useState<"username" | "uid">("username");
+  const [settingAdmin, setSettingAdmin] = useState(false);
+  const [foundPlayer, setFoundPlayer] = useState<{ uid: string; displayName: string; email: string; isAdmin: boolean } | null>(null);
+  const [searchingPlayer, setSearchingPlayer] = useState(false);
+
+  useEffect(() => {
+    fetchPlatforms();
+  }, []);
+
+  useEffect(() => {
+    if (firestorePlatforms.length > 0 && !manualRun.platform) {
+      setManualRun(prev => ({ ...prev, platform: firestorePlatforms[0].id }));
+    }
+  }, [firestorePlatforms]);
+
+  const fetchAllData = async () => {
+    if (hasFetchedData) return;
+    setLoading(true);
+    try {
+      const [unverifiedData, downloadData, categoriesData] = await Promise.all([
+        getUnverifiedLeaderboardEntries(),
+        getDownloadEntries(),
+        getCategoriesFromFirestore()
+      ]);
+      setUnverifiedRuns(unverifiedData);
+      setDownloadEntries(downloadData);
+      setFirestoreCategories(categoriesData);
+      setHasFetchedData(true);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load data.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const fetchCategories = async () => {
+    try {
+      const categoriesData = await getCategoriesFromFirestore();
+      setFirestoreCategories(categoriesData);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load categories.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const fetchPlatforms = async () => {
+    try {
+      const platformsData = await getPlatformsFromFirestore();
+      setFirestorePlatforms(platformsData);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load platforms.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const fetchUnverifiedRuns = async () => {
+    try {
+      const data = await getUnverifiedLeaderboardEntries();
+      setUnverifiedRuns(data);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load unverified runs.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const fetchDownloadEntries = async () => {
+    try {
+      const data = await getDownloadEntries();
+      setDownloadEntries(data);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load download entries.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (!authLoading) {
+      if (!currentUser) {
+        toast({
+          title: "Access Denied",
+          description: "You must be logged in to view this page.",
+          variant: "destructive",
+        });
+        navigate("/");
+        return;
+      }
+      
+      if (!currentUser.isAdmin) {
+        console.log("Admin check failed:", {
+          uid: currentUser.uid,
+          isAdmin: currentUser.isAdmin,
+          displayName: currentUser.displayName,
+        });
+        toast({
+          title: "Access Denied",
+          description: "You do not have permission to view this page. Admin status required.",
+          variant: "destructive",
+        });
+        navigate("/");
+        return;
+      }
+      
+      if (!hasFetchedData) {
+        fetchAllData();
+      }
+    }
+  }, [currentUser?.uid, currentUser?.isAdmin, authLoading]);
+  
+
+  const handleVerify = async (runId: string) => {
+    if (!currentUser) return;
+    try {
+      const verifiedBy = currentUser.displayName || currentUser.email || currentUser.uid;
+      const success = await updateRunVerificationStatus(runId, true, verifiedBy);
+      if (success) {
+        toast({
+          title: "Run Verified",
+          description: "The run has been successfully verified.",
+        });
+        fetchUnverifiedRuns();
+      } else {
+        throw new Error("Failed to update verification status.");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to verify run.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleReject = async (runId: string) => {
+    try {
+      const success = await deleteLeaderboardEntry(runId);
+      if (success) {
+        toast({
+          title: "Run Rejected and Removed",
+          description: "The run has been completely removed.",
+        });
+        fetchUnverifiedRuns();
+      } else {
+        throw new Error("Failed to delete run.");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to reject and remove run.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAddDownload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser?.uid) {
+      toast({
+        title: "Error",
+        description: "You must be logged in as an admin to add downloads.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!newDownload.name || !newDownload.url || !newDownload.description || !newDownload.category) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all fields for the new download.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setAddingDownload(true);
+    try {
+      const success = await addDownloadEntry(newDownload, currentUser.uid);
+      if (success) {
+        toast({
+          title: "Download Added",
+          description: "New download entry has been added.",
+        });
+        setNewDownload({ name: "", description: "", url: "", category: downloadCategories[0].id         });
+        fetchDownloadEntries();
+      } else {
+        throw new Error("Failed to add download entry.");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add download.",
+        variant: "destructive",
+      });
+    } finally {
+      setAddingDownload(false);
+    }
+  };
+
+  const handleDeleteDownload = async (downloadId: string) => {
+    if (!window.confirm("Are you sure you want to delete this download entry?")) {
+      return;
+    }
+    try {
+      const success = await deleteDownloadEntryDb(downloadId);
+      if (success) {
+        toast({
+          title: "Download Deleted",
+          description: "The download entry has been removed.",
+        });
+        fetchDownloadEntries();
+      } else {
+        throw new Error("Failed to delete download entry.");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete download.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleMoveDownloadUp = async (downloadId: string) => {
+    if (reorderingDownload) return;
+    setReorderingDownload(downloadId);
+    try {
+      const success = await moveDownloadUp(downloadId);
+      if (success) {
+        await fetchDownloadEntries();
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to move download up. It may already be at the top.",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to reorder download.",
+        variant: "destructive",
+      });
+    } finally {
+      setReorderingDownload(null);
+    }
+  };
+
+  const handleMoveDownloadDown = async (downloadId: string) => {
+    if (reorderingDownload) return;
+    setReorderingDownload(downloadId);
+    try {
+      const success = await moveDownloadDown(downloadId);
+      if (success) {
+        await fetchDownloadEntries();
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to move download down. It may already be at the bottom.",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to reorder download.",
+        variant: "destructive",
+      });
+    } finally {
+      setReorderingDownload(null);
+    }
+  };
+  
+  // Category management handlers
+  const handleAddCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCategoryName.trim()) {
+      toast({
+        title: "Error",
+        description: "Category name cannot be empty.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setAddingCategory(true);
+    try {
+      const result = await addCategory(newCategoryName.trim());
+      if (result) {
+        toast({
+          title: "Category Added",
+          description: "New category has been added.",
+        });
+        setNewCategoryName("");
+        fetchCategories();
+      } else {
+        throw new Error("Category with this name already exists.");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add category.",
+        variant: "destructive",
+      });
+    } finally {
+      setAddingCategory(false);
+    }
+  };
+  
+  const handleStartEditCategory = (category: { id: string; name: string }) => {
+    setEditingCategory(category);
+    setEditingCategoryName(category.name);
+  };
+  
+  const handleCancelEditCategory = () => {
+    setEditingCategory(null);
+    setEditingCategoryName("");
+  };
+  
+  const handleSaveEditCategory = async () => {
+    if (!editingCategory || !editingCategoryName.trim()) {
+      return;
+    }
+    
+    setUpdatingCategory(true);
+    try {
+      const success = await updateCategory(editingCategory.id, editingCategoryName.trim());
+      if (success) {
+        toast({
+          title: "Category Updated",
+          description: "Category has been updated.",
+        });
+        setEditingCategory(null);
+        setEditingCategoryName("");
+        fetchCategories();
+      } else {
+        throw new Error("Another category with this name already exists.");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update category.",
+        variant: "destructive",
+      });
+    } finally {
+      setUpdatingCategory(false);
+    }
+  };
+  
+  const handleDeleteCategory = async (categoryId: string) => {
+    if (!window.confirm("Are you sure you want to delete this category? This may affect existing runs.")) {
+      return;
+    }
+    try {
+      const success = await deleteCategory(categoryId);
+      if (success) {
+        toast({
+          title: "Category Deleted",
+          description: "Category has been removed.",
+        });
+        await fetchCategories();
+      } else {
+        throw new Error("Failed to delete category. It may not exist or you may not have permission.");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete category.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleMoveCategoryUp = async (categoryId: string) => {
+    setReorderingCategory(categoryId);
+    try {
+      const success = await moveCategoryUp(categoryId);
+      if (success) {
+        await fetchCategories();
+      } else {
+        toast({
+          title: "Cannot Move",
+          description: "Category is already at the top.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to move category.",
+        variant: "destructive",
+      });
+    } finally {
+      setReorderingCategory(null);
+    }
+  };
+
+  const handleMoveCategoryDown = async (categoryId: string) => {
+    setReorderingCategory(categoryId);
+    try {
+      const success = await moveCategoryDown(categoryId);
+      if (success) {
+        await fetchCategories();
+      } else {
+        toast({
+          title: "Cannot Move",
+          description: "Category is already at the bottom.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to move category.",
+        variant: "destructive",
+      });
+    } finally {
+      setReorderingCategory(null);
+    }
+  };
+
+  // Platform management handlers
+  const handleAddPlatform = async () => {
+    if (!newPlatformName.trim()) {
+      return;
+    }
+    setAddingPlatform(true);
+    try {
+      const platformId = await addPlatform(newPlatformName.trim());
+      if (platformId) {
+        toast({
+          title: "Platform Added",
+          description: "Platform has been added.",
+        });
+        setNewPlatformName("");
+        fetchPlatforms();
+      } else {
+        throw new Error("Another platform with this name already exists.");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add platform.",
+        variant: "destructive",
+      });
+    } finally {
+      setAddingPlatform(false);
+    }
+  };
+
+  const handleStartEditPlatform = (platform: { id: string; name: string }) => {
+    setEditingPlatform(platform);
+    setEditingPlatformName(platform.name);
+  };
+
+  const handleCancelEditPlatform = () => {
+    setEditingPlatform(null);
+    setEditingPlatformName("");
+  };
+
+  const handleSaveEditPlatform = async () => {
+    if (!editingPlatform || !editingPlatformName.trim()) {
+      return;
+    }
+    
+    setUpdatingPlatform(true);
+    try {
+      const success = await updatePlatform(editingPlatform.id, editingPlatformName.trim());
+      if (success) {
+        toast({
+          title: "Platform Updated",
+          description: "Platform has been updated.",
+        });
+        setEditingPlatform(null);
+        setEditingPlatformName("");
+        fetchPlatforms();
+      } else {
+        throw new Error("Another platform with this name already exists.");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update platform.",
+        variant: "destructive",
+      });
+    } finally {
+      setUpdatingPlatform(false);
+    }
+  };
+
+  const handleDeletePlatform = async (platformId: string) => {
+    if (!window.confirm("Are you sure you want to delete this platform? This may affect existing runs.")) {
+      return;
+    }
+    try {
+      const success = await deletePlatform(platformId);
+      if (success) {
+        toast({
+          title: "Platform Deleted",
+          description: "Platform has been removed.",
+        });
+        await fetchPlatforms();
+      } else {
+        throw new Error("Failed to delete platform. It may not exist or you may not have permission.");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete platform.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleMovePlatformUp = async (platformId: string) => {
+    setReorderingPlatform(platformId);
+    try {
+      const success = await movePlatformUp(platformId);
+      if (success) {
+        await fetchPlatforms();
+      } else {
+        toast({
+          title: "Cannot Move",
+          description: "Platform is already at the top.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to move platform.",
+        variant: "destructive",
+      });
+    } finally {
+      setReorderingPlatform(null);
+    }
+  };
+
+  const handleMovePlatformDown = async (platformId: string) => {
+    setReorderingPlatform(platformId);
+    try {
+      const success = await movePlatformDown(platformId);
+      if (success) {
+        await fetchPlatforms();
+      } else {
+        toast({
+          title: "Cannot Move",
+          description: "Platform is already at the bottom.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to move platform.",
+        variant: "destructive",
+      });
+    } finally {
+      setReorderingPlatform(null);
+    }
+  };
+  
+  // Manual run input handler
+  const handleSearchPlayer = async () => {
+    if (!adminUserInput.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a username or UID.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSearchingPlayer(true);
+    setFoundPlayer(null);
+
+    try {
+      let player = null;
+      if (adminSearchType === "username") {
+        player = await getPlayerByUsername(adminUserInput.trim());
+      } else {
+        player = await getPlayerByUid(adminUserInput.trim());
+      }
+
+      if (player) {
+        setFoundPlayer({
+          uid: player.uid,
+          displayName: player.displayName || "",
+          email: player.email || "",
+          isAdmin: Boolean(player.isAdmin),
+        });
+      } else {
+        toast({
+          title: "Player Not Found",
+          description: `No player found with ${adminSearchType === "username" ? "username" : "UID"}: ${adminUserInput.trim()}`,
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to search for player.",
+        variant: "destructive",
+      });
+    } finally {
+      setSearchingPlayer(false);
+    }
+  };
+
+  const handleSetAdminStatus = async (uid: string, isAdmin: boolean) => {
+    setSettingAdmin(true);
+    try {
+      const success = await setPlayerAdminStatus(uid, isAdmin);
+      if (success) {
+        toast({
+          title: "Success",
+          description: `Admin status ${isAdmin ? "granted" : "revoked"} successfully.`,
+        });
+        // Update found player state
+        if (foundPlayer && foundPlayer.uid === uid) {
+          setFoundPlayer({ ...foundPlayer, isAdmin });
+        }
+      } else {
+        throw new Error("Failed to update admin status.");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update admin status.",
+        variant: "destructive",
+      });
+    } finally {
+      setSettingAdmin(false);
+    }
+  };
+
+  const handleAddManualRun = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser?.uid) return;
+    
+    if (!manualRun.playerName || !manualRun.category || !manualRun.platform || !manualRun.time || !manualRun.date) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (manualRun.runType === 'co-op' && !manualRun.player2Name) {
+      toast({
+        title: "Missing Information",
+        description: "Please enter Player 2 name for co-op runs.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setAddingManualRun(true);
+    try {
+      // If playerUsername is provided, look up the player to get their UID
+      let playerId = currentUser.uid; // Default to current admin user
+      
+      if (manualRun.playerUsername.trim()) {
+        const player = await getPlayerByUsername(manualRun.playerUsername.trim());
+        if (player) {
+          playerId = player.uid;
+          // Use the player's displayName from database if found
+          if (player.displayName && player.displayName !== manualRun.playerName) {
+            // Update playerName to match the database record
+            toast({
+              title: "Player Found",
+              description: `Using player account: ${player.displayName}`,
+            });
+          }
+        } else {
+          toast({
+            title: "Player Not Found",
+            description: `Could not find player with username "${manualRun.playerUsername}". Using provided name without linking to account.`,
+            variant: "destructive",
+          });
+          // Still proceed, but without a linked player account
+        }
+      }
+      
+      const entry: any = {
+        playerId: playerId,
+        playerName: manualRun.playerName,
+        category: manualRun.category,
+        platform: manualRun.platform,
+        runType: manualRun.runType,
+        time: manualRun.time,
+        date: manualRun.date,
+        verified: manualRun.verified,
+      };
+      
+      // Only include optional fields if they have values
+      if (manualRun.runType === 'co-op' && manualRun.player2Name && manualRun.player2Name.trim()) {
+        entry.player2Name = manualRun.player2Name.trim();
+      }
+      if (manualRun.videoUrl && manualRun.videoUrl.trim()) {
+        entry.videoUrl = manualRun.videoUrl.trim();
+      }
+      if (manualRun.comment && manualRun.comment.trim()) {
+        entry.comment = manualRun.comment.trim();
+      }
+      if (manualRun.verified) {
+        // Use provided verifier or default to current admin
+        if (manualRun.verifiedBy && manualRun.verifiedBy.trim()) {
+          entry.verifiedBy = manualRun.verifiedBy.trim();
+        } else if (currentUser) {
+          entry.verifiedBy = currentUser.displayName || currentUser.email || currentUser.uid;
+        }
+      }
+      
+      const result = await addLeaderboardEntry(entry);
+      if (result) {
+        toast({
+          title: "Run Added",
+          description: "Manual run has been added successfully.",
+        });
+                        setManualRun({
+                          playerName: "",
+                          playerUsername: "",
+                          player2Name: "",
+                          category: "",
+                          platform: firestorePlatforms[0]?.id || "",
+                          runType: "solo",
+                          time: "",
+                          date: new Date().toISOString().split('T')[0],
+                          videoUrl: "",
+                          comment: "",
+                          verified: true,
+                          verifiedBy: "",
+                        });
+        fetchUnverifiedRuns();
+      } else {
+        throw new Error("Failed to add run.");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add manual run.",
+        variant: "destructive",
+      });
+    } finally {
+      setAddingManualRun(false);
+    }
+  };
+
+  if (authLoading || pageLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-[hsl(240,21%,15%)] to-[hsl(235,19%,13%)] text-[hsl(220,17%,92%)] flex items-center justify-center">
+        <LoadingSpinner size="md" />
+      </div>
+    );
+  }
+
+  if (!currentUser || !currentUser.isAdmin) {
+    return null;
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-[hsl(240,21%,15%)] to-[hsl(235,19%,13%)] text-[hsl(220,17%,92%)] py-8">
+      <div className="max-w-6xl mx-auto px-4">
+        <div className="text-center mb-10">
+          <h1 className="text-4xl font-bold mb-4 flex items-center justify-center gap-2">
+            <ShieldAlert className="h-8 w-8 text-[#cba6f7]" />
+            Admin Panel
+          </h1>
+          <p className="text-[hsl(222,15%,60%)] max-w-2xl mx-auto">
+            Review and manage submitted speedruns and site resources.
+          </p>
+        </div>
+
+        {/* Unverified Runs Section */}
+        <Card className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] mb-8">
+          <CardHeader>
+            <CardTitle>Unverified Runs</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {unverifiedRuns.length === 0 ? (
+              <p className="text-[hsl(222,15%,60%)] text-center py-8">No runs awaiting verification.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-b border-[hsl(235,13%,30%)] hover:bg-transparent">
+                      <TableHead className="py-3 px-4 text-left">Player(s)</TableHead>
+                      <TableHead className="py-3 px-4 text-left">Category</TableHead>
+                      <TableHead className="py-3 px-4 text-left">Time</TableHead>
+                      <TableHead className="py-3 px-4 text-left">Platform</TableHead>
+                      <TableHead className="py-3 px-4 text-left">Type</TableHead>
+                      <TableHead className="py-3 px-4 text-left">Video</TableHead>
+                      <TableHead className="py-3 px-4 text-center">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {unverifiedRuns.map((run) => (
+                      <TableRow key={run.id} className="border-b border-[hsl(235,13%,30%)] hover:bg-[hsl(235,19%,13%)]">
+                        <TableCell className="py-3 px-4 font-medium">
+                          <span style={{ color: run.nameColor || 'inherit' }}>{run.playerName}</span>
+                          {run.player2Name && (
+                            <>
+                              <span className="text-muted-foreground"> & </span>
+                              <span style={{ color: run.player2Color || 'inherit' }}>{run.player2Name}</span>
+                            </>
+                          )}
+                        </TableCell>
+                        <TableCell className="py-3 px-4">{firestoreCategories.find(c => c.id === run.category)?.name || run.category}</TableCell>
+                        <TableCell className="py-3 px-4 font-mono">{run.time}</TableCell>
+                        <TableCell className="py-3 px-4">{firestorePlatforms.find(p => p.id === run.platform)?.name || run.platform}</TableCell>
+                        <TableCell className="py-3 px-4">{run.runType.charAt(0).toUpperCase() + run.runType.slice(1)}</TableCell>
+                        <TableCell className="py-3 px-4">
+                          {run.videoUrl && (
+                            <a href={run.videoUrl} target="_blank" rel="noopener noreferrer" className="text-[#cba6f7] hover:underline flex items-center gap-1">
+                              Watch <ExternalLink className="h-4 w-4" />
+                            </a>
+                          )}
+                        </TableCell>
+                        <TableCell className="py-3 px-4 text-center space-x-2">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleVerify(run.id)}
+                            className="text-green-500 hover:bg-green-900/20"
+                          >
+                            <CheckCircle className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleReject(run.id)}
+                            className="text-red-500 hover:bg-red-900/20"
+                          >
+                            <XCircle className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Category Management Section */}
+        <Card className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FolderTree className="h-5 w-5" />
+              Manage Categories
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <h3 className="text-xl font-semibold mb-4">Add New Category</h3>
+            <form onSubmit={handleAddCategory} className="space-y-4 mb-8">
+              <div>
+                <Label htmlFor="categoryName">Category Name</Label>
+                <Input
+                  id="categoryName"
+                  type="text"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder="e.g., 100% Glitchless"
+                  required
+                  className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                />
+              </div>
+              <Button 
+                type="submit" 
+                disabled={addingCategory}
+                className="bg-[#cba6f7] hover:bg-[#b4a0e2] text-[hsl(240,21%,15%)] font-bold flex items-center gap-2"
+              >
+                <PlusCircle className="h-4 w-4" />
+                {addingCategory ? "Adding..." : "Add Category"}
+              </Button>
+            </form>
+
+            <h3 className="text-xl font-semibold mb-4">Existing Categories</h3>
+            {firestoreCategories.length === 0 ? (
+              <p className="text-[hsl(222,15%,60%)] text-center py-4">No categories found. Using default categories.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-b border-[hsl(235,13%,30%)] hover:bg-transparent">
+                      <TableHead className="py-3 px-4 text-left">Name</TableHead>
+                      <TableHead className="py-3 px-4 text-center">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {firestoreCategories.map((category, index) => (
+                      <TableRow key={category.id} className="border-b border-[hsl(235,13%,30%)] hover:bg-[hsl(235,19%,13%)]">
+                        <TableCell className="py-3 px-4 font-medium">
+                          {editingCategory?.id === category.id ? (
+                            <Input
+                              value={editingCategoryName}
+                              onChange={(e) => setEditingCategoryName(e.target.value)}
+                              className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                              autoFocus
+                            />
+                          ) : (
+                            category.name
+                          )}
+                        </TableCell>
+                        <TableCell className="py-3 px-4 text-center space-x-2">
+                          {editingCategory?.id === category.id ? (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={handleSaveEditCategory}
+                                disabled={updatingCategory}
+                                className="text-green-500 hover:bg-green-900/20"
+                              >
+                                Save
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={handleCancelEditCategory}
+                                disabled={updatingCategory}
+                                className="text-gray-500 hover:bg-gray-900/20"
+                              >
+                                Cancel
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleMoveCategoryUp(category.id)}
+                                disabled={reorderingCategory === category.id || index === 0}
+                                className="text-purple-500 hover:bg-purple-900/20 disabled:opacity-50"
+                                title="Move up"
+                              >
+                                <ArrowUp className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleMoveCategoryDown(category.id)}
+                                disabled={reorderingCategory === category.id || index === firestoreCategories.length - 1}
+                                className="text-purple-500 hover:bg-purple-900/20 disabled:opacity-50"
+                                title="Move down"
+                              >
+                                <ArrowDown className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleStartEditCategory(category)}
+                                className="text-blue-500 hover:bg-blue-900/20"
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteCategory(category.id)}
+                                className="text-red-500 hover:bg-red-900/20"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Platform Management Section */}
+        <Card className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Gamepad2 className="h-5 w-5" />
+              Manage Platforms
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <h3 className="text-xl font-semibold mb-4">Add New Platform</h3>
+            <form onSubmit={(e) => { e.preventDefault(); handleAddPlatform(); }} className="space-y-4 mb-8">
+              <div>
+                <Label htmlFor="platformName">Platform Name</Label>
+                <Input
+                  id="platformName"
+                  type="text"
+                  value={newPlatformName}
+                  onChange={(e) => setNewPlatformName(e.target.value)}
+                  placeholder="e.g., Nintendo Switch"
+                  required
+                  className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                />
+              </div>
+              <Button 
+                type="submit" 
+                disabled={addingPlatform}
+                className="bg-[#cba6f7] hover:bg-[#b4a0e2] text-[hsl(240,21%,15%)] font-bold flex items-center gap-2"
+              >
+                <PlusCircle className="h-4 w-4" />
+                {addingPlatform ? "Adding..." : "Add Platform"}
+              </Button>
+            </form>
+
+            <h3 className="text-xl font-semibold mb-4">Existing Platforms</h3>
+            {firestorePlatforms.length === 0 ? (
+              <p className="text-[hsl(222,15%,60%)] text-center py-4">No platforms found.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-b border-[hsl(235,13%,30%)] hover:bg-transparent">
+                      <TableHead className="py-3 px-4 text-left">Name</TableHead>
+                      <TableHead className="py-3 px-4 text-center">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {firestorePlatforms.map((platform, index) => (
+                      <TableRow key={platform.id} className="border-b border-[hsl(235,13%,30%)] hover:bg-[hsl(235,19%,13%)]">
+                        <TableCell className="py-3 px-4 font-medium">
+                          {editingPlatform?.id === platform.id ? (
+                            <Input
+                              value={editingPlatformName}
+                              onChange={(e) => setEditingPlatformName(e.target.value)}
+                              className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                              autoFocus
+                            />
+                          ) : (
+                            platform.name
+                          )}
+                        </TableCell>
+                        <TableCell className="py-3 px-4 text-center space-x-2">
+                          {editingPlatform?.id === platform.id ? (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={handleSaveEditPlatform}
+                                disabled={updatingPlatform}
+                                className="text-green-500 hover:bg-green-900/20"
+                              >
+                                Save
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={handleCancelEditPlatform}
+                                disabled={updatingPlatform}
+                                className="text-gray-500 hover:bg-gray-900/20"
+                              >
+                                Cancel
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleMovePlatformUp(platform.id)}
+                                disabled={reorderingPlatform === platform.id || index === 0}
+                                className="text-purple-500 hover:bg-purple-900/20 disabled:opacity-50"
+                                title="Move up"
+                              >
+                                <ArrowUp className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleMovePlatformDown(platform.id)}
+                                disabled={reorderingPlatform === platform.id || index === firestorePlatforms.length - 1}
+                                className="text-purple-500 hover:bg-purple-900/20 disabled:opacity-50"
+                                title="Move down"
+                              >
+                                <ArrowDown className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleStartEditPlatform(platform)}
+                                className="text-blue-500 hover:bg-blue-900/20"
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeletePlatform(platform.id)}
+                                className="text-red-500 hover:bg-red-900/20"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Manage Downloads Section */}
+        <Card className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Wrench className="h-5 w-5" />
+              Manage Downloads
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <h3 className="text-xl font-semibold mb-4">Add New Download</h3>
+            <form onSubmit={handleAddDownload} className="space-y-4 mb-8">
+              <div>
+                <Label htmlFor="downloadName">Name</Label>
+                <Input
+                  id="downloadName"
+                  type="text"
+                  value={newDownload.name}
+                  onChange={(e) => setNewDownload({ ...newDownload, name: e.target.value })}
+                  required
+                  className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                />
+              </div>
+              <div>
+                <Label htmlFor="downloadDescription">Description</Label>
+                <Textarea
+                  id="downloadDescription"
+                  value={newDownload.description}
+                  onChange={(e) => setNewDownload({ ...newDownload, description: e.target.value })}
+                  required
+                  className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                  rows={3}
+                />
+              </div>
+              <div>
+                <Label htmlFor="downloadUrl">URL</Label>
+                <Input
+                  id="downloadUrl"
+                  type="url"
+                  value={newDownload.url}
+                  onChange={(e) => setNewDownload({ ...newDownload, url: e.target.value })}
+                  required
+                  className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                />
+              </div>
+              <div>
+                <Label htmlFor="downloadCategory">Category</Label>
+                <Select value={newDownload.category} onValueChange={(value) => setNewDownload({ ...newDownload, category: value })}>
+                  <SelectTrigger className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {downloadCategories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button 
+                type="submit" 
+                disabled={addingDownload}
+                className="bg-[#cba6f7] hover:bg-[#b4a0e2] text-[hsl(240,21%,15%)] font-bold flex items-center gap-2"
+              >
+                <PlusCircle className="h-4 w-4" />
+                {addingDownload ? "Adding..." : "Add Download"}
+              </Button>
+            </form>
+
+            <h3 className="text-xl font-semibold mb-4">Existing Downloads</h3>
+            {downloadEntries.length === 0 ? (
+              <p className="text-[hsl(222,15%,60%)] text-center py-4">No download entries added yet.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-b border-[hsl(235,13%,30%)] hover:bg-transparent">
+                      <TableHead className="py-3 px-4 text-left">Order</TableHead>
+                      <TableHead className="py-3 px-4 text-left">Name</TableHead>
+                      <TableHead className="py-3 px-4 text-left">Category</TableHead>
+                      <TableHead className="py-3 px-4 text-left">URL</TableHead>
+                      <TableHead className="py-3 px-4 text-left">Added By</TableHead>
+                      <TableHead className="py-3 px-4 text-center">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {downloadEntries.map((entry, index) => (
+                      <TableRow key={entry.id} className="border-b border-[hsl(235,13%,30%)] hover:bg-[hsl(235,19%,13%)]">
+                        <TableCell className="py-3 px-4">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleMoveDownloadUp(entry.id)}
+                              disabled={reorderingDownload !== null || index === 0}
+                              className="h-8 w-8 p-0"
+                            >
+                              <ArrowUp className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleMoveDownloadDown(entry.id)}
+                              disabled={reorderingDownload !== null || index === downloadEntries.length - 1}
+                              className="h-8 w-8 p-0"
+                            >
+                              <ArrowDown className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-3 px-4 font-medium">{entry.name}</TableCell>
+                        <TableCell className="py-3 px-4">{downloadCategories.find(c => c.id === entry.category)?.name || entry.category}</TableCell>
+                        <TableCell className="py-3 px-4">
+                          <a href={entry.url} target="_blank" rel="noopener noreferrer" className="text-[#cba6f7] hover:underline flex items-center gap-1">
+                            Link <ExternalLink className="h-4 w-4" />
+                          </a>
+                        </TableCell>
+                        <TableCell className="py-3 px-4 text-[hsl(222,15%,60%)]">{entry.addedBy}</TableCell>
+                        <TableCell className="py-3 px-4 text-center">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleDeleteDownload(entry.id)}
+                            className="text-red-500 hover:bg-red-900/20"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Manual Run Input Section */}
+        <Card className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Play className="h-5 w-5" />
+              Manually Add Run
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleAddManualRun} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="manualPlayerName">Player 1 Name *</Label>
+                  <Input
+                    id="manualPlayerName"
+                    type="text"
+                    value={manualRun.playerName}
+                    onChange={(e) => setManualRun({ ...manualRun, playerName: e.target.value })}
+                    placeholder="Player name"
+                    required
+                    className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="manualPlayerUsername">Player Username (Optional)</Label>
+                  <Input
+                    id="manualPlayerUsername"
+                    type="text"
+                    value={manualRun.playerUsername}
+                    onChange={(e) => setManualRun({ ...manualRun, playerUsername: e.target.value })}
+                    placeholder="Enter username to link run to account"
+                    className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                  />
+                  <p className="text-sm text-[hsl(222,15%,60%)] mt-1">
+                    If provided, the run will be linked to this player's account. If not found, the run will still be added with the provided player name.
+                  </p>
+                </div>
+                {manualRun.runType === 'co-op' && (
+                  <div>
+                    <Label htmlFor="manualPlayer2Name">Player 2 Name *</Label>
+                    <Input
+                      id="manualPlayer2Name"
+                      type="text"
+                      value={manualRun.player2Name}
+                      onChange={(e) => setManualRun({ ...manualRun, player2Name: e.target.value })}
+                      placeholder="Second player name"
+                      required={manualRun.runType === 'co-op'}
+                      className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                    />
+                  </div>
+                )}
+                <div>
+                  <Label htmlFor="manualTime">Completion Time *</Label>
+                  <Input
+                    id="manualTime"
+                    type="text"
+                    value={manualRun.time}
+                    onChange={(e) => setManualRun({ ...manualRun, time: e.target.value })}
+                    placeholder="HH:MM:SS"
+                    required
+                    className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="manualDate">Date *</Label>
+                  <Input
+                    id="manualDate"
+                    type="date"
+                    value={manualRun.date}
+                    onChange={(e) => setManualRun({ ...manualRun, date: e.target.value })}
+                    required
+                    className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="manualCategory">Category *</Label>
+                  <Select
+                    value={manualRun.category}
+                    onValueChange={(value) => setManualRun({ ...manualRun, category: value })}
+                  >
+                    <SelectTrigger className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]">
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {firestoreCategories.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="manualPlatform">Platform *</Label>
+                  <Select
+                    value={manualRun.platform}
+                    onValueChange={(value) => setManualRun({ ...manualRun, platform: value })}
+                  >
+                    <SelectTrigger className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]">
+                      <SelectValue placeholder="Select platform" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {firestorePlatforms.map((platform) => (
+                        <SelectItem key={platform.id} value={platform.id}>
+                          {platform.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="manualRunType">Run Type *</Label>
+                  <Select
+                    value={manualRun.runType}
+                    onValueChange={(value) => setManualRun({ ...manualRun, runType: value as 'solo' | 'co-op' })}
+                  >
+                    <SelectTrigger className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]">
+                      <SelectValue placeholder="Select run type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="solo">Solo</SelectItem>
+                      <SelectItem value="co-op">Co-op</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="manualVideoUrl">Video URL (Optional)</Label>
+                <Input
+                  id="manualVideoUrl"
+                  type="url"
+                  value={manualRun.videoUrl}
+                  onChange={(e) => setManualRun({ ...manualRun, videoUrl: e.target.value })}
+                  placeholder="https://youtube.com/watch?v=..."
+                  className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="manualComment">Comment (Optional)</Label>
+                <Textarea
+                  id="manualComment"
+                  value={manualRun.comment}
+                  onChange={(e) => setManualRun({ ...manualRun, comment: e.target.value })}
+                  placeholder="Add a comment about the run..."
+                  className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                  rows={3}
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="manualVerified"
+                  checked={manualRun.verified}
+                  onChange={(e) => setManualRun({ ...manualRun, verified: e.target.checked })}
+                  className="w-4 h-4 rounded border-[hsl(235,13%,30%)] bg-[hsl(240,21%,15%)]"
+                />
+                <Label htmlFor="manualVerified" className="cursor-pointer">
+                  Mark as verified
+                </Label>
+              </div>
+
+              {manualRun.verified && (
+                <div>
+                  <Label htmlFor="manualVerifiedBy">Verifier (Optional)</Label>
+                  <Input
+                    id="manualVerifiedBy"
+                    type="text"
+                    value={manualRun.verifiedBy}
+                    onChange={(e) => setManualRun({ ...manualRun, verifiedBy: e.target.value })}
+                    placeholder="Enter verifier name or UID (defaults to current admin if empty)"
+                    className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                  />
+                  <p className="text-sm text-[hsl(222,15%,60%)] mt-1">
+                    Leave empty to use your admin account as the verifier. Enter a name or UID to specify a different verifier.
+                  </p>
+                </div>
+              )}
+
+              <Button
+                type="submit"
+                disabled={addingManualRun}
+                className="w-full bg-[#cba6f7] hover:bg-[#b4a0e2] text-[hsl(240,21%,15%)] font-bold flex items-center gap-2"
+              >
+                <PlusCircle className="h-4 w-4" />
+                {addingManualRun ? "Adding..." : "Add Run"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        {/* Admin Management Section */}
+        <Card className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ShieldAlert className="h-5 w-5" />
+              Manage Admin Status
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-4">
+              <div className="flex gap-4 items-end">
+                <div className="flex-1">
+                  <Label htmlFor="adminSearchType">Search By</Label>
+                  <Select value={adminSearchType} onValueChange={(value: "username" | "uid") => {
+                    setAdminSearchType(value);
+                    setFoundPlayer(null);
+                    setAdminUserInput("");
+                  }}>
+                    <SelectTrigger className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="username">Username</SelectItem>
+                      <SelectItem value="uid">UID</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex-1">
+                  <Label htmlFor="adminUserInput">{adminSearchType === "username" ? "Username" : "UID"}</Label>
+                  <Input
+                    id="adminUserInput"
+                    value={adminUserInput}
+                    onChange={(e) => setAdminUserInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleSearchPlayer();
+                      }
+                    }}
+                    placeholder={adminSearchType === "username" ? "Enter username" : "Enter UID"}
+                    className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                  />
+                </div>
+                <Button
+                  onClick={handleSearchPlayer}
+                  disabled={searchingPlayer || !adminUserInput.trim()}
+                  className="bg-[#cba6f7] hover:bg-[#b4a0e2] text-[hsl(240,21%,15%)] font-bold"
+                >
+                  {searchingPlayer ? "Searching..." : "Search"}
+                </Button>
+              </div>
+
+              {foundPlayer && (
+                <div className="bg-[hsl(235,19%,13%)] border border-[hsl(235,13%,30%)] rounded-lg p-4 space-y-4">
+                  <div>
+                    <h4 className="font-semibold mb-2">Player Found</h4>
+                    <div className="space-y-1 text-sm">
+                      <p><span className="text-[hsl(222,15%,60%)]">UID:</span> <code className="text-[#cba6f7]">{foundPlayer.uid}</code></p>
+                      <p><span className="text-[hsl(222,15%,60%)]">Display Name:</span> {foundPlayer.displayName || "Not set"}</p>
+                      <p><span className="text-[hsl(222,15%,60%)]">Email:</span> {foundPlayer.email || "Not set"}</p>
+                      <p>
+                        <span className="text-[hsl(222,15%,60%)]">Admin Status:</span>{" "}
+                        <Badge variant={foundPlayer.isAdmin ? "default" : "secondary"}>
+                          {foundPlayer.isAdmin ? "Admin" : "Not Admin"}
+                        </Badge>
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => handleSetAdminStatus(foundPlayer.uid, true)}
+                      disabled={settingAdmin || foundPlayer.isAdmin}
+                      className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+                    >
+                      <UserPlus className="h-4 w-4" />
+                      Grant Admin
+                    </Button>
+                    <Button
+                      onClick={() => handleSetAdminStatus(foundPlayer.uid, false)}
+                      disabled={settingAdmin || !foundPlayer.isAdmin}
+                      variant="destructive"
+                      className="flex items-center gap-2"
+                    >
+                      <UserMinus className="h-4 w-4" />
+                      Revoke Admin
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+export default Admin;

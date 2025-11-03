@@ -1,0 +1,78 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user is the owner of a document
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/players/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/players/$(request.auth.uid)).data.isAdmin == true;
+    }
+    
+    // Players collection
+    match /players/{playerId} {
+      // Users can read their own player data
+      allow read: if isOwner(playerId);
+      // Users can create their own player document (including isAdmin on creation)
+      allow create: if isOwner(playerId);
+      // Users can update their own player data (except isAdmin field)
+      allow update: if isOwner(playerId) && 
+                       (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin']));
+      // Only admins can update admin status (when changing from true to false or vice versa)
+      allow update: if isAdmin() && 'isAdmin' in request.resource.data.diff(resource.data).affectedKeys();
+      // Allow users to set their own isAdmin to true if it's currently false/undefined (initial admin setup)
+      allow update: if isOwner(playerId) && 
+                       request.resource.data.isAdmin == true &&
+                       (!resource.data.hasAny(['isAdmin']) || resource.data.isAdmin == false);
+    }
+    
+    // Leaderboard entries
+    match /leaderboardEntries/{entryId} {
+      // Anyone can read verified entries
+      allow read: if resource.data.verified == true;
+      // Authenticated users can create entries (for submissions)
+      allow create: if isAuthenticated() && 
+                       request.resource.data.playerId == request.auth.uid;
+      // Admins can read unverified entries
+      allow read: if resource.data.verified != true && isAdmin();
+      // Admins can update/delete any entry
+      allow update, delete: if isAdmin();
+      // Users can update their own entries (before verification)
+      allow update: if isOwner(resource.data.playerId) && 
+                       resource.data.verified != true;
+    }
+    
+    // Download entries
+    match /downloads/{entryId} {
+      // Anyone can read
+      allow read: if true;
+      // Only admins can create/update/delete
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // Categories
+    match /categories/{categoryId} {
+      // Anyone can read
+      allow read: if true;
+      // Only admins can create/update/delete
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // Platforms
+    match /platforms/{platformId} {
+      // Anyone can read
+      allow read: if true;
+      // Only admins can create/update/delete
+      allow create, update, delete: if isAdmin();
+    }
+  }
+}
