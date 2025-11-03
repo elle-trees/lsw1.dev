@@ -89,7 +89,7 @@ const PointsLeaderboard = () => {
                             : rank === 2
                             ? "bg-gradient-to-br from-[#bac2de]/20 via-[#89b4fa]/15 to-[#bac2de]/10 border-2 border-[#89b4fa]/50 hover:border-[#89b4fa] hover:shadow-[#89b4fa]/30"
                             : rank === 3
-                            ? "bg-gradient-to-br from-[#fab387]/20 via-[#fe8019]/15 to-[#fab387]/10 border-2 border-[#fe8019]/50 hover:border-[#fe8019] hover:shadow-[#fe8019]/30"
+                            ? "bg-gradient-to-br from-[#4ab8d0]/20 via-[#209fb5]/15 to-[#4ab8d0]/10 border-2 border-[#209fb5]/50 hover:border-[#209fb5] hover:shadow-[#209fb5]/30"
                             : "bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border border-[hsl(235,13%,30%)] hover:border-[hsl(var(--mocha-mauve))] hover:shadow-[hsl(var(--mocha-mauve))]/20"
                         }`}
                         style={{ animationDelay: `${index * 0.05}s` }}
