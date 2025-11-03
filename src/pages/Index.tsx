@@ -54,7 +54,7 @@ const Index = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-gradient-to-b from-[hsl(240,21%,15%)] to-[hsl(235,19%,13%)] text-[hsl(220,17%,92%)]">
       <div className="py-20 px-4 animate-fade-in">
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col lg:flex-row items-center lg:items-start gap-8 lg:gap-6">
@@ -85,14 +85,14 @@ const Index = () => {
               <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-[hsl(var(--mocha-sapphire))] via-[hsl(var(--mocha-mauve))] to-[hsl(var(--mocha-lavender))] bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">
                 lsw1.live
               </h1>
-              <p className="text-xl md:text-2xl mb-10 text-muted-foreground max-w-2xl mx-auto animate-fade-in-delay">
+              <p className="text-xl md:text-2xl mb-10 text-[hsl(222,15%,70%)] max-w-2xl mx-auto animate-fade-in-delay">
                 Compete for the fastest times in the galaxy. Track your progress and climb the ranks!
               </p>
               <div className="flex flex-col sm:flex-row justify-center gap-4 animate-fade-in-delay-2">
                 <Button size="lg" className="bg-primary hover:bg-[hsl(var(--mocha-mauve))]/80 text-primary-foreground font-bold transition-all duration-300 hover:scale-110 hover:shadow-xl hover:shadow-[hsl(var(--mocha-mauve))]/50" asChild>
                   <Link to="/submit">Submit Run</Link>
                 </Button>
-                <Button size="lg" variant="outline" className="text-foreground border-border hover:bg-muted transition-all duration-300 hover:scale-110 hover:shadow-xl" asChild>
+                <Button size="lg" variant="outline" className="text-[hsl(220,17%,92%)] border-border hover:bg-muted transition-all duration-300 hover:scale-110 hover:shadow-xl" asChild>
                   <Link to="/leaderboards">View All Leaderboards</Link>
                 </Button>
               </div>
@@ -136,8 +136,8 @@ const Index = () => {
           <div className="grid grid-cols-1">
             <div className="col-span-1">
               <div className="text-center mb-8">
-                <h2 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">Recent Runs</h2>
-                <p className="text-muted-foreground max-w-2xl mx-auto">
+                <h2 className="text-3xl md:text-4xl font-bold mb-4 text-[hsl(220,17%,92%)]">Recent Runs</h2>
+                <p className="text-[hsl(222,15%,70%)] max-w-2xl mx-auto">
                   Check out the latest speedrun submissions.
                 </p>
               </div>
@@ -145,7 +145,7 @@ const Index = () => {
               <RecentRuns runs={recentRunsData} loading={loading} showRankBadge={false} />
 
               <div className="mt-8 text-center">
-                <Button variant="outline" className="text-foreground border-border hover:bg-muted transition-all duration-300 hover:scale-110 hover:shadow-lg" asChild>
+                <Button variant="outline" className="text-[hsl(220,17%,92%)] border-border hover:bg-muted transition-all duration-300 hover:scale-110 hover:shadow-lg" asChild>
                   <Link to="/leaderboards">View Full Leaderboards</Link>
                 </Button>
               </div>
