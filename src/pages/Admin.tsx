@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, XCircle, ShieldAlert, ExternalLink, Download, PlusCircle, Trash2, Wrench, Edit2, FolderTree, Play, ArrowUp, ArrowDown, Gamepad2, UserPlus, UserMinus, Trophy } from "lucide-react";
+import { CheckCircle, XCircle, ShieldAlert, ExternalLink, Download, PlusCircle, Trash2, Wrench, Edit2, FolderTree, Play, ArrowUp, ArrowDown, Gamepad2, UserPlus, UserMinus, Trophy, Upload } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -39,6 +39,7 @@ import {
   movePlatformDown,
   backfillPointsForAllRuns,
 } from "@/lib/db";
+import { useUploadThing } from "@/lib/uploadthing";
 import { LeaderboardEntry, DownloadEntry } from "@/types/database";
 import { useNavigate } from "react-router-dom";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
@@ -62,10 +63,13 @@ const Admin = () => {
     name: "",
     description: "",
     url: "",
+    fileUrl: "",
     category: downloadCategories[0].id,
+    useFileUpload: false, // Toggle between URL and file upload
   });
   const [addingDownload, setAddingDownload] = useState(false);
   const [reorderingDownload, setReorderingDownload] = useState<string | null>(null);
+  const { startUpload, isUploading } = useUploadThing("downloadFile");
   
   const [firestoreCategories, setFirestoreCategories] = useState<{ id: string; name: string }[]>([]);
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -276,10 +280,30 @@ const Admin = () => {
       });
       return;
     }
-    if (!newDownload.name || !newDownload.url || !newDownload.description || !newDownload.category) {
+    
+    // Validate based on upload type
+    if (!newDownload.name || !newDownload.description || !newDownload.category) {
       toast({
         title: "Missing Information",
-        description: "Please fill in all fields for the new download.",
+        description: "Please fill in name, description, and category.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (newDownload.useFileUpload && !newDownload.fileUrl) {
+      toast({
+        title: "Missing File",
+        description: "Please upload a file or provide a URL.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!newDownload.useFileUpload && !newDownload.url) {
+      toast({
+        title: "Missing URL",
+        description: "Please provide a URL or upload a file.",
         variant: "destructive",
       });
       return;
@@ -287,14 +311,30 @@ const Admin = () => {
 
     setAddingDownload(true);
     try {
-      const downloadEntry = { ...newDownload, addedBy: currentUser.uid };
+      const downloadEntry: Omit<DownloadEntry, 'id' | 'dateAdded' | 'order'> = {
+        name: newDownload.name,
+        description: newDownload.description,
+        category: newDownload.category,
+        ...(newDownload.useFileUpload 
+          ? { fileUrl: newDownload.fileUrl } 
+          : { url: newDownload.url }
+        ),
+      };
+      
       const success = await addDownloadEntry(downloadEntry, currentUser.uid);
       if (success) {
         toast({
           title: "Download Added",
           description: "New download entry has been added.",
         });
-        setNewDownload({ name: "", description: "", url: "", category: downloadCategories[0].id         });
+        setNewDownload({ 
+          name: "", 
+          description: "", 
+          url: "", 
+          fileUrl: "",
+          category: downloadCategories[0].id,
+          useFileUpload: false,
+        });
         fetchDownloadEntries();
       } else {
         throw new Error("Failed to add download entry.");
@@ -1356,15 +1396,86 @@ const Admin = () => {
                 />
               </div>
               <div>
-                <Label htmlFor="downloadUrl">URL</Label>
-                <Input
-                  id="downloadUrl"
-                  type="url"
-                  value={newDownload.url}
-                  onChange={(e) => setNewDownload({ ...newDownload, url: e.target.value })}
-                  required
-                  className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                />
+                <Label>Upload Type</Label>
+                <div className="flex gap-4 mb-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      checked={!newDownload.useFileUpload}
+                      onChange={() => setNewDownload({ ...newDownload, useFileUpload: false, fileUrl: "" })}
+                      className="w-4 h-4"
+                    />
+                    <span>External URL</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      checked={newDownload.useFileUpload}
+                      onChange={() => setNewDownload({ ...newDownload, useFileUpload: true, url: "" })}
+                      className="w-4 h-4"
+                    />
+                    <span>Upload File</span>
+                  </label>
+                </div>
+                {newDownload.useFileUpload ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="fileUpload">File</Label>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        onClick={async () => {
+                          const input = document.createElement('input');
+                          input.type = 'file';
+                          input.onchange = async (e) => {
+                            const file = (e.target as HTMLInputElement).files?.[0];
+                            if (!file) return;
+                            
+                            try {
+                              const uploadedFiles = await startUpload([file]);
+                              if (uploadedFiles && uploadedFiles[0]) {
+                                setNewDownload({ ...newDownload, fileUrl: uploadedFiles[0].url });
+                                toast({
+                                  title: "File Uploaded",
+                                  description: "File uploaded successfully.",
+                                });
+                              }
+                            } catch (error: any) {
+                              toast({
+                                title: "Upload Failed",
+                                description: error.message || "Failed to upload file.",
+                                variant: "destructive",
+                              });
+                            }
+                          };
+                          input.click();
+                        }}
+                        disabled={isUploading}
+                        className="bg-[#cba6f7] hover:bg-[#b4a0e2] text-[hsl(240,21%,15%)] font-bold flex items-center gap-2"
+                      >
+                        <Upload className="h-4 w-4" />
+                        {isUploading ? "Uploading..." : "Choose File"}
+                      </Button>
+                      {newDownload.fileUrl && (
+                        <span className="text-sm text-[hsl(222,15%,70%)] flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                          File uploaded
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <Label htmlFor="downloadUrl">URL</Label>
+                    <Input
+                      id="downloadUrl"
+                      type="url"
+                      value={newDownload.url}
+                      onChange={(e) => setNewDownload({ ...newDownload, url: e.target.value })}
+                      required={!newDownload.useFileUpload}
+                      className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                    />
+                  </div>
+                )}
               </div>
               <div>
                 <Label htmlFor="downloadCategory">Category</Label>
@@ -1435,9 +1546,17 @@ const Admin = () => {
                         <TableCell className="py-3 px-4 font-medium">{entry.name}</TableCell>
                         <TableCell className="py-3 px-4">{downloadCategories.find(c => c.id === entry.category)?.name || entry.category}</TableCell>
                         <TableCell className="py-3 px-4">
-                          <a href={entry.url} target="_blank" rel="noopener noreferrer" className="text-[#cba6f7] hover:underline flex items-center gap-1">
-                            Link <ExternalLink className="h-4 w-4" />
-                          </a>
+                          {entry.fileUrl ? (
+                            <a href={entry.fileUrl} target="_blank" rel="noopener noreferrer" className="text-[#cba6f7] hover:underline flex items-center gap-1">
+                              File <Download className="h-4 w-4" />
+                            </a>
+                          ) : entry.url ? (
+                            <a href={entry.url} target="_blank" rel="noopener noreferrer" className="text-[#cba6f7] hover:underline flex items-center gap-1">
+                              Link <ExternalLink className="h-4 w-4" />
+                            </a>
+                          ) : (
+                            <span className="text-[hsl(222,15%,60%)]">No link</span>
+                          )}
                         </TableCell>
                         <TableCell className="py-3 px-4 text-[hsl(222,15%,60%)]">{entry.addedBy}</TableCell>
                         <TableCell className="py-3 px-4 text-center">

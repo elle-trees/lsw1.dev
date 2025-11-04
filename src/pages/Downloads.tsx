@@ -102,9 +102,18 @@ const Downloads = () => {
                     asChild 
                     className="w-full bg-gradient-to-r from-[#cba6f7] to-[#b4a0e2] hover:from-[#b4a0e2] hover:to-[#cba6f7] text-[hsl(240,21%,15%)] font-bold shadow-lg hover:shadow-xl hover:shadow-[#cba6f7]/30 transition-all duration-300 hover:scale-105"
                   >
-                    <a href={entry.url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2">
-                      <span>Download / View</span>
-                      <ExternalLink className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1 group-hover:-translate-y-1" />
+                    <a 
+                      href={entry.fileUrl || entry.url || "#"} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="flex items-center justify-center gap-2"
+                    >
+                      <span>{entry.fileUrl ? "Download" : "View"}</span>
+                      {entry.fileUrl ? (
+                        <Download className="h-4 w-4 transition-transform duration-300 group-hover:translate-y-1" />
+                      ) : (
+                        <ExternalLink className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1 group-hover:-translate-y-1" />
+                      )}
                     </a>
                   </Button>
                 </CardContent>
