@@ -1289,9 +1289,37 @@ export const claimRunFirestore = async (runId: string, userId: string): Promise<
       return false;
     }
     
+    const runData = runDoc.data() as LeaderboardEntry;
+    const oldPlayerId = runData.playerId;
+    
+    // Update the run with the new playerId
     await updateDoc(runDocRef, { playerId: userId });
+    
+    // Recalculate points for the new player (the one claiming the run)
+    // Only recalculate if the run is verified (verified runs count for points)
+    if (runData.verified && runData.runType !== 'co-op') {
+      try {
+        await recalculatePlayerPointsFirestore(userId);
+      } catch (error) {
+        console.error(`Error recalculating points for new player ${userId}:`, error);
+        // Don't fail the claim if points recalculation fails
+      }
+    }
+    
+    // Recalculate points for the old player (if they had an account)
+    // This removes the run from their points if they were a linked player
+    if (oldPlayerId && oldPlayerId !== userId && !oldPlayerId.startsWith("unlinked_")) {
+      try {
+        await recalculatePlayerPointsFirestore(oldPlayerId);
+      } catch (error) {
+        console.error(`Error recalculating points for old player ${oldPlayerId}:`, error);
+        // Don't fail the claim if points recalculation fails
+      }
+    }
+    
     return true;
   } catch (error) {
+    console.error("Error claiming run:", error);
     return false;
   }
 };
