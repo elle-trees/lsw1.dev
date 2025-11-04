@@ -612,6 +612,7 @@ export const recalculatePlayerPointsFirestore = async (playerId: string): Promis
     
     // Get all verified co-op runs to check if player is player2
     // We need to filter these since we can't query by player2Name directly
+    // Note: This query requires a composite index in Firestore (verified + runType)
     let coOpRunsSnapshot;
     try {
       const coOpRunsQuery = query(
@@ -620,8 +621,13 @@ export const recalculatePlayerPointsFirestore = async (playerId: string): Promis
         where("runType", "==", "co-op")
       );
       coOpRunsSnapshot = await getDocs(coOpRunsQuery);
-    } catch (error) {
-      console.error(`Error fetching co-op runs for player ${playerId}:`, error);
+    } catch (error: any) {
+      // If it's a permission error, log it but continue
+      if (error?.code === 'permission-denied') {
+        console.warn(`Permission denied fetching co-op runs for player ${playerId}. This may be due to missing Firestore index.`);
+      } else {
+        console.error(`Error fetching co-op runs for player ${playerId}:`, error);
+      }
       // If we can't fetch co-op runs, just use empty snapshot
       coOpRunsSnapshot = { docs: [] } as any;
     }
@@ -723,7 +729,12 @@ export const recalculatePlayerPointsFirestore = async (playerId: string): Promis
     // Update or create player's total points
     if (playerDocSnap && playerDocSnap.exists()) {
       // Only update totalPoints to avoid permission issues
-      await updateDoc(playerDocRef, { totalPoints });
+      try {
+        await updateDoc(playerDocRef, { totalPoints });
+      } catch (error: any) {
+        console.error(`Error updating player ${playerId} totalPoints:`, error?.code, error?.message);
+        throw error; // Re-throw to be caught by outer catch
+      }
     } else {
       // Create player document if it doesn't exist
       // Get player info from first run if available
@@ -741,12 +752,20 @@ export const recalculatePlayerPointsFirestore = async (playerId: string): Promis
         isAdmin: false, // Explicitly set to false for new players
         totalPoints,
       };
-      await setDoc(playerDocRef, playerData);
+      try {
+        await setDoc(playerDocRef, playerData);
+      } catch (error: any) {
+        console.error(`Error creating player document ${playerId}:`, error?.code, error?.message);
+        throw error; // Re-throw to be caught by outer catch
+      }
     }
     
     return true;
-  } catch (error) {
-    console.error(`Error recalculating points for player ${playerId}:`, error);
+  } catch (error: any) {
+    console.error(`Error recalculating points for player ${playerId}:`, error?.code, error?.message);
+    if (error?.code === 'permission-denied') {
+      console.error(`Permission denied. Make sure you are logged in as an admin and your admin status is set correctly in Firestore.`);
+    }
     return false;
   }
 };
