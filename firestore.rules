@@ -47,6 +47,9 @@ service cloud.firestore {
     match /leaderboardEntries/{entryId} {
       // Anyone can read verified entries
       allow read: if resource.data.verified == true;
+      // Users can read their own unverified entries (for pending submissions)
+      allow read: if resource.data.verified != true && 
+                     isOwner(resource.data.playerId);
       // Authenticated users can create entries (for submissions)
       allow create: if isAuthenticated() && 
                        request.resource.data.playerId == request.auth.uid;

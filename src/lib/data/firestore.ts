@@ -324,7 +324,14 @@ export const getPlayerRunsFirestore = async (playerId: string): Promise<Leaderbo
 };
 
 export const getPlayerPendingRunsFirestore = async (playerId: string): Promise<LeaderboardEntry[]> => {
-  if (!db) return [];
+  if (!db) {
+    console.error("getPlayerPendingRunsFirestore: Database not initialized");
+    return [];
+  }
+  if (!playerId) {
+    console.error("getPlayerPendingRunsFirestore: playerId is required");
+    return [];
+  }
   try {
     const q = query(
       collection(db, "leaderboardEntries"),
@@ -344,6 +351,8 @@ export const getPlayerPendingRunsFirestore = async (playerId: string): Promise<L
         return dateB.localeCompare(dateA);
       });
 
+    console.log(`getPlayerPendingRunsFirestore: Found ${entries.length} pending runs for player ${playerId}`);
+
     // Enrich with player display name and color
     const player = await getPlayerByUidFirestore(playerId);
     return entries.map(entry => {
@@ -359,6 +368,7 @@ export const getPlayerPendingRunsFirestore = async (playerId: string): Promise<L
       return entry;
     });
   } catch (error) {
+    console.error("getPlayerPendingRunsFirestore error:", error);
     return [];
   }
 };
