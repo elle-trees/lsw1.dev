@@ -59,6 +59,11 @@ service cloud.firestore {
       // Users can update their own entries (before verification)
       allow update: if isOwner(resource.data.playerId) && 
                        resource.data.verified != true;
+      // Users can update only comment and date on their own entries (even if verified)
+      allow update: if isOwner(resource.data.playerId) && 
+                       resource.data.verified == true &&
+                       // Only allow updates to comment and date fields
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['comment', 'date']);
     }
     
     // Download entries
