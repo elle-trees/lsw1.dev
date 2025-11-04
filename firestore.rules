@@ -18,11 +18,6 @@ service cloud.firestore {
              get(/databases/$(database)/documents/players/$(request.auth.uid)).data.isAdmin == true;
     }
     
-    // Helper function to check if user is admin or owner
-    function isAdminOrOwner(playerId) {
-      return isAdmin() || isOwner(playerId);
-    }
-    
     // Players collection
     match /players/{playerId} {
       // Users can read their own player data

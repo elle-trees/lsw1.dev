@@ -189,14 +189,121 @@ export const createPlayerFirestore = async (player: Omit<Player, 'id'>): Promise
   }
 };
 
+/**
+ * Award retroactive points to a player for co-op runs where they were player2
+ * but hadn't signed up yet. This is called when a player signs up or updates their displayName.
+ */
+export const awardUnclaimedCoOpPointsFirestore = async (playerId: string, displayName: string): Promise<number> => {
+  if (!db || !displayName) return 0;
+  
+  try {
+    // Get all verified co-op runs
+    const coOpRunsQuery = query(
+      collection(db, "leaderboardEntries"),
+      where("verified", "==", true),
+      where("runType", "==", "co-op")
+    );
+    const coOpRunsSnapshot = await getDocs(coOpRunsQuery);
+    
+    // Build set of possible names to match (displayName, email prefix)
+    const possibleNames = new Set<string>();
+    const normalizedDisplayName = displayName.trim().toLowerCase();
+    possibleNames.add(normalizedDisplayName);
+    
+    // Get player document to check email
+    const playerDocRef = doc(db, "players", playerId);
+    const playerDocSnap = await getDoc(playerDocRef);
+    if (playerDocSnap.exists()) {
+      const playerData = playerDocSnap.data() as Player;
+      if (playerData.email) {
+        const emailPrefix = playerData.email.split('@')[0].toLowerCase();
+        possibleNames.add(emailPrefix);
+      }
+    }
+    
+    // Get categories and platforms for point calculation
+    const categories = await getCategoriesFirestore();
+    const platforms = await getPlatformsFirestore();
+    const categoryMap = new Map(categories.map(c => [c.id, c.name]));
+    const platformMap = new Map(platforms.map(p => [p.id, p.name]));
+    
+    let totalPointsAwarded = 0;
+    const runsToUpdate: { id: string; points: number }[] = [];
+    
+    // Check each co-op run to see if this player is player2
+    for (const runDoc of coOpRunsSnapshot.docs) {
+      const runData = runDoc.data() as LeaderboardEntry;
+      
+      // Skip if this run belongs to this player (they're player1)
+      if (runData.playerId === playerId) {
+        continue;
+      }
+      
+      // Skip obsolete runs
+      if (runData.isObsolete) {
+        continue;
+      }
+      
+      // Check if player2Name matches any of the possible names
+      const runPlayer2Name = runData.player2Name?.trim().toLowerCase() || "";
+      if (runPlayer2Name && possibleNames.has(runPlayer2Name)) {
+        // This player was player2 in this co-op run!
+        const categoryName = categoryMap.get(runData.category) || "Unknown";
+        const platformName = platformMap.get(runData.platform) || "Unknown";
+        
+        // Calculate points for the run
+        const points = calculatePoints(runData.time, categoryName, platformName);
+        const halfPoints = Math.round(points / 2);
+        
+        // Update the run document with points if it doesn't have them
+        if (runData.points === undefined || runData.points === null) {
+          runsToUpdate.push({ id: runDoc.id, points });
+        }
+        
+        totalPointsAwarded += halfPoints;
+        console.log(`Awarding ${halfPoints} retroactive points to player ${playerId} (${displayName}) for co-op run ${runDoc.id} as player2`);
+      }
+    }
+    
+    // Update runs that didn't have points
+    for (const run of runsToUpdate) {
+      try {
+        const runDocRef = doc(db, "leaderboardEntries", run.id);
+        await updateDoc(runDocRef, { points: run.points });
+      } catch (error) {
+        console.error(`Failed to update run ${run.id} with points:`, error);
+      }
+    }
+    
+    // If we awarded points, update the player's totalPoints
+    if (totalPointsAwarded > 0) {
+      const currentPlayerDoc = await getDoc(playerDocRef);
+      if (currentPlayerDoc.exists()) {
+        const currentData = currentPlayerDoc.data() as Player;
+        const newTotalPoints = (currentData.totalPoints || 0) + totalPointsAwarded;
+        await updateDoc(playerDocRef, { totalPoints: newTotalPoints });
+        console.log(`Updated player ${playerId} totalPoints from ${currentData.totalPoints || 0} to ${newTotalPoints}`);
+      }
+    }
+    
+    return totalPointsAwarded;
+  } catch (error: any) {
+    console.error(`Error awarding unclaimed co-op points to player ${playerId}:`, error?.code, error?.message);
+    return 0;
+  }
+};
+
 export const updatePlayerProfileFirestore = async (uid: string, data: Partial<Player>): Promise<boolean> => {
   if (!db) return false;
   try {
     const playerDocRef = doc(db, "players", uid);
     const docSnap = await getDoc(playerDocRef);
+    const wasNewPlayer = !docSnap.exists();
+    const oldDisplayName = docSnap.exists() ? (docSnap.data() as Player).displayName : null;
+    const newDisplayName = data.displayName || (docSnap.exists() ? (docSnap.data() as Player).displayName : null);
+    
     if (docSnap.exists()) {
       await updateDoc(playerDocRef, data);
-      return true;
     } else {
       // Create a complete player document if it doesn't exist
       const today = new Date().toISOString().split('T')[0];
@@ -215,8 +322,18 @@ export const updatePlayerProfileFirestore = async (uid: string, data: Partial<Pl
         ...data, // Override with any provided data
       };
       await setDoc(playerDocRef, newPlayer);
-      return true;
     }
+    
+    // If this is a new player or displayName changed, check for unclaimed co-op runs
+    if (newDisplayName && (wasNewPlayer || (oldDisplayName !== newDisplayName))) {
+      // Award retroactive points for co-op runs where this player was player2
+      // Do this asynchronously so it doesn't block the profile update
+      awardUnclaimedCoOpPointsFirestore(uid, newDisplayName).catch(error => {
+        console.error(`Failed to award unclaimed co-op points:`, error);
+      });
+    }
+    
+    return true;
   } catch (error: any) {
     console.error("updatePlayerProfileFirestore error:", error?.code, error?.message);
     return false;
@@ -621,10 +738,14 @@ export const recalculatePlayerPointsFirestore = async (playerId: string): Promis
         where("runType", "==", "co-op")
       );
       coOpRunsSnapshot = await getDocs(coOpRunsQuery);
+      console.log(`Found ${coOpRunsSnapshot.docs.length} verified co-op runs to check for player ${playerId}`);
     } catch (error: any) {
       // If it's a permission error, log it but continue
       if (error?.code === 'permission-denied') {
-        console.warn(`Permission denied fetching co-op runs for player ${playerId}. This may be due to missing Firestore index.`);
+        console.error(`Permission denied fetching co-op runs for player ${playerId}. This may be due to missing Firestore index. Error:`, error);
+      } else if (error?.code === 'failed-precondition') {
+        console.error(`Missing Firestore index for co-op runs query. Please create an index on: verified (ascending), runType (ascending). Error:`, error);
+        console.error(`You can create the index in the Firebase Console under Firestore Database → Indexes`);
       } else {
         console.error(`Error fetching co-op runs for player ${playerId}:`, error);
       }
@@ -668,13 +789,34 @@ export const recalculatePlayerPointsFirestore = async (playerId: string): Promis
     }
     
     // Calculate points for co-op runs where player is player2
-    // If we don't have displayName from player doc, try to get it from their runs
-    if (!playerDisplayName && querySnapshot.docs.length > 0) {
-      const firstRunData = querySnapshot.docs[0].data() as LeaderboardEntry;
-      playerDisplayName = firstRunData.playerName || null;
+    // Build a set of possible names for this player to match against player2Name
+    const possibleNames = new Set<string>();
+    
+    // Add displayName from player document
+    if (playerDisplayName) {
+      possibleNames.add(playerDisplayName.trim().toLowerCase());
     }
     
-    if (playerDisplayName && coOpRunsSnapshot?.docs) {
+    // Add all playerNames from runs where this player is player1
+    for (const runDoc of querySnapshot.docs) {
+      const runData = runDoc.data() as LeaderboardEntry;
+      if (runData.playerName) {
+        possibleNames.add(runData.playerName.trim().toLowerCase());
+      }
+    }
+    
+    // Also check if player document has email (for matching)
+    if (playerDocSnap && playerDocSnap.exists()) {
+      const playerData = playerDocSnap.data() as Player;
+      if (playerData.email) {
+        const emailPrefix = playerData.email.split('@')[0].toLowerCase();
+        possibleNames.add(emailPrefix);
+      }
+    }
+    
+    if (possibleNames.size > 0 && coOpRunsSnapshot?.docs) {
+      console.log(`Checking ${coOpRunsSnapshot.docs.length} co-op runs for player2 matching. Possible names:`, Array.from(possibleNames));
+      let matchedRuns = 0;
       for (const runDoc of coOpRunsSnapshot.docs) {
         try {
           // Skip if we already processed this run (player is player1)
@@ -690,11 +832,10 @@ export const recalculatePlayerPointsFirestore = async (playerId: string): Promis
           }
           
           // Check if this player is player2 in this co-op run
-          // Compare player2Name with player's displayName (case-insensitive, normalized)
+          // Compare player2Name with all possible names (case-insensitive, normalized)
           const runPlayer2Name = runData.player2Name?.trim().toLowerCase() || "";
-          const normalizedPlayerDisplayName = playerDisplayName.trim().toLowerCase();
           
-          if (runPlayer2Name && runPlayer2Name === normalizedPlayerDisplayName) {
+          if (runPlayer2Name && possibleNames.has(runPlayer2Name)) {
             const categoryName = categoryMap.get(runData.category) || "Unknown";
             const platformName = platformMap.get(runData.platform) || "Unknown";
             
@@ -705,14 +846,21 @@ export const recalculatePlayerPointsFirestore = async (playerId: string): Promis
             // Player2 gets half points
             const halfPoints = Math.round(points / 2);
             totalPoints += halfPoints;
+            matchedRuns++;
             
-            console.log(`Player2 "${playerDisplayName}" gets ${halfPoints} points (half of ${points}) from co-op run ${runDoc.id}`);
+            console.log(`✓ Player2 (UID: ${playerId}) matched by name "${runData.player2Name}" (normalized: "${runPlayer2Name}") gets ${halfPoints} points (half of ${points}) from co-op run ${runDoc.id}`);
+          } else if (runData.player2Name) {
+            // Debug: log runs that should have matched but didn't
+            console.log(`  - Co-op run ${runDoc.id} has player2Name "${runData.player2Name}" (normalized: "${runPlayer2Name}") which doesn't match any of:`, Array.from(possibleNames));
           }
         } catch (error) {
           console.error(`Error processing co-op run ${runDoc.id} for player2:`, error);
           // Continue with next run
         }
       }
+      console.log(`Matched ${matchedRuns} co-op runs where player ${playerId} is player2`);
+    } else {
+      console.log(`No co-op runs to check for player ${playerId}. possibleNames.size: ${possibleNames.size}, coOpRunsSnapshot?.docs: ${coOpRunsSnapshot?.docs?.length || 0}`);
     }
     
     // Update runs that didn't have points
