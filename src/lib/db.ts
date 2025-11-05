@@ -44,6 +44,7 @@ import {
   deleteLevelFirestore,
   moveLevelUpFirestore,
   moveLevelDownFirestore,
+  getPlayersWithTwitchUsernamesFirestore,
 } from "./data/firestore";
 
 const defaultCategories = [
@@ -199,6 +200,8 @@ export const updateLevel = updateLevelFirestore;
 export const deleteLevel = deleteLevelFirestore;
 export const moveLevelUp = moveLevelUpFirestore;
 export const moveLevelDown = moveLevelDownFirestore;
+
+export const getPlayersWithTwitchUsernames = getPlayersWithTwitchUsernamesFirestore;
 
 export const backfillPointsForAllRuns = async () => {
   const { backfillPointsForAllRunsFirestore } = await import("./data/firestore");

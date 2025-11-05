@@ -37,6 +37,7 @@ export interface Player {
   profilePicture?: string; // URL to the player's profile picture
   bio?: string; // Bio/description for the player
   pronouns?: string; // Pronouns for the player
+  twitchUsername?: string; // Twitch username for the player
 }
 
 export interface Category {

@@ -1,14 +1,27 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Radio } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Radio, User } from 'lucide-react';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Link } from 'react-router-dom';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { getPlayersWithTwitchUsernames } from '@/lib/db';
+
+interface LiveRunner {
+  uid: string;
+  displayName: string;
+  twitchUsername: string;
+  nameColor?: string;
+  profilePicture?: string;
+}
 
 const Live = () => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [parentDomain, setParentDomain] = useState<string>('localhost');
   const [isLive, setIsLive] = useState<boolean | null>(null);
+  const [liveRunners, setLiveRunners] = useState<LiveRunner[]>([]);
+  const [checkingRunners, setCheckingRunners] = useState(false);
   const channel = 'lsw1live';
 
   useEffect(() => {
@@ -61,6 +74,63 @@ const Live = () => {
     return () => clearInterval(interval);
   }, [channel]);
 
+  useEffect(() => {
+    // Check for live runners when official stream is offline
+    const checkLiveRunners = async () => {
+      if (isLive === true) {
+        // Official stream is live, don't check runners
+        setLiveRunners([]);
+        return;
+      }
+
+      setCheckingRunners(true);
+      try {
+        // Fetch all players with Twitch usernames
+        const players = await getPlayersWithTwitchUsernames();
+        
+        if (players.length === 0) {
+          setLiveRunners([]);
+          setCheckingRunners(false);
+          return;
+        }
+
+        // Check each player's Twitch stream status
+        const liveStatusChecks = await Promise.all(
+          players.map(async (player) => {
+            try {
+              const response = await fetch(`https://decapi.me/twitch/status/${player.twitchUsername}`);
+              if (response.ok) {
+                const data = await response.text();
+                const trimmedData = data.trim().toLowerCase();
+                return trimmedData === 'live' ? player : null;
+              }
+              return null;
+            } catch (error) {
+              console.error(`Error checking ${player.twitchUsername}:`, error);
+              return null;
+            }
+          })
+        );
+
+        const live = liveStatusChecks.filter((runner): runner is LiveRunner => runner !== null);
+        setLiveRunners(live);
+      } catch (error) {
+        console.error('Error checking live runners:', error);
+        setLiveRunners([]);
+      } finally {
+        setCheckingRunners(false);
+      }
+    };
+
+    // Only check when we know the official stream status
+    if (isLive !== null) {
+      checkLiveRunners();
+      // Check every 60 seconds
+      const interval = setInterval(checkLiveRunners, 60000);
+      return () => clearInterval(interval);
+    }
+  }, [isLive]);
+
   return (
     <div className="min-h-screen bg-[#1e1e2e] text-ctp-text py-8">
       <div className="max-w-7xl mx-auto px-4">
@@ -108,6 +178,11 @@ const Live = () => {
                 <Radio className={`h-4 w-4 mr-2 ${isLive ? 'animate-pulse' : ''}`} />
                 {isLive === null ? 'Checking...' : isLive ? 'Live' : 'Offline'}
               </Badge>
+              {isLive === false && liveRunners.length === 0 && !checkingRunners && (
+                <p className="text-sm text-ctp-subtext1 mt-3">
+                  No runners are live, time to hit the start streaming button!
+                </p>
+              )}
             </div>
           </div>
 
@@ -137,6 +212,73 @@ const Live = () => {
             </Card>
           </div>
         </div>
+
+        {/* Live Runners Section - Only show when official stream is offline */}
+        {isLive === false && liveRunners.length > 0 && (
+          <div className="mt-8 animate-fade-in">
+            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
+              <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
+                <div className="flex items-center gap-2 text-xl text-[#f38ba8]">
+                  <Radio className="h-5 w-5" />
+                  <span>Community Streams</span>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {liveRunners.map((runner) => (
+                    <Card 
+                      key={runner.uid} 
+                      className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] hover:border-[#f38ba8]/50 transition-all duration-300"
+                    >
+                      <CardContent className="p-4">
+                        <a 
+                          href={`https://www.twitch.tv/${runner.twitchUsername}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block"
+                        >
+                          <div className="flex items-center gap-3 mb-3">
+                            <Avatar className="h-10 w-10 flex-shrink-0">
+                              <AvatarImage src={runner.profilePicture || `https://api.dicebear.com/7.x/lorelei-neutral/svg?seed=${runner.displayName}`} />
+                              <AvatarFallback>{runner.displayName.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <Link
+                                to={`/player/${runner.uid}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="font-semibold text-base hover:opacity-80 transition-opacity block truncate"
+                                style={{ color: runner.nameColor || '#cba6f7' }}
+                              >
+                                {runner.displayName}
+                              </Link>
+                              <p className="text-xs text-ctp-overlay0 truncate">@{runner.twitchUsername}</p>
+                            </div>
+                          </div>
+                          <div className="relative" style={{ paddingBottom: '56.25%' }}>
+                            <iframe
+                              src={`https://player.twitch.tv/?channel=${runner.twitchUsername}&parent=${parentDomain}&autoplay=false&muted=true`}
+                              className="absolute top-0 left-0 w-full h-full"
+                              title={`${runner.displayName} Twitch Stream`}
+                              style={{ border: 'none' }}
+                              allowFullScreen
+                              allow="autoplay; fullscreen"
+                            />
+                          </div>
+                          <div className="mt-3 flex items-center justify-center">
+                            <Badge variant="default" className="bg-gradient-to-r from-[#89b4fa] to-[#74c7ec] text-white border-0">
+                              <Radio className="h-3 w-3 mr-1.5 animate-pulse" />
+                              Live
+                            </Badge>
+                          </div>
+                        </a>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   );

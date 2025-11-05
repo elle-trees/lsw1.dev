@@ -33,6 +33,7 @@ const UserSettings = () => {
   const [profilePicture, setProfilePicture] = useState<string>("");
   const [bio, setBio] = useState("");
   const [pronouns, setPronouns] = useState("");
+  const [twitchUsername, setTwitchUsername] = useState("");
   const [pageLoading, setPageLoading] = useState(true);
   const [unclaimedRuns, setUnclaimedRuns] = useState<LeaderboardEntry[]>([]);
   const [loadingUnclaimed, setLoadingUnclaimed] = useState(false);
@@ -61,6 +62,7 @@ const UserSettings = () => {
             setProfilePicture(player.profilePicture || "");
             setBio(player.bio || "");
             setPronouns(player.pronouns || "");
+            setTwitchUsername(player.twitchUsername || "");
             // Check for unclaimed runs after loading player data
             if (player.displayName) {
               fetchUnclaimedRuns(player.displayName);
@@ -72,6 +74,7 @@ const UserSettings = () => {
             setProfilePicture("");
             setBio("");
             setPronouns("");
+            setTwitchUsername("");
             // Still check for unclaimed runs using displayName
             if (currentUser.displayName) {
               fetchUnclaimedRuns(currentUser.displayName);
@@ -143,7 +146,8 @@ const UserSettings = () => {
         email: currentUser.email || email || "",
         profilePicture: profilePicture || undefined,
         bio: bio.trim() || "",
-        pronouns: pronouns.trim() || ""
+        pronouns: pronouns.trim() || "",
+        twitchUsername: twitchUsername.trim() || ""
       });
 
       if (!success) {
@@ -160,6 +164,7 @@ const UserSettings = () => {
         setProfilePicture(player.profilePicture || "");
         setBio(player.bio || "");
         setPronouns(player.pronouns || "");
+        setTwitchUsername(player.twitchUsername || "");
       } else {
         // Fallback to the new display name if player fetch fails
         setDisplayName(newDisplayName);
@@ -509,6 +514,21 @@ const UserSettings = () => {
                 />
                 <p className="text-sm text-ctp-overlay0 mt-1">
                   {bio.length}/500 characters. Your bio will be displayed on your profile.
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="twitchUsername">Twitch Username</Label>
+                <Input
+                  id="twitchUsername"
+                  type="text"
+                  value={twitchUsername}
+                  onChange={(e) => setTwitchUsername(e.target.value)}
+                  placeholder="e.g., lsw1live"
+                  className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                  maxLength={50}
+                />
+                <p className="text-sm text-ctp-overlay0 mt-1">
+                  Your Twitch username (without @). If you're streaming, you'll appear on the live page when the official stream is offline.
                 </p>
               </div>
               <Button type="submit" className="bg-[#cba6f7] hover:bg-[#b4a0e2] text-[hsl(240,21%,15%)] font-bold">

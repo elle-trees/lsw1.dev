@@ -245,6 +245,30 @@ export const getPlayerByDisplayNameFirestore = async (displayName: string): Prom
   }
 };
 
+export const getPlayersWithTwitchUsernamesFirestore = async (): Promise<Array<{ uid: string; displayName: string; twitchUsername: string; nameColor?: string; profilePicture?: string }>> => {
+  if (!db) return [];
+  try {
+    const q = query(collection(db, "players"), firestoreLimit(1000));
+    const querySnapshot = await getDocs(q);
+    
+    const players = querySnapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() } as Player))
+      .filter(player => player.twitchUsername && player.twitchUsername.trim())
+      .map(player => ({
+        uid: player.uid,
+        displayName: player.displayName || "",
+        twitchUsername: player.twitchUsername!.trim(),
+        nameColor: player.nameColor,
+        profilePicture: player.profilePicture,
+      }));
+    
+    return players;
+  } catch (error) {
+    console.error("Error fetching players with Twitch usernames:", error);
+    return [];
+  }
+};
+
 export const createPlayerFirestore = async (player: Omit<Player, 'id'>): Promise<string | null> => {
   if (!db) return null;
   try {
@@ -269,7 +293,7 @@ export const updatePlayerProfileFirestore = async (uid: string, data: Partial<Pl
       if (value === undefined) {
         // Skip undefined values
         continue;
-      } else if ((key === 'bio' || key === 'pronouns') && value === '') {
+      } else if ((key === 'bio' || key === 'pronouns' || key === 'twitchUsername') && value === '') {
         // Use deleteField to remove the field when it's an empty string
         updateData[key] = deleteField();
       } else {
@@ -297,12 +321,15 @@ export const updatePlayerProfileFirestore = async (uid: string, data: Partial<Pl
         totalPoints: 0,
       };
       
-      // Only add bio/pronouns if they have non-empty values
+      // Only add bio/pronouns/twitchUsername if they have non-empty values
       if (data.bio && data.bio.trim()) {
         newPlayer.bio = data.bio.trim();
       }
       if (data.pronouns && data.pronouns.trim()) {
         newPlayer.pronouns = data.pronouns.trim();
+      }
+      if (data.twitchUsername && data.twitchUsername.trim()) {
+        newPlayer.twitchUsername = data.twitchUsername.trim();
       }
       if (data.profilePicture) {
         newPlayer.profilePicture = data.profilePicture;
