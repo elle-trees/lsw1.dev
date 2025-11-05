@@ -108,7 +108,7 @@ const Leaderboards = () => {
             <div className="relative">
               <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-[#FFD700] to-[#FFA500] opacity-30 blur-xl animate-pulse"></div>
               <div className="relative p-2 rounded-xl bg-gradient-to-br from-[#FFD700] to-[#FFA500] shadow-lg transition-all duration-300 hover:scale-110 hover:shadow-2xl hover:shadow-[#FFD700]/50">
-                <Trophy className="h-7 w-7 text-[hsl(240,21%,15%)] animate-bounce" style={{ animationDuration: '2s' }} />
+                <Trophy className="h-7 w-7 text-[hsl(240,21%,15%)]" />
               </div>
             </div>
             <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-[#FFD700] via-[#FFA500] to-[#FFD700] bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">
@@ -149,24 +149,22 @@ const Leaderboards = () => {
           <TabsContent value={leaderboardType} className="mt-0 animate-fade-in">
             {/* Category Tabs */}
             {availableCategories.length > 0 && (
-              <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl mb-6 transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl hover:shadow-[#cba6f7]/20 hover:border-[#cba6f7]/50 animate-slide-up">
-                <CardContent className="p-4">
-                  <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
-                    <TabsList className="grid w-full rounded-lg p-1 bg-[hsl(240,21%,14%)] border border-[hsl(235,13%,25%)] transition-all duration-300 hover:border-[hsl(235,13%,35%)]" style={{ gridTemplateColumns: `repeat(${availableCategories.length}, 1fr)` }}>
-                      {availableCategories.map((category, index) => (
-                        <TabsTrigger 
-                          key={category.id} 
-                          value={category.id} 
-                          className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#cba6f7] data-[state=active]:to-[#b4a0e2] data-[state=active]:text-[hsl(240,21%,15%)] data-[state=active]:shadow-lg transition-all duration-300 rounded-md font-medium hover:bg-[hsl(240,21%,18%)] hover:scale-105"
-                          style={{ animationDelay: `${index * 50}ms` }}
-                        >
-                          {category.name}
-                        </TabsTrigger>
-                      ))}
-                    </TabsList>
-                  </Tabs>
-                </CardContent>
-              </Card>
+              <div className="mb-6 animate-slide-up">
+                <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
+                  <TabsList className="grid w-full rounded-lg p-1.5 gap-2 bg-[hsl(240,21%,14%)] border border-[hsl(235,13%,25%)] transition-all duration-300 hover:border-[hsl(235,13%,35%)]" style={{ gridTemplateColumns: `repeat(${availableCategories.length}, 1fr)` }}>
+                    {availableCategories.map((category, index) => (
+                      <TabsTrigger 
+                        key={category.id} 
+                        value={category.id} 
+                        className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#cba6f7] data-[state=active]:to-[#b4a0e2] data-[state=active]:text-[hsl(240,21%,15%)] data-[state=active]:shadow-lg transition-all duration-300 rounded-md font-medium hover:bg-[hsl(240,21%,18%)] hover:scale-105"
+                        style={{ animationDelay: `${index * 50}ms` }}
+                      >
+                        {category.name}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </Tabs>
+              </div>
             )}
 
             {/* Filters */}
