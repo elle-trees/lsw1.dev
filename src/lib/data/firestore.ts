@@ -1981,6 +1981,7 @@ export const getPlayersByPointsFirestore = async (limit: number = 100): Promise<
 
     // Get points config once for all calculations
     const pointsConfig = await getPointsConfigFirestore();
+    console.log(`[getPlayersByPointsFirestore] Points config: enabled=${pointsConfig.enabled}, basePointsPerRun=${pointsConfig.basePointsPerRun}, top3Bonus=${JSON.stringify(pointsConfig.top3BonusPoints)}`);
 
     // Group runs by category + platform + runType to calculate ranks
     const runsByGroup = new Map<string, LeaderboardEntry[]>();
@@ -2078,26 +2079,24 @@ export const getPlayersByPointsFirestore = async (limit: number = 100): Promise<
       const originalRunsMap = new Map(runs.map(r => [r.id, r]));
       
       for (const runData of allGroupRuns) {
-        // Use stored points if available, otherwise recalculate
-        let points = runData.points;
+        // Always recalculate points to ensure accuracy with current config and ranks
+        // This ensures we use the latest points calculation logic
+        const rank = runData.isObsolete ? undefined : rankMap.get(runData.id);
+        const categoryName = categoryMap.get(runData.category) || "Unknown";
+        const platformName = platformMap.get(runData.platform) || "Unknown";
         
-        if (points === undefined || points === null) {
-          // Recalculate if points not stored
-          const rank = runData.isObsolete ? undefined : rankMap.get(runData.id);
-          const categoryName = categoryMap.get(runData.category) || "Unknown";
-          const platformName = platformMap.get(runData.platform) || "Unknown";
-          
-          points = calculatePoints(
-            runData.time, 
-            categoryName, 
-            platformName,
-            runData.category,
-            runData.platform,
-            pointsConfig,
-            rank
-          );
-          
-          // Update the run with calculated points (async, don't wait)
+        const points = calculatePoints(
+          runData.time, 
+          categoryName, 
+          platformName,
+          runData.category,
+          runData.platform,
+          pointsConfig,
+          rank
+        );
+        
+        // Update the run with calculated points (async, don't wait)
+        if (points > 0) {
           try {
             const runDocRef = doc(db, "leaderboardEntries", runData.id);
             updateDoc(runDocRef, { points }).catch(() => {}); // Fire and forget
@@ -2117,7 +2116,18 @@ export const getPlayersByPointsFirestore = async (limit: number = 100): Promise<
     }
 
     // Aggregate points by player
+    console.log(`[getPlayersByPointsFirestore] Aggregating ${runsWithPoints.length} runs with points`);
+    let zeroPointRuns = 0;
     for (const { run: runData, points } of runsWithPoints) {
+      // Skip runs with 0 or invalid points
+      if (!points || points <= 0) {
+        zeroPointRuns++;
+        if (zeroPointRuns <= 5) {
+          console.log(`[getPlayersByPointsFirestore] Skipping run ${runData.id} (${runData.playerName}) with points: ${points}`);
+        }
+        continue;
+      }
+      
       // Determine aggregation key: use playerName for unlinked players, playerId for others
       const isUnlinked = runData.playerId.startsWith("unlinked_");
       const aggregationKey = isUnlinked 
@@ -2153,10 +2163,19 @@ export const getPlayersByPointsFirestore = async (limit: number = 100): Promise<
     }
 
     // Convert to Player array and fetch additional player data
+    // Debug: Log aggregated player data before filtering
+    const allPlayers = Array.from(playerMap.values());
+    console.log(`[getPlayersByPointsFirestore] Found ${allPlayers.length} players with aggregated points`);
+    allPlayers.slice(0, 5).forEach(p => {
+      console.log(`[getPlayersByPointsFirestore] Player ${p.playerName}: ${p.totalPoints} points from ${p.totalRuns} runs`);
+    });
+    
     const playersList = Array.from(playerMap.values())
       .filter(p => p.totalPoints > 0)
       .sort((a, b) => b.totalPoints - a.totalPoints)
       .slice(0, limit);
+    
+    console.log(`[getPlayersByPointsFirestore] After filtering: ${playersList.length} players with points > 0`);
 
     // Fetch player documents for additional info (name color, etc.)
     const players: Player[] = await Promise.all(
