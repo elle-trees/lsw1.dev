@@ -775,6 +775,8 @@ export const updateLeaderboardEntryFirestore = async (runId: string, data: Parti
         const newCategoryId = data.category || runData.category;
         const newPlatformId = data.platform || runData.platform;
         const newTime = data.time || runData.time;
+        const newLeaderboardType = data.leaderboardType || runData.leaderboardType || 'regular';
+        const newLevel = data.level !== undefined ? data.level : runData.level;
         
         let categoryName = "Unknown";
         let platformName = "Unknown";
@@ -792,15 +794,60 @@ export const updateLeaderboardEntryFirestore = async (runId: string, data: Parti
           platformName = platformDocSnap.data().name || "Unknown";
         }
       
-      // Get points config and recalculate points
+      // Get points config and calculate points with rank
       const pointsConfig = await getPointsConfigFirestore();
+      
+      // Build query to get all verified runs for ranking
+      const constraints: any[] = [
+        where("verified", "==", true),
+        where("leaderboardType", "==", newLeaderboardType),
+        where("category", "==", newCategoryId),
+        where("platform", "==", newPlatformId),
+        where("runType", "==", (data.runType || runData.runType || 'solo')),
+      ];
+      
+      // For ILs and community golds, also filter by level
+      if (newLeaderboardType !== 'regular' && newLevel) {
+        constraints.push(where("level", "==", newLevel));
+      }
+      
+      constraints.push(firestoreLimit(200));
+      
+      const rankQuery = query(
+        collection(db, "leaderboardEntries"),
+        ...constraints
+      );
+      
+      const rankSnapshot = await getDocs(rankQuery);
+      // Filter out obsolete runs for ranking (only non-obsolete runs count for top 3)
+      const isObsolete = data.isObsolete !== undefined ? data.isObsolete : runData.isObsolete;
+      const nonObsoleteRuns = rankSnapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() } as LeaderboardEntry))
+        .filter(run => !run.isObsolete)
+        .sort((a, b) => {
+          const timeA = parseTimeToSeconds(a.time);
+          const timeB = parseTimeToSeconds(b.time);
+          return timeA - timeB;
+        });
+      
+      // Find the rank of this run
+      let rank: number | undefined = undefined;
+      if (!isObsolete) {
+        const rankIndex = nonObsoleteRuns.findIndex(run => run.id === runId);
+        if (rankIndex !== -1) {
+          rank = rankIndex + 1;
+        }
+      }
+      
+      // Calculate points with rank
       const points = calculatePoints(
         newTime, 
         categoryName, 
         platformName,
         newCategoryId,
         newPlatformId,
-        pointsConfig
+        pointsConfig,
+        rank
       );
       updateData.points = points;
       
@@ -856,19 +903,63 @@ export const updateRunVerificationStatusFirestore = async (runId: string, verifi
         platformName = platformDocSnap.data().name || "Unknown";
       }
         
-      // Get points config and calculate points
-      // Note: Rank calculation would require fetching all runs for this category/platform/runType
-      // For now, calculate without rank (will be updated during full recalculation)
+      // Get points config and calculate points with rank
+      // Fetch all verified runs for this category/platform/runType/level to calculate rank
       const pointsConfig = await getPointsConfigFirestore();
+      
+      // Build query to get all verified runs for ranking
+      const leaderboardType = runData.leaderboardType || 'regular';
+      const constraints: any[] = [
+        where("verified", "==", true),
+        where("leaderboardType", "==", leaderboardType),
+        where("category", "==", runData.category),
+        where("platform", "==", runData.platform),
+        where("runType", "==", runData.runType || 'solo'),
+      ];
+      
+      // For ILs and community golds, also filter by level
+      if (leaderboardType !== 'regular' && runData.level) {
+        constraints.push(where("level", "==", runData.level));
+      }
+      
+      constraints.push(firestoreLimit(200));
+      
+      const rankQuery = query(
+        collection(db, "leaderboardEntries"),
+        ...constraints
+      );
+      
+      const rankSnapshot = await getDocs(rankQuery);
+      // Filter out obsolete runs for ranking (only non-obsolete runs count for top 3)
+      const nonObsoleteRuns = rankSnapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() } as LeaderboardEntry))
+        .filter(run => !run.isObsolete)
+        .sort((a, b) => {
+          const timeA = parseTimeToSeconds(a.time);
+          const timeB = parseTimeToSeconds(b.time);
+          return timeA - timeB;
+        });
+      
+      // Find the rank of this run
+      let rank: number | undefined = undefined;
+      if (!runData.isObsolete) {
+        const rankIndex = nonObsoleteRuns.findIndex(run => run.id === runId);
+        if (rankIndex !== -1) {
+          rank = rankIndex + 1;
+        }
+      }
+      
+      // Calculate points with rank
       const points = calculatePoints(
         runData.time, 
         categoryName, 
         platformName,
         runData.category,
         runData.platform,
-        pointsConfig
+        pointsConfig,
+        rank
       );
-        updateData.points = points;
+      updateData.points = points;
         
       // Update the document first to mark it as verified, then recalculate points
       // This ensures the newly verified run is included in the recalculation
