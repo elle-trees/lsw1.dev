@@ -129,10 +129,10 @@ const Index = () => {
       </div>
 
       <div className="py-16 px-4 sm:px-6 overflow-x-hidden">
-        <div className="max-w-7xl mx-auto w-full">
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        <div className="max-w-[1920px] mx-auto w-full">
+          <div className="grid grid-cols-1 lg:grid-cols-6 gap-6">
             {/* Left Side - Twitch Embed */}
-            <div className="lg:col-span-2 min-w-0">
+            <div className="lg:col-span-4 min-w-0">
               <div className="flex justify-center overflow-x-auto">
                 <div className="w-full max-w-full">
                   <TwitchEmbed channel="lsw1live" />
@@ -141,21 +141,21 @@ const Index = () => {
             </div>
 
             {/* Right Side - Recent Runs */}
-            <div className="lg:col-span-3 min-w-0">
-              <div className="mb-3">
-                <h2 className="text-lg sm:text-xl font-bold mb-1.5 text-ctp-text">Recent Runs</h2>
+            <div className="lg:col-span-2 min-w-0">
+              <div className="mb-2">
+                <h2 className="text-base sm:text-lg font-bold mb-1 text-ctp-text">Recent Runs</h2>
                 <p className="text-xs text-ctp-subtext1">
-                  Check out the latest speedrun submissions.
+                  Latest submissions
                 </p>
               </div>
 
               <div className="overflow-x-auto">
-                <div className="[&_header]:hidden [&_div[class*='CardContent']]:!p-4 [&_div[class*='space-y-5']]:!space-y-3">
+                <div className="[&>div]:scale-90 [&>div]:origin-top [&_header]:hidden [&_div[class*='CardContent']]:!p-3 [&_div[class*='space-y-5']]:!space-y-2 [&_.text-xl]:!text-sm [&_.text-2xl]:!text-base [&_.text-sm]:!text-xs [&_.p-6]:!p-3 [&_.p-8]:!p-4">
                   <RecentRuns runs={recentRunsData} loading={loading} showRankBadge={false} />
                 </div>
               </div>
 
-              <div className="mt-3 text-center">
+              <div className="mt-2 text-center">
                 <Button variant="outline" size="sm" className="text-xs text-ctp-text border-ctp-surface1 bg-transparent hover:bg-ctp-blue/10 hover:border-ctp-blue transition-all duration-300 hover:scale-105 hover:shadow-lg whitespace-nowrap" asChild>
                   <Link to="/leaderboards">View Full Leaderboards</Link>
                 </Button>

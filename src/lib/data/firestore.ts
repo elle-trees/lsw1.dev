@@ -1962,14 +1962,6 @@ export const claimRunFirestore = async (runId: string, userId: string): Promise<
 export const getPlayersByPointsFirestore = async (limit: number = 100): Promise<Player[]> => {
   if (!db) return [];
   try {
-    // Get points config to check if enabled
-    const pointsConfig = await getPointsConfigFirestore();
-    
-    // If points are disabled, return empty array
-    if (!pointsConfig.enabled) {
-      return [];
-    }
-
     // Use stored totalPoints from player documents for fast querying
     // Query players sorted by totalPoints descending
     const playersQuery = query(
