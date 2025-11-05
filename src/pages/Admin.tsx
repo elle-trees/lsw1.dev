@@ -1201,7 +1201,7 @@ const Admin = () => {
           {/* Tools Section */}
           <TabsContent value="tools" className="space-y-4 animate-fade-in">
             {/* Backfill Points Card */}
-            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl hover:shadow-[#FFD700]/20 hover:border-[#FFD700]/50">
+            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
               <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
                 <CardTitle className="flex items-center gap-2 text-xl">
                   <div className="p-1.5 rounded-lg bg-gradient-to-br from-[#FFD700] to-[#FFA500]">
@@ -1278,7 +1278,7 @@ const Admin = () => {
             </Card>
 
             {/* Manual Run Input Section */}
-            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl hover:shadow-[#cba6f7]/20 hover:border-[#cba6f7]/50">
+            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
               <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
                 <CardTitle className="flex items-center gap-2 text-xl">
                   <div className="p-1.5 rounded-lg bg-gradient-to-br from-[#cba6f7] to-[#b4a0e2]">
@@ -1539,7 +1539,7 @@ const Admin = () => {
             </Card>
 
             {/* Admin Management Section */}
-            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl hover:shadow-[#cba6f7]/20 hover:border-[#cba6f7]/50">
+            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
               <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
                 <CardTitle className="flex items-center gap-2 text-xl">
                   <div className="p-1.5 rounded-lg bg-gradient-to-br from-[#cba6f7] to-[#b4a0e2]">
@@ -1645,7 +1645,7 @@ const Admin = () => {
 
           {/* Unverified Runs Section */}
           <TabsContent value="runs" className="space-y-4 animate-fade-in">
-            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl hover:shadow-[#cba6f7]/20 hover:border-[#cba6f7]/50">
+            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
               <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
                 <CardTitle className="text-xl bg-gradient-to-r from-[#cba6f7] to-[#f38ba8] bg-clip-text text-transparent">
                   Unverified Runs
@@ -1722,7 +1722,7 @@ const Admin = () => {
 
           {/* Category Management Section */}
           <TabsContent value="categories" className="space-y-4 animate-fade-in">
-            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl hover:shadow-[#cba6f7]/20 hover:border-[#cba6f7]/50">
+            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
               <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
                 <CardTitle className="flex items-center gap-2 text-xl">
                   <div className="p-1.5 rounded-lg bg-gradient-to-br from-[#cba6f7] to-[#b4a0e2]">
@@ -1888,7 +1888,7 @@ const Admin = () => {
 
           {/* Level Management Section */}
           <TabsContent value="levels" className="space-y-4 animate-fade-in">
-            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl hover:shadow-[#cba6f7]/20 hover:border-[#cba6f7]/50">
+            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
               <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
                 <CardTitle className="flex items-center gap-2 text-xl">
                   <div className="p-1.5 rounded-lg bg-gradient-to-br from-[#cba6f7] to-[#b4a0e2]">
@@ -2032,7 +2032,7 @@ const Admin = () => {
 
           {/* Platform Management Section */}
           <TabsContent value="platforms" className="space-y-4 animate-fade-in">
-            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl hover:shadow-[#cba6f7]/20 hover:border-[#cba6f7]/50">
+            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
               <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
                 <CardTitle className="flex items-center gap-2 text-xl">
                   <div className="p-1.5 rounded-lg bg-gradient-to-br from-[#cba6f7] to-[#b4a0e2]">
@@ -2177,7 +2177,7 @@ const Admin = () => {
 
           {/* Manage Downloads Section */}
           <TabsContent value="downloads" className="space-y-4 animate-fade-in">
-            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl hover:shadow-[#cba6f7]/20 hover:border-[#cba6f7]/50">
+            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
               <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
                 <CardTitle className="flex items-center gap-2 text-xl">
                   <div className="p-1.5 rounded-lg bg-gradient-to-br from-[#cba6f7] to-[#b4a0e2]">

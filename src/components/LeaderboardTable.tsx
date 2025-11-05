@@ -92,8 +92,8 @@ export function LeaderboardTable({ data, platforms = [], categories = [] }: Lead
                 </div>
               </TableCell>
               <TableCell className="py-3 px-4">
-                <Link to={`/run/${entry.id}`} className="hover:text-[#cba6f7] transition-all group-hover:scale-105 inline-block">
-                  <p className="font-mono text-lg font-bold bg-gradient-to-r from-[#cdd6f4] to-[#cba6f7] bg-clip-text text-transparent">
+                <Link to={`/run/${entry.id}`} className="hover:text-[#cba6f7] transition-colors">
+                  <p className="text-base font-semibold text-ctp-text">
                     {formatTime(entry.time)}
                   </p>
                 </Link>

@@ -578,7 +578,7 @@ const UserSettings = () => {
                   >
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <span className="font-mono text-lg font-bold text-[#cba6f7]">
+                        <span className="text-base font-semibold text-[#cba6f7]">
                           {formatTime(run.time)}
                         </span>
                         <Badge variant="outline" className="border-[hsl(235,13%,30%)]">

@@ -236,7 +236,7 @@ const PlayerDetails = () => {
                             )}
                           </td>
                           <td className="py-3 px-4 font-medium">{categoryName}</td>
-                          <td className="py-3 px-4 font-mono">{formatTime(run.time)}</td>
+                          <td className="py-3 px-4 text-base font-semibold">{formatTime(run.time)}</td>
                           <td className="py-3 px-4 text-[hsl(222,15%,60%)]">{formatDate(run.date)}</td>
                           <td className="py-3 px-4">
                             <Badge variant="outline" className="border-[hsl(235,13%,30%)]">
