@@ -1149,7 +1149,7 @@ const Admin = () => {
                 <ShieldAlert className="h-8 w-8 text-[hsl(240,21%,15%)]" />
               </div>
             </div>
-            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-[#cba6f7] via-[#f38ba8] to-[#cba6f7] bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">
+            <h1 className="text-4xl md:text-5xl font-bold text-ctp-red">
               Admin Panel
             </h1>
           </div>

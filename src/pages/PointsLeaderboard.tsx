@@ -39,7 +39,7 @@ const PointsLeaderboard = () => {
             <div className="p-2 rounded-xl bg-gradient-to-br from-[#FFD700] to-[#FFA500] shadow-lg">
               <Trophy className="h-7 w-7 text-[hsl(240,21%,15%)]" />
             </div>
-            <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-[#FFD700] via-[#FFA500] to-[#FFD700] bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">
+            <h1 className="text-3xl md:text-4xl font-bold text-[#fab387]">
               Points Leaderboard
             </h1>
           </div>

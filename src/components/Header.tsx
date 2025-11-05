@@ -36,20 +36,21 @@ export function Header() {
     <>
       <Link 
         to="/leaderboards" 
-        className="text-ctp-text hover:text-ctp-text transition-all duration-300 relative group"
+        className="text-[#a6e3a1] hover:text-[#a6e3a1] flex items-center gap-1 transition-all duration-300 relative group"
         onClick={() => setIsMobileMenuOpen(false)}
       >
+        <Trophy className="h-4 w-4 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12" />
         <span>Leaderboards</span>
-        <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-ctp-text via-ctp-blue to-ctp-text transition-all duration-300 group-hover:w-full"></span>
+        <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-[#a6e3a1] via-ctp-green to-[#a6e3a1] transition-all duration-300 group-hover:w-full"></span>
       </Link>
       <Link 
         to="/points" 
-        className="text-ctp-yellow hover:text-ctp-yellow flex items-center gap-1 transition-all duration-300 relative group"
+        className="text-[#fab387] hover:text-[#fab387] flex items-center gap-1 transition-all duration-300 relative group"
         onClick={() => setIsMobileMenuOpen(false)}
       >
         <Trophy className="h-4 w-4 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12" />
         <span>Points</span>
-        <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-ctp-yellow via-ctp-pink to-ctp-yellow transition-all duration-300 group-hover:w-full"></span>
+        <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-[#fab387] via-ctp-pink to-[#fab387] transition-all duration-300 group-hover:w-full"></span>
       </Link>
       <Link 
         to="/submit" 
@@ -147,7 +148,7 @@ export function Header() {
                         <Button 
                           variant="outline" 
                           asChild
-                          className="w-full text-ctp-text border-ctp-surface1 hover:bg-ctp-blue hover:border-ctp-blue"
+                          className="w-full text-ctp-text hover:text-ctp-text border-ctp-surface1 hover:bg-ctp-blue hover:border-ctp-blue"
                           onClick={() => setIsMobileMenuOpen(false)}
                         >
                           <Link to="/settings">
@@ -161,7 +162,7 @@ export function Header() {
                             handleLogout();
                             setIsMobileMenuOpen(false);
                           }}
-                          className="w-full text-ctp-text border-ctp-surface1 hover:bg-ctp-blue hover:border-ctp-blue"
+                          className="w-full text-ctp-text hover:text-ctp-text border-ctp-surface1 hover:bg-ctp-blue hover:border-ctp-blue"
                         >
                           Logout
                         </Button>
@@ -173,7 +174,7 @@ export function Header() {
                           setIsLoginOpen(true);
                           setIsMobileMenuOpen(false);
                         }}
-                        className="w-full text-ctp-text border-ctp-surface1 hover:bg-ctp-blue hover:border-ctp-blue flex items-center gap-2"
+                        className="w-full text-ctp-text hover:text-ctp-text border-ctp-surface1 hover:bg-ctp-blue hover:border-ctp-blue flex items-center gap-2"
                       >
                         <User className="h-4 w-4" />
                         Sign In
@@ -243,7 +244,7 @@ export function Header() {
               <Button 
                 variant="outline" 
                 asChild
-                className="text-ctp-text border-ctp-surface1 hover:bg-ctp-blue hover:border-ctp-blue transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                className="text-ctp-text hover:text-ctp-text border-ctp-surface1 hover:bg-ctp-blue hover:border-ctp-blue transition-all duration-300 hover:scale-105 hover:shadow-lg"
               >
                 <Link to="/settings">
                   <Settings className="h-4 w-4 mr-2 transition-transform duration-300 group-hover:rotate-90" />
@@ -253,7 +254,7 @@ export function Header() {
               <Button 
                 variant="outline" 
                 onClick={handleLogout}
-                className="text-ctp-text border-ctp-surface1 hover:bg-ctp-blue hover:border-ctp-blue transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                className="text-ctp-text hover:text-ctp-text border-ctp-surface1 hover:bg-ctp-blue hover:border-ctp-blue transition-all duration-300 hover:scale-105 hover:shadow-lg"
               >
                 Logout
               </Button>
@@ -262,7 +263,7 @@ export function Header() {
             <Button 
               variant="outline" 
               onClick={() => setIsLoginOpen(true)}
-              className="text-ctp-text border-ctp-surface1 hover:bg-ctp-blue hover:border-ctp-blue flex items-center gap-2 transition-all duration-300 hover:scale-105 hover:shadow-lg"
+              className="text-ctp-text hover:text-ctp-text border-ctp-surface1 hover:bg-ctp-blue hover:border-ctp-blue flex items-center gap-2 transition-all duration-300 hover:scale-105 hover:shadow-lg"
             >
               <User className="h-4 w-4 transition-transform duration-300 group-hover:scale-110" />
               Sign In
