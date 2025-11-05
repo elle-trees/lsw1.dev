@@ -1972,8 +1972,10 @@ const Admin = () => {
           <TabsContent value="runs" className="space-y-4 animate-fade-in">
             <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
               <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
-                <CardTitle className="text-xl bg-gradient-to-r from-[#cba6f7] to-[#f38ba8] bg-clip-text text-transparent">
-                  Unverified Runs
+                <CardTitle className="flex items-center gap-2 text-xl text-[#f2cdcd]">
+                  <span>
+                    Unverified Runs
+                  </span>
                 </CardTitle>
               </CardHeader>
           <CardContent>
