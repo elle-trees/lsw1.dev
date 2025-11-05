@@ -136,7 +136,8 @@ export function calculatePoints(
   if (numericRank === 1) {
     basePoints = 100;
   } else {
-    basePoints = config.basePointsPerRun ?? 10;
+    // Use the configured basePointsPerRun, or default to 10 if not set
+    basePoints = config.basePointsPerRun !== undefined ? config.basePointsPerRun : 10;
   }
   
   // Start with base points
@@ -152,6 +153,11 @@ export function calculatePoints(
     } else if (numericRank === 3 && top3Bonus.rank3) {
       points += top3Bonus.rank3;
     }
+  }
+
+  // Debug logging for points calculation
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`[calculatePoints] rank=${numericRank}, basePoints=${basePoints}, config.basePointsPerRun=${config.basePointsPerRun}, finalPoints=${Math.round(points)}`);
   }
 
   return Math.round(points);

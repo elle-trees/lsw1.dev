@@ -7,13 +7,15 @@ import { calculatePoints, parseTimeToSeconds } from "@/lib/utils";
  * Helper function to calculate ranks for a group of runs
  * Returns a map of run ID to rank (1-based)
  * Only non-obsolete runs are ranked (obsolete runs get undefined rank)
+ * @param additionalRun - Optional run to include in ranking (useful when verifying a new run)
  */
 async function calculateRanksForGroup(
   leaderboardType: 'regular' | 'individual-level' | 'community-golds',
   categoryId: string,
   platformId: string,
   runType: 'solo' | 'co-op',
-  levelId?: string
+  levelId?: string,
+  additionalRun?: LeaderboardEntry
 ): Promise<Map<string, number>> {
   if (!db) return new Map();
   
@@ -35,14 +37,30 @@ async function calculateRanksForGroup(
   const rankSnapshot = await getDocs(rankQuery);
   
   // Filter out obsolete runs for ranking (only non-obsolete runs count for top 3)
-  const nonObsoleteRuns = rankSnapshot.docs
+  let nonObsoleteRuns = rankSnapshot.docs
     .map(doc => ({ id: doc.id, ...doc.data() } as LeaderboardEntry))
-    .filter(run => !run.isObsolete)
-    .sort((a, b) => {
-      const timeA = parseTimeToSeconds(a.time);
-      const timeB = parseTimeToSeconds(b.time);
-      return timeA - timeB;
-    });
+    .filter(run => !run.isObsolete);
+  
+  // Include additional run if provided and it matches the group criteria
+  if (additionalRun && !additionalRun.isObsolete && 
+      additionalRun.leaderboardType === leaderboardType &&
+      additionalRun.category === categoryId &&
+      additionalRun.platform === platformId &&
+      additionalRun.runType === runType &&
+      (leaderboardType === 'regular' || additionalRun.level === levelId)) {
+    // Check if run is already in the list (to avoid duplicates)
+    const exists = nonObsoleteRuns.some(r => r.id === additionalRun.id);
+    if (!exists) {
+      nonObsoleteRuns.push(additionalRun);
+    }
+  }
+  
+  // Sort by time
+  nonObsoleteRuns.sort((a, b) => {
+    const timeA = parseTimeToSeconds(a.time);
+    const timeB = parseTimeToSeconds(b.time);
+    return timeA - timeB;
+  });
   
   // Create rank map (1-based)
   const rankMap = new Map<string, number>();
@@ -927,17 +945,24 @@ export const updateRunVerificationStatusFirestore = async (runId: string, verifi
         platformName = platformDocSnap.data().name || "Unknown";
       }
         
+      // Update the document first to mark it as verified
+      // This ensures the run is included in rank calculations
+      await updateDoc(runDocRef, { verified, verifiedBy });
+      
       // Get points config and calculate points with rank
       const pointsConfig = await getPointsConfigFirestore();
       
       // Calculate rank using helper function
+      // Include the current run in ranking to handle Firestore eventual consistency
       const leaderboardType = runData.leaderboardType || 'regular';
+      const currentRunWithVerified: LeaderboardEntry = { ...runData, id: runId, verified: true };
       const rankMap = await calculateRanksForGroup(
         leaderboardType,
         runData.category,
         runData.platform,
         (runData.runType || 'solo') as 'solo' | 'co-op',
-        runData.level
+        runData.level,
+        currentRunWithVerified
       );
       
       // Find the rank of this run
@@ -956,11 +981,9 @@ export const updateRunVerificationStatusFirestore = async (runId: string, verifi
         pointsConfig,
         rank
       );
-      updateData.points = points;
-        
-      // Update the document first to mark it as verified, then recalculate points
-      // This ensures the newly verified run is included in the recalculation
-      await updateDoc(runDocRef, updateData);
+      
+      // Update the document with calculated points
+      await updateDoc(runDocRef, { points });
       
       // Always recalculate player points to ensure accuracy (handles re-verification correctly)
       // Now that the run is verified, it will be included in the recalculation
