@@ -301,16 +301,6 @@
       ]
     },
     {
-      "collectionGroup": "players",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "totalPoints",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "leaderboardEntries",
       "queryScope": "COLLECTION",
       "fields": [

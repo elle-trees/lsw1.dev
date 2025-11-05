@@ -16,7 +16,6 @@ import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/AuthProvider";
 import { formatDate, calculatePoints, formatTime } from "@/lib/utils";
-import { getPointsConfig } from "@/lib/db";
 
 const RunDetails = () => {
   const { runId } = useParams<{ runId: string }>();
@@ -355,10 +354,9 @@ const RunDetails = () => {
         return;
       }
 
-      // Calculate points using stored rank and config
+      // Calculate points using stored rank
       const category = categories.find((c) => c.id === run.category);
       const platform = platforms.find((p) => p.id === run.platform);
-      const config = await getPointsConfig();
       
       const calculated = calculatePoints(
         run.time,
@@ -366,7 +364,6 @@ const RunDetails = () => {
         platform?.name || "Unknown",
         run.category,
         run.platform,
-        config,
         run.rank
       );
       setDisplayPoints(calculated);

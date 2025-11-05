@@ -45,8 +45,6 @@ import {
   moveLevelUpFirestore,
   moveLevelDownFirestore,
   getPlayersWithTwitchUsernamesFirestore,
-  getPointsConfigFirestore,
-  updatePointsConfigFirestore,
   getDownloadCategoriesFirestore,
   addDownloadCategoryFirestore,
   updateDownloadCategoryFirestore,
@@ -204,13 +202,6 @@ export const moveLevelUp = moveLevelUpFirestore;
 export const moveLevelDown = moveLevelDownFirestore;
 
 export const getPlayersWithTwitchUsernames = getPlayersWithTwitchUsernamesFirestore;
-
-export const getPointsConfig = async (): Promise<PointsConfig> => {
-  const config = await getPointsConfigFirestore();
-  return config; // getPointsConfigFirestore now always returns a config, never null
-};
-
-export const updatePointsConfig = updatePointsConfigFirestore;
 
 // Download Categories (managed in Firestore)
 export const getDownloadCategories = getDownloadCategoriesFirestore;

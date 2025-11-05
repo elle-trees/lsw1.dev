@@ -129,32 +129,34 @@ const Index = () => {
       </div>
 
       <div className="py-16 px-4 sm:px-6 overflow-x-hidden">
-        <div className="max-w-6xl mx-auto w-full">
-          <div className="flex justify-center overflow-x-auto">
-            <div className="w-full max-w-full">
-              <TwitchEmbed channel="lsw1live" />
+        <div className="max-w-7xl mx-auto w-full">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left Side - Twitch Embed */}
+            <div className="lg:col-span-2 min-w-0">
+              <div className="flex justify-center overflow-x-auto">
+                <div className="w-full max-w-full">
+                  <TwitchEmbed channel="lsw1live" />
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      </div>
 
-      <div className="py-16 px-4 sm:px-6 overflow-x-hidden">
-        <div className="max-w-6xl mx-auto w-full">
-          <div className="grid grid-cols-1">
-            <div className="col-span-1 min-w-0">
-              <div className="text-center mb-8">
-                <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 text-ctp-text whitespace-nowrap">Recent Runs</h2>
-                <p className="text-ctp-subtext1 max-w-2xl mx-auto px-2">
+            {/* Right Side - Recent Runs */}
+            <div className="lg:col-span-1 min-w-0">
+              <div className="mb-3">
+                <h2 className="text-lg sm:text-xl font-bold mb-1.5 text-ctp-text">Recent Runs</h2>
+                <p className="text-xs text-ctp-subtext1">
                   Check out the latest speedrun submissions.
                 </p>
               </div>
 
               <div className="overflow-x-auto">
-                <RecentRuns runs={recentRunsData} loading={loading} showRankBadge={false} />
+                <div className="[&>div]:scale-95 [&>div]:origin-top [&_header]:hidden [&_div[class*='CardContent']]:!p-4 [&_div[class*='space-y-5']]:!space-y-3 [&_.text-xl]:!text-base [&_.text-2xl]:!text-lg [&_.text-sm]:!text-xs">
+                  <RecentRuns runs={recentRunsData} loading={loading} showRankBadge={false} />
+                </div>
               </div>
 
-              <div className="mt-8 text-center">
-                <Button variant="outline" className="text-ctp-text border-ctp-surface1 bg-transparent hover:bg-ctp-blue/10 hover:border-ctp-blue transition-all duration-300 hover:scale-110 hover:shadow-lg whitespace-nowrap" asChild>
+              <div className="mt-3 text-center">
+                <Button variant="outline" size="sm" className="text-xs text-ctp-text border-ctp-surface1 bg-transparent hover:bg-ctp-blue/10 hover:border-ctp-blue transition-all duration-300 hover:scale-105 hover:shadow-lg whitespace-nowrap" asChild>
                   <Link to="/leaderboards">View Full Leaderboards</Link>
                 </Button>
               </div>

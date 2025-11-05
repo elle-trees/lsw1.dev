@@ -1,6 +1,6 @@
 import { db } from "@/lib/firebase";
 import { collection, doc, getDoc, setDoc, updateDoc, deleteDoc, getDocs, query, where, orderBy, limit as firestoreLimit, deleteField, writeBatch, getDocsFromCache, getDocsFromServer } from "firebase/firestore";
-import { Player, LeaderboardEntry, DownloadEntry, Category, Platform, Level, PointsConfig } from "@/types/database";
+import { Player, LeaderboardEntry, DownloadEntry, Category, Platform, Level } from "@/types/database";
 import { calculatePoints, parseTimeToSeconds } from "@/lib/utils";
 
 /**
@@ -885,9 +885,6 @@ export const updateLeaderboardEntryFirestore = async (runId: string, data: Parti
           platformName = platformDocSnap.data().name || "Unknown";
         }
       
-      // Get points config and calculate points with rank
-      const pointsConfig = await getPointsConfigFirestore();
-      
       // Calculate rank using helper function
       const isObsolete = data.isObsolete !== undefined ? data.isObsolete : runData.isObsolete;
       const rankMap = await calculateRanksForGroup(
@@ -911,7 +908,6 @@ export const updateLeaderboardEntryFirestore = async (runId: string, data: Parti
         platformName,
         newCategoryId,
         newPlatformId,
-        pointsConfig,
         rank
       );
       updateData.points = points;
@@ -972,9 +968,6 @@ export const updateRunVerificationStatusFirestore = async (runId: string, verifi
       // This ensures the run is included in rank calculations
       await updateDoc(runDocRef, { verified, verifiedBy });
       
-      // Get points config and calculate points with rank
-      const pointsConfig = await getPointsConfigFirestore();
-      
       // Calculate rank using helper function
       // Include the current run in ranking to handle Firestore eventual consistency
       const leaderboardType = runData.leaderboardType || 'regular';
@@ -1001,7 +994,6 @@ export const updateRunVerificationStatusFirestore = async (runId: string, verifi
         platformName,
         runData.category,
         runData.platform,
-        pointsConfig,
         rank
       );
       
@@ -1139,9 +1131,6 @@ export const recalculatePlayerPointsFirestore = async (playerId: string): Promis
     const categoryMap = new Map(categories.map(c => [c.id, c.name]));
     const platformMap = new Map(platforms.map(p => [p.id, p.name]));
     
-    // Get points config once for all calculations
-    const pointsConfig = await getPointsConfigFirestore();
-    
     // To calculate ranks, we need to fetch all runs for each category/platform combination
     // Group runs by category + platform + runType to calculate ranks within each group
     const runsByGroup = new Map<string, LeaderboardEntry[]>();
@@ -1213,9 +1202,9 @@ export const recalculatePlayerPointsFirestore = async (playerId: string): Promis
     let totalPoints = 0;
     const runsToUpdate: { id: string; points: number }[] = [];
     
-    // Calculate points with ranks - always recalculate to ensure accuracy with current config and ranks
+    // Calculate points with ranks - always recalculate to ensure accuracy with current ranks
     for (const { run: runData, rank } of allRunsWithRanks) {
-      // Always recalculate points to ensure we use the latest rank and config
+      // Always recalculate points to ensure we use the latest rank
       const categoryName = categoryMap.get(runData.category) || "Unknown";
       const platformName = platformMap.get(runData.platform) || "Unknown";
       
@@ -1225,7 +1214,6 @@ export const recalculatePlayerPointsFirestore = async (playerId: string): Promis
         platformName,
         runData.category,
         runData.platform,
-        pointsConfig,
         rank
       );
       
@@ -2364,75 +2352,6 @@ export const moveLevelDownFirestore = async (id: string): Promise<boolean> => {
     
     return true;
   } catch (error) {
-    return false;
-  }
-};
-
-// Points Configuration Management
-const DEFAULT_POINTS_CONFIG: Omit<PointsConfig, 'id'> = {
-  basePointsPerRun: 10, // Flat points for all verified full game runs
-  top3BonusPoints: {
-    rank1: 50, // Bonus for 1st place
-    rank2: 30, // Bonus for 2nd place
-    rank3: 20, // Bonus for 3rd place
-  },
-  enabled: true,
-};
-
-export const getPointsConfigFirestore = async (): Promise<PointsConfig> => {
-  if (!db) {
-    // Return default config if db is not initialized
-    return { id: "default", ...DEFAULT_POINTS_CONFIG };
-  }
-  try {
-    const configDocRef = doc(db, "pointsConfig", "default");
-    const configDocSnap = await getDoc(configDocRef);
-    
-    if (configDocSnap.exists()) {
-      const data = configDocSnap.data();
-      
-      // Check if this is the new format (has basePointsPerRun)
-      if (data.basePointsPerRun !== undefined) {
-        return {
-          id: configDocSnap.id,
-          basePointsPerRun: data.basePointsPerRun ?? DEFAULT_POINTS_CONFIG.basePointsPerRun,
-          top3BonusPoints: data.top3BonusPoints ?? DEFAULT_POINTS_CONFIG.top3BonusPoints,
-          enabled: data.enabled !== undefined ? data.enabled : DEFAULT_POINTS_CONFIG.enabled,
-        } as PointsConfig;
-      }
-      
-      // Migration from old format - use defaults for new system
-      // Old configs will be replaced with defaults when admin updates
-      return { id: configDocSnap.id, ...DEFAULT_POINTS_CONFIG };
-    }
-    
-    // Return default config if none exists
-    return { id: "default", ...DEFAULT_POINTS_CONFIG };
-  } catch (error) {
-    console.error("Error fetching points config:", error);
-    // Return default config on error instead of null
-    return { id: "default", ...DEFAULT_POINTS_CONFIG };
-  }
-};
-
-export const updatePointsConfigFirestore = async (config: Partial<PointsConfig>): Promise<boolean> => {
-  if (!db) return false;
-  try {
-    const configDocRef = doc(db, "pointsConfig", "default");
-    const configDocSnap = await getDoc(configDocRef);
-    
-    // Remove 'id' field if present (Firestore doesn't allow updating document IDs)
-    const { id, ...updateData } = config as any;
-    
-    if (configDocSnap.exists()) {
-      await updateDoc(configDocRef, updateData);
-    } else {
-      await setDoc(configDocRef, { id: "default", ...DEFAULT_POINTS_CONFIG, ...updateData });
-    }
-    
-    return true;
-  } catch (error) {
-    console.error("Error updating points config:", error);
     return false;
   }
 };

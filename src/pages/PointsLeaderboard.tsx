@@ -42,7 +42,7 @@ const PointsLeaderboard = () => {
             </h1>
           </div>
           <p className="text-base text-ctp-subtext1 max-w-3xl mx-auto animate-fade-in-delay">
-            Top players ranked by their total points. Points are only awarded for GameCube runs in Any% and Nocuts Noships. Points are calculated exponentially for faster times, with special bonuses for exceptional milestone times!
+            Top players ranked by their total points. Points are awarded for all verified runs (Full Game, Individual Levels, and Community Golds) across all platforms and categories. Each verified run earns 10 base points, with bonus points for top 3 rankings: 60 points for 1st place, 40 points for 2nd place, and 30 points for 3rd place.
           </p>
         </div>
 

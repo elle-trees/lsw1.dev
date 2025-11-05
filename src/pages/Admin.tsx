@@ -45,12 +45,10 @@ import {
   moveLevelUp,
   moveLevelDown,
   backfillPointsForAllRuns,
-  getPointsConfig,
-  updatePointsConfig,
   getDownloadCategories,
 } from "@/lib/db";
 import { useUploadThing } from "@/lib/uploadthing";
-import { LeaderboardEntry, DownloadEntry, PointsConfig } from "@/types/database";
+import { LeaderboardEntry, DownloadEntry } from "@/types/database";
 import { useNavigate } from "react-router-dom";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { formatTime } from "@/lib/utils";
@@ -129,15 +127,11 @@ const Admin = () => {
   const [searchingPlayer, setSearchingPlayer] = useState(false);
   const [backfillingPoints, setBackfillingPoints] = useState(false);
   const [activeTab, setActiveTab] = useState("runs");
-  const [pointsConfig, setPointsConfig] = useState<PointsConfig | null>(null);
-  const [loadingPointsConfig, setLoadingPointsConfig] = useState(false);
-  const [savingPointsConfig, setSavingPointsConfig] = useState(false);
 
   useEffect(() => {
     fetchPlatforms();
     fetchCategories('regular'); // Load regular categories by default
     fetchLevels();
-    fetchPointsConfig();
     fetchDownloadCategories();
   }, []);
 
@@ -155,22 +149,6 @@ const Admin = () => {
         description: "Failed to load download categories.",
         variant: "destructive",
       });
-    }
-  };
-
-  const fetchPointsConfig = async () => {
-    setLoadingPointsConfig(true);
-    try {
-      const config = await getPointsConfig();
-      setPointsConfig(config);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to load points configuration.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingPointsConfig(false);
     }
   };
 
@@ -1222,12 +1200,6 @@ const Admin = () => {
               Downloads
             </TabsTrigger>
             <TabsTrigger 
-              value="points" 
-              className="data-[state=active]:bg-[#f9e2af] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#f9e2af]/50 text-xs sm:text-sm py-1.5 sm:py-2 px-2 sm:px-3 whitespace-nowrap"
-            >
-              Points
-            </TabsTrigger>
-            <TabsTrigger 
               value="tools" 
               className="data-[state=active]:bg-[#f9e2af] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#f9e2af]/50 text-xs sm:text-sm py-1.5 sm:py-2 px-2 sm:px-3 whitespace-nowrap"
             >
@@ -1235,204 +1207,8 @@ const Admin = () => {
             </TabsTrigger>
           </TabsList>
 
-          {/* Points Configuration Section */}
-          <TabsContent value="points" className="space-y-4 animate-fade-in">
-            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
-              <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
-                <CardTitle className="flex items-center gap-2 text-xl text-[#f2cdcd]">
-                  <span>
-                    Points Configuration
-                  </span>
-            </CardTitle>
-          </CardHeader>
-              <CardContent className="pt-6">
-                {loadingPointsConfig ? (
-                  <div className="flex items-center justify-center py-8">
-                    <LoadingSpinner size="md" />
-                  </div>
-                ) : pointsConfig ? (
-                  <form onSubmit={async (e) => {
-                    e.preventDefault();
-                    if (!pointsConfig) return;
-                    
-                    setSavingPointsConfig(true);
-                    try {
-                      const success = await updatePointsConfig(pointsConfig);
-                      if (success) {
-                        toast({
-                          title: "Success",
-                          description: "Points configuration updated successfully.",
-                        });
-                      } else {
-                        throw new Error("Failed to update configuration");
-                      }
-                    } catch (error: any) {
-                      toast({
-                        title: "Error",
-                        description: error.message || "Failed to update points configuration.",
-                        variant: "destructive",
-                      });
-                    } finally {
-                      setSavingPointsConfig(false);
-                    }
-                  }} className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <Label htmlFor="pointsEnabled">Enable Points System</Label>
-                        <Select
-                          value={pointsConfig.enabled ? "true" : "false"}
-                          onValueChange={(value) => setPointsConfig({ ...pointsConfig, enabled: value === "true" })}
-                        >
-                          <SelectTrigger className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="true">Enabled</SelectItem>
-                            <SelectItem value="false">Disabled</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <p className="text-sm text-ctp-overlay0 mt-1">
-                          Master switch to enable or disable the entire points system.
-                        </p>
-                      </div>
-
-                      <div>
-                        <Label htmlFor="basePointsPerRun">Base Points Per Run</Label>
-                        <Input
-                          id="basePointsPerRun"
-                          type="number"
-                          value={pointsConfig.basePointsPerRun ?? 10}
-                          onChange={(e) => setPointsConfig({ ...pointsConfig, basePointsPerRun: Number(e.target.value) })}
-                          min="0"
-                          step="1"
-                          className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                        />
-                        <p className="text-sm text-ctp-overlay0 mt-1">
-                          Flat amount of points awarded for all verified full game runs. Default: 10
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <div>
-                        <Label className="text-base font-semibold mb-2 block">Top 3 Bonus Points</Label>
-                        <p className="text-sm text-ctp-overlay0 mb-4">
-                          Additional bonus points for runs ranked 1st, 2nd, or 3rd in their category/platform/runType combination.
-                        </p>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div>
-                            <Label htmlFor="rank1Bonus">1st Place Bonus</Label>
-                            <Input
-                              id="rank1Bonus"
-                              type="number"
-                              value={pointsConfig.top3BonusPoints?.rank1 ?? 50}
-                              onChange={(e) => setPointsConfig({ 
-                                ...pointsConfig, 
-                                top3BonusPoints: {
-                                  rank1: Number(e.target.value),
-                                  rank2: pointsConfig.top3BonusPoints?.rank2 ?? 30,
-                                  rank3: pointsConfig.top3BonusPoints?.rank3 ?? 20,
-                                }
-                              })}
-                              min="0"
-                              step="1"
-                              className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                            />
-                            <p className="text-sm text-ctp-overlay0 mt-1">
-                              Default: 50
-                            </p>
-                          </div>
-                          <div>
-                            <Label htmlFor="rank2Bonus">2nd Place Bonus</Label>
-                            <Input
-                              id="rank2Bonus"
-                              type="number"
-                              value={pointsConfig.top3BonusPoints?.rank2 ?? 30}
-                              onChange={(e) => setPointsConfig({ 
-                                ...pointsConfig, 
-                                top3BonusPoints: {
-                                  rank1: pointsConfig.top3BonusPoints?.rank1 ?? 50,
-                                  rank2: Number(e.target.value),
-                                  rank3: pointsConfig.top3BonusPoints?.rank3 ?? 20,
-                                }
-                              })}
-                              min="0"
-                              step="1"
-                              className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                            />
-                            <p className="text-sm text-ctp-overlay0 mt-1">
-                              Default: 30
-                            </p>
-                          </div>
-                          <div>
-                            <Label htmlFor="rank3Bonus">3rd Place Bonus</Label>
-                            <Input
-                              id="rank3Bonus"
-                              type="number"
-                              value={pointsConfig.top3BonusPoints?.rank3 ?? 20}
-                              onChange={(e) => setPointsConfig({ 
-                                ...pointsConfig, 
-                                top3BonusPoints: {
-                                  rank1: pointsConfig.top3BonusPoints?.rank1 ?? 50,
-                                  rank2: pointsConfig.top3BonusPoints?.rank2 ?? 30,
-                                  rank3: Number(e.target.value),
-                                }
-                              })}
-                              min="0"
-                              step="1"
-                              className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                            />
-                            <p className="text-sm text-ctp-overlay0 mt-1">
-                              Default: 20
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div>
-                        <Label className="text-base font-semibold mb-2 block">Points Eligibility</Label>
-                        <p className="text-sm text-ctp-overlay0 mb-4">
-                          Points are automatically awarded for:
-                        </p>
-                        <ul className="list-disc list-inside space-y-1 text-sm text-ctp-subtext1 ml-4">
-                          <li>All verified runs (Full Game, Individual Levels, and Community Golds)</li>
-                          <li>All platforms</li>
-                          <li>All categories</li>
-                          <li>Both solo and co-op runs are eligible</li>
-                          <li>Obsolete runs receive base points only (no top 3 bonus)</li>
-                          <li>Top 3 runs in each category/platform/runType/level combination receive bonus points</li>
-                          <li>Individual Levels and Community Golds are ranked separately per level</li>
-                        </ul>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-4">
-                      <Button
-                        type="submit"
-                        disabled={savingPointsConfig}
-                        className="bg-gradient-to-r from-[#cba6f7] to-[#b4a0e2] hover:from-[#b4a0e2] hover:to-[#cba6f7] text-[hsl(240,21%,15%)] font-bold"
-                      >
-                        {savingPointsConfig ? "Saving..." : "Save Configuration"}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={fetchPointsConfig}
-                        disabled={savingPointsConfig}
-                        className="border-[hsl(235,13%,30%)]"
-                      >
-                        Reset to Saved
-                      </Button>
-                    </div>
-                  </form>
-                ) : (
-                  <p className="text-ctp-subtext1 text-center py-8">
-                    Failed to load points configuration.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-
+          {/* Tools Section */}
+          <TabsContent value="tools" className="space-y-4 animate-fade-in">
             {/* Recalculate Points Card */}
             <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
               <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
@@ -1506,10 +1282,6 @@ const Admin = () => {
                   </Button>
               </CardContent>
             </Card>
-          </TabsContent>
-
-          {/* Tools Section */}
-          <TabsContent value="tools" className="space-y-4 animate-fade-in">
 
             {/* Manual Run Input Section */}
             <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
