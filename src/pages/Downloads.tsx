@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Download, ExternalLink, Wrench, Book, Save } from "lucide-react";
-import { getDownloadEntries } from "@/lib/db";
+import { getDownloadEntries, getDownloadCategories } from "@/lib/db";
 import { DownloadEntry } from "@/types/database";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 
@@ -28,16 +28,16 @@ const Downloads = () => {
     fetchData();
   }, []);
 
-  const getCategoryIcon = (category: string) => {
-    switch (category.toLowerCase()) {
-      case "tools":
-        return <Wrench className="h-5 w-5 text-ctp-crust" />;
-      case "guides":
-        return <Book className="h-5 w-5 text-ctp-crust" />;
-      case "save files":
-        return <Save className="h-5 w-5 text-ctp-crust" />;
-      default:
-        return <Download className="h-5 w-5 text-ctp-crust" />;
+  const getCategoryIcon = (categoryName: string) => {
+    const categoryLower = categoryName.toLowerCase();
+    if (categoryLower.includes("tool")) {
+      return <Wrench className="h-5 w-5 text-ctp-crust" />;
+    } else if (categoryLower.includes("guide")) {
+      return <Book className="h-5 w-5 text-ctp-crust" />;
+    } else if (categoryLower.includes("save") || categoryLower.includes("file")) {
+      return <Save className="h-5 w-5 text-ctp-crust" />;
+    } else {
+      return <Download className="h-5 w-5 text-ctp-crust" />;
     }
   };
 

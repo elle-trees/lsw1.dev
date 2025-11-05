@@ -299,16 +299,6 @@
           "order": "ASCENDING"
         }
       ]
-    },
-    {
-      "collectionGroup": "players",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "totalPoints",
-          "order": "DESCENDING"
-        }
-      ]
     }
   ],
   "fieldOverrides": []

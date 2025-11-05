@@ -47,6 +47,10 @@ import {
   getPlayersWithTwitchUsernamesFirestore,
   getPointsConfigFirestore,
   updatePointsConfigFirestore,
+  getDownloadCategoriesFirestore,
+  addDownloadCategoryFirestore,
+  updateDownloadCategoryFirestore,
+  deleteDownloadCategoryFirestore,
 } from "./data/firestore";
 
 const defaultCategories = [
@@ -86,8 +90,6 @@ export const getCategories = async (leaderboardType?: 'regular' | 'individual-le
   }
 };
 
-export const categories: { id: string; name: string }[] = [];
-
 const defaultPlatforms = [
   { name: "PC" },
   { name: "PS2" },
@@ -122,8 +124,6 @@ export const getPlatforms = async (): Promise<{ id: string; name: string }[]> =>
     return [];
   }
 };
-
-export const platforms: { id: string; name: string }[] = [];
 
 export const runTypes = [
   { id: "solo", name: "Solo" },
@@ -211,6 +211,12 @@ export const getPointsConfig = async (): Promise<PointsConfig> => {
 };
 
 export const updatePointsConfig = updatePointsConfigFirestore;
+
+// Download Categories (managed in Firestore)
+export const getDownloadCategories = getDownloadCategoriesFirestore;
+export const addDownloadCategory = addDownloadCategoryFirestore;
+export const updateDownloadCategory = updateDownloadCategoryFirestore;
+export const deleteDownloadCategory = deleteDownloadCategoryFirestore;
 
 export const backfillPointsForAllRuns = async () => {
   const { backfillPointsForAllRunsFirestore } = await import("./data/firestore");

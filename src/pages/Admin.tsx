@@ -47,19 +47,13 @@ import {
   backfillPointsForAllRuns,
   getPointsConfig,
   updatePointsConfig,
+  getDownloadCategories,
 } from "@/lib/db";
 import { useUploadThing } from "@/lib/uploadthing";
 import { LeaderboardEntry, DownloadEntry, PointsConfig } from "@/types/database";
 import { useNavigate } from "react-router-dom";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { formatTime } from "@/lib/utils";
-
-const downloadCategories = [
-  { id: "tools", name: "Tools" },
-  { id: "guides", name: "Guides" },
-  { id: "save_files", name: "Save Files" },
-  { id: "other", name: "Other" },
-];
 
 const Admin = () => {
   const { currentUser, loading: authLoading } = useAuth();
@@ -75,11 +69,12 @@ const Admin = () => {
     url: "",
     fileUrl: "",
     fileName: "", // Store the selected file name
-    category: downloadCategories[0].id,
+    category: "",
     useFileUpload: false, // Toggle between URL and file upload
   });
   const [addingDownload, setAddingDownload] = useState(false);
   const [reorderingDownload, setReorderingDownload] = useState<string | null>(null);
+  const [downloadCategories, setDownloadCategories] = useState<{ id: string; name: string }[]>([]);
   const { startUpload, isUploading } = useUploadThing("downloadFile");
   
   const [firestoreCategories, setFirestoreCategories] = useState<{ id: string; name: string }[]>([]);
@@ -143,7 +138,25 @@ const Admin = () => {
     fetchCategories('regular'); // Load regular categories by default
     fetchLevels();
     fetchPointsConfig();
+    fetchDownloadCategories();
   }, []);
+
+  const fetchDownloadCategories = async () => {
+    try {
+      const categoriesData = await getDownloadCategories();
+      setDownloadCategories(categoriesData);
+      // Update newDownload category if empty
+      if (categoriesData.length > 0 && !newDownload.category) {
+        setNewDownload(prev => ({ ...prev, category: categoriesData[0].id }));
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load download categories.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const fetchPointsConfig = async () => {
     setLoadingPointsConfig(true);

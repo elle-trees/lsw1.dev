@@ -2854,3 +2854,109 @@ export const updatePointsConfigFirestore = async (config: Partial<PointsConfig>)
     return false;
   }
 };
+
+// Download Categories Management (stored in Firestore for dynamic management)
+export interface DownloadCategory {
+  id: string;
+  name: string;
+  order?: number;
+}
+
+const DEFAULT_DOWNLOAD_CATEGORIES: Omit<DownloadCategory, 'id'>[] = [
+  { name: "Tools", order: 1 },
+  { name: "Guides", order: 2 },
+  { name: "Save Files", order: 3 },
+  { name: "Other", order: 4 },
+];
+
+export const getDownloadCategoriesFirestore = async (): Promise<DownloadCategory[]> => {
+  if (!db) {
+    // Return defaults if db is not initialized
+    return DEFAULT_DOWNLOAD_CATEGORIES.map((cat, index) => ({ id: cat.name.toLowerCase().replace(/\s+/g, '_'), ...cat }));
+  }
+  try {
+    const categoriesSnapshot = await getDocs(collection(db, "downloadCategories"));
+    
+    if (categoriesSnapshot.empty) {
+      // Initialize with defaults if none exist
+      const batch = writeBatch(db);
+      DEFAULT_DOWNLOAD_CATEGORIES.forEach((cat) => {
+        const categoryId = cat.name.toLowerCase().replace(/\s+/g, '_');
+        const categoryRef = doc(db, "downloadCategories", categoryId);
+        batch.set(categoryRef, { ...cat });
+      });
+      await batch.commit();
+      
+      // Return defaults after initialization
+      return DEFAULT_DOWNLOAD_CATEGORIES.map((cat) => ({ id: cat.name.toLowerCase().replace(/\s+/g, '_'), ...cat }));
+    }
+    
+    const categories = categoriesSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as DownloadCategory));
+    
+    // Sort by order
+    categories.sort((a, b) => {
+      const orderA = a.order ?? Infinity;
+      const orderB = b.order ?? Infinity;
+      return orderA - orderB;
+    });
+    
+    return categories;
+  } catch (error) {
+    console.error("Error fetching download categories:", error);
+    // Return defaults on error
+    return DEFAULT_DOWNLOAD_CATEGORIES.map((cat) => ({ id: cat.name.toLowerCase().replace(/\s+/g, '_'), ...cat }));
+  }
+};
+
+export const addDownloadCategoryFirestore = async (name: string, order?: number): Promise<string | null> => {
+  if (!db) return null;
+  try {
+    const categoryId = name.toLowerCase().replace(/\s+/g, '_');
+    const categoryRef = doc(db, "downloadCategories", categoryId);
+    const categorySnap = await getDoc(categoryRef);
+    
+    if (categorySnap.exists()) {
+      return null; // Category already exists
+    }
+    
+    const maxOrder = order ?? (await getDownloadCategoriesFirestore()).length + 1;
+    await setDoc(categoryRef, { name, order: maxOrder });
+    
+    return categoryId;
+  } catch (error) {
+    console.error("Error adding download category:", error);
+    return null;
+  }
+};
+
+export const updateDownloadCategoryFirestore = async (categoryId: string, name?: string, order?: number): Promise<boolean> => {
+  if (!db) return false;
+  try {
+    const categoryRef = doc(db, "downloadCategories", categoryId);
+    const updateData: any = {};
+    
+    if (name !== undefined) updateData.name = name;
+    if (order !== undefined) updateData.order = order;
+    
+    await updateDoc(categoryRef, updateData);
+    return true;
+  } catch (error) {
+    console.error("Error updating download category:", error);
+    return false;
+  }
+};
+
+export const deleteDownloadCategoryFirestore = async (categoryId: string): Promise<boolean> => {
+  if (!db) return false;
+  try {
+    const categoryRef = doc(db, "downloadCategories", categoryId);
+    await deleteDoc(categoryRef);
+    return true;
+  } catch (error) {
+    console.error("Error deleting download category:", error);
+    return false;
+  }
+};
