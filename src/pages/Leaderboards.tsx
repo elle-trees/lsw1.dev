@@ -79,7 +79,7 @@ const Leaderboards = () => {
         const data = await getLeaderboardEntries(
           selectedCategory,
           selectedPlatform,
-          selectedRunType,
+          selectedRunType as 'solo' | 'co-op',
           showObsoleteRuns === "true",
           leaderboardType,
           (leaderboardType === 'individual-level' || leaderboardType === 'community-golds') ? selectedLevel : undefined
@@ -93,7 +93,7 @@ const Leaderboards = () => {
     };
 
     const hasRequiredFilters = selectedCategory && selectedPlatform && selectedRunType;
-    const hasLevelFilter = leaderboardType === 'regular' || (leaderboardType !== 'regular' && selectedLevel);
+    const hasLevelFilter = leaderboardType === 'regular' || selectedLevel;
     
     if (hasRequiredFilters && hasLevelFilter) {
       fetchLeaderboardData();
@@ -125,21 +125,21 @@ const Leaderboards = () => {
           <TabsList className="grid w-full grid-cols-3 bg-[hsl(240,21%,16%)] border border-[hsl(235,13%,30%)] mb-6 shadow-lg rounded-lg p-1 transition-all duration-300 hover:shadow-xl hover:border-[hsl(235,13%,40%)]">
             <TabsTrigger 
               value="regular" 
-              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#FFD700] data-[state=active]:to-[#FFA500] data-[state=active]:text-[hsl(240,21%,15%)] data-[state=active]:shadow-lg transition-all duration-300 rounded-md font-medium hover:bg-[hsl(240,21%,20%)] hover:scale-105"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#FFD700] data-[state=active]:to-[#FFA500] data-[state=active]:text-[hsl(240,21%,15%)] data-[state=active]:shadow-lg transition-all duration-300 rounded-md font-medium hover:bg-[hsl(240,21%,20%)]"
             >
               <Trophy className="h-4 w-4 mr-2 transition-transform duration-300 group-hover:rotate-12" />
               Full Game
             </TabsTrigger>
             <TabsTrigger 
               value="individual-level" 
-              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#cba6f7] data-[state=active]:to-[#b4a0e2] data-[state=active]:text-[hsl(240,21%,15%)] data-[state=active]:shadow-lg transition-all duration-300 rounded-md font-medium hover:bg-[hsl(240,21%,20%)] hover:scale-105"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#cba6f7] data-[state=active]:to-[#b4a0e2] data-[state=active]:text-[hsl(240,21%,15%)] data-[state=active]:shadow-lg transition-all duration-300 rounded-md font-medium hover:bg-[hsl(240,21%,20%)]"
             >
               <Star className="h-4 w-4 mr-2 transition-transform duration-300 group-hover:rotate-12" />
               Individual Levels
             </TabsTrigger>
             <TabsTrigger 
               value="community-golds" 
-              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#FFD700] data-[state=active]:to-[#FFA500] data-[state=active]:text-[hsl(240,21%,15%)] data-[state=active]:shadow-lg transition-all duration-300 rounded-md font-medium hover:bg-[hsl(240,21%,20%)] hover:scale-105"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#FFD700] data-[state=active]:to-[#FFA500] data-[state=active]:text-[hsl(240,21%,15%)] data-[state=active]:shadow-lg transition-all duration-300 rounded-md font-medium hover:bg-[hsl(240,21%,20%)]"
             >
               <Gem className="h-4 w-4 mr-2 transition-transform duration-300 group-hover:rotate-12" />
               Community Golds
@@ -151,12 +151,12 @@ const Leaderboards = () => {
             {availableCategories.length > 0 && (
               <div className="mb-6 animate-slide-up">
                 <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
-                  <TabsList className="grid w-full rounded-lg p-1.5 gap-2 bg-[hsl(240,21%,14%)] border border-[hsl(235,13%,25%)] transition-all duration-300 hover:border-[hsl(235,13%,35%)]" style={{ gridTemplateColumns: `repeat(${availableCategories.length}, 1fr)` }}>
+                  <TabsList className="grid w-full rounded-lg p-2 gap-2 bg-[hsl(240,21%,14%)] border border-[hsl(235,13%,25%)] transition-all duration-300 hover:border-[hsl(235,13%,35%)]" style={{ gridTemplateColumns: `repeat(${availableCategories.length}, 1fr)` }}>
                     {availableCategories.map((category, index) => (
                       <TabsTrigger 
                         key={category.id} 
                         value={category.id} 
-                        className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#cba6f7] data-[state=active]:to-[#b4a0e2] data-[state=active]:text-[hsl(240,21%,15%)] data-[state=active]:shadow-lg transition-all duration-300 rounded-md font-medium hover:bg-[hsl(240,21%,18%)] hover:scale-105"
+                        className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#cba6f7] data-[state=active]:to-[#b4a0e2] data-[state=active]:text-[hsl(240,21%,15%)] data-[state=active]:shadow-lg transition-all duration-300 rounded-md font-medium hover:bg-[hsl(240,21%,18%)] py-3 px-4 text-base"
                         style={{ animationDelay: `${index * 50}ms` }}
                       >
                         {category.name}
