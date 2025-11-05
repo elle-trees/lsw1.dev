@@ -1,5 +1,5 @@
 import { db } from "@/lib/firebase";
-import { collection, doc, getDoc, setDoc, updateDoc, deleteDoc, getDocs, query, where, orderBy, limit as firestoreLimit, deleteField } from "firebase/firestore";
+import { collection, doc, getDoc, setDoc, updateDoc, deleteDoc, getDocs, query, where, orderBy, limit as firestoreLimit, deleteField, writeBatch, getDocsFromCache, getDocsFromServer } from "firebase/firestore";
 import { Player, LeaderboardEntry, DownloadEntry, Category, Platform, Level, PointsConfig } from "@/types/database";
 import { calculatePoints, parseTimeToSeconds } from "@/lib/utils";
 
@@ -1235,15 +1235,27 @@ export const recalculatePlayerPointsFirestore = async (playerId: string): Promis
       totalPoints += points;
     }
     
-    // Update runs that didn't have points
+    // Batch update runs with points (Firestore batch limit is 500)
+    const MAX_BATCH_SIZE = 500;
+    let batchCount = 0;
+    let batch = writeBatch(db);
+    
     for (const run of runsToUpdate) {
-      try {
-        const runDocRef = doc(db, "leaderboardEntries", run.id);
-        await updateDoc(runDocRef, { points: run.points });
-      } catch (error) {
-        // Continue even if individual run update fails
-        console.error(`Failed to update run ${run.id}:`, error);
+      const runDocRef = doc(db, "leaderboardEntries", run.id);
+      batch.update(runDocRef, { points: run.points });
+      batchCount++;
+      
+      // Commit batch if it reaches the limit
+      if (batchCount >= MAX_BATCH_SIZE) {
+        await batch.commit();
+        batchCount = 0;
+        batch = writeBatch(db); // Create new batch for remaining updates
       }
+    }
+    
+    // Commit remaining updates
+    if (batchCount > 0) {
+      await batch.commit();
     }
     
     // Update or create player's total points
@@ -2148,14 +2160,7 @@ export const getPlayersByPointsFirestore = async (limit: number = 100): Promise<
           console.log(`[getPlayersByPointsFirestore] Rank #1 run ${runData.id} calculated points: ${points} (base: 100 + bonus: ${pointsConfig.top3BonusPoints?.rank1 || 0})`);
         }
         
-        // Update the run with calculated points (async, don't wait)
-        if (points > 0) {
-          try {
-            const runDocRef = doc(db, "leaderboardEntries", runData.id);
-            updateDoc(runDocRef, { points }).catch(() => {}); // Fire and forget
-          } catch {}
-        }
-        
+        // Store run update for batch write (will batch all updates together)
         // Add all runs to runsWithPoints for aggregation
         // Use the run data from allGroupRuns (which has the latest points) but keep original run metadata
         runsWithPoints.push({ 
@@ -2165,10 +2170,58 @@ export const getPlayersByPointsFirestore = async (limit: number = 100): Promise<
       }
     }
 
+    // Batch update runs with points (Firestore batch limit is 500)
+    const MAX_BATCH_SIZE = 500;
+    let batchCount = 0;
+    let batch = writeBatch(db);
+    
+    for (const { run: runData, points } of runsWithPoints) {
+      if (points > 0) {
+        const runDocRef = doc(db, "leaderboardEntries", runData.id);
+        batch.update(runDocRef, { points });
+        batchCount++;
+        
+        // Commit batch if it reaches the limit
+        if (batchCount >= MAX_BATCH_SIZE) {
+          await batch.commit();
+          batchCount = 0;
+          batch = writeBatch(db); // Create new batch for remaining updates
+        }
+      }
+    }
+    
+    // Commit remaining updates
+    if (batchCount > 0) {
+      await batch.commit();
+    }
+
     // Aggregate points by player
     console.log(`[getPlayersByPointsFirestore] Aggregating ${runsWithPoints.length} runs with points`);
     let zeroPointRuns = 0;
     let totalPointsCalculated = 0;
+    
+    // Collect all unique player2 names for batch lookup
+    const player2NamesSet = new Set<string>();
+    for (const { run: runData } of runsWithPoints) {
+      if (runData.runType === 'co-op' && runData.player2Name) {
+        player2NamesSet.add(runData.player2Name.trim());
+      }
+    }
+    
+    // Batch lookup all player2s
+    const player2Map = new Map<string, Player | null>();
+    const player2LookupPromises = Array.from(player2NamesSet).map(async (name) => {
+      try {
+        const player = await getPlayerByDisplayNameFirestore(name);
+        return { name: name.toLowerCase(), player };
+      } catch {
+        return { name: name.toLowerCase(), player: null };
+      }
+    });
+    const player2Lookups = await Promise.all(player2LookupPromises);
+    player2Lookups.forEach(({ name, player }) => {
+      player2Map.set(name, player);
+    });
     
     // Helper function to process a player's points
     const processPlayerPoints = (playerId: string, playerName: string, points: number, runDate?: string) => {
@@ -2215,21 +2268,13 @@ export const getPlayersByPointsFirestore = async (limit: number = 100): Promise<
         processPlayerPoints(runData.playerId, runData.playerName, points, runData.date);
       }
       
-      // Process player2 for co-op runs (also gets points)
+      // Process player2 for co-op runs (also gets points) - use batched lookup
       if (runData.runType === 'co-op' && runData.player2Name) {
-        // For co-op runs, both players get the same points
-        // Try to find player2's ID by name
-        try {
-          const player2 = await getPlayerByDisplayNameFirestore(runData.player2Name);
-          if (player2) {
-            processPlayerPoints(player2.uid, runData.player2Name, points, runData.date);
-          } else {
-            // Player2 not found - treat as unlinked player
-            const unlinkedId = `unlinked_${runData.player2Name.trim().toLowerCase()}`;
-            processPlayerPoints(unlinkedId, runData.player2Name, points, runData.date);
-          }
-        } catch (error) {
-          // If lookup fails, treat as unlinked player
+        const player2 = player2Map.get(runData.player2Name.trim().toLowerCase());
+        if (player2) {
+          processPlayerPoints(player2.uid, runData.player2Name, points, runData.date);
+        } else {
+          // Player2 not found - treat as unlinked player
           const unlinkedId = `unlinked_${runData.player2Name.trim().toLowerCase()}`;
           processPlayerPoints(unlinkedId, runData.player2Name, points, runData.date);
         }
@@ -2408,14 +2453,7 @@ export const backfillPointsForAllRunsFirestore = async (): Promise<{
 
       // Track player IDs for later recalculation (both solo and co-op runs)
       playerIdsSet.add(runData.playerId);
-      // For co-op runs, also track player2 if they exist
-      if (runData.runType === 'co-op' && runData.player2Name) {
-        // Try to find player2 by name to get their ID
-        const player2 = await getPlayerByDisplayNameFirestore(runData.player2Name);
-        if (player2) {
-          playerIdsSet.add(player2.uid);
-        }
-      }
+      // For co-op runs, we'll batch lookup player2s later
     }
 
     // Calculate ranks for each group and assign points
@@ -2526,21 +2564,33 @@ export const backfillPointsForAllRunsFirestore = async (): Promise<{
       }
     }
 
-    // Update all runs in batches to avoid overwhelming Firestore
-    const batchSize = 100;
-    for (let i = 0; i < runsToUpdate.length; i += batchSize) {
-      const batch = runsToUpdate.slice(i, i + batchSize);
-      await Promise.all(
-        batch.map(async (run) => {
-          try {
-            const runDocRef = doc(db, "leaderboardEntries", run.id);
-            await updateDoc(runDocRef, { points: run.points });
-            result.runsUpdated++;
-          } catch (error) {
-            result.errors.push(`Error updating run ${run.id}: ${error instanceof Error ? error.message : String(error)}`);
-          }
-        })
-      );
+    // Update all runs in batches using Firestore batch writes (batch limit is 500)
+    const MAX_BATCH_SIZE = 500;
+    let batchCount = 0;
+    let batch = writeBatch(db);
+    
+    for (const run of runsToUpdate) {
+      try {
+        const runDocRef = doc(db, "leaderboardEntries", run.id);
+        batch.update(runDocRef, { points: run.points });
+        batchCount++;
+        
+        // Commit batch if it reaches the limit
+        if (batchCount >= MAX_BATCH_SIZE) {
+          await batch.commit();
+          result.runsUpdated += batchCount;
+          batchCount = 0;
+          batch = writeBatch(db); // Create new batch for remaining updates
+        }
+      } catch (error) {
+        result.errors.push(`Error preparing run ${run.id} for batch: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+    
+    // Commit remaining updates
+    if (batchCount > 0) {
+      await batch.commit();
+      result.runsUpdated += batchCount;
     }
 
     // Wait a moment for Firestore to propagate the run updates

@@ -45,6 +45,7 @@ const RunDetails = () => {
   });
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [displayPoints, setDisplayPoints] = useState<number | null>(null);
   const leftColumnRef = useRef<HTMLDivElement>(null);
   const detailsCardRef = useRef<HTMLDivElement>(null);
 
@@ -334,31 +335,17 @@ const RunDetails = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#1e1e2e] text-ctp-text py-8">
-        <div className="max-w-6xl mx-auto px-4">
-          <LoadingSpinner />
-        </div>
-      </div>
-    );
-  }
-
-  if (!run) {
-    return null;
-  }
-
-  const category = categories.find((c) => c.id === run.category);
-  const platform = platforms.find((p) => p.id === run.platform);
-  const runType = runTypes.find((rt) => rt.id === run.runType);
-  
-  // Use stored points if available (they should be calculated with rank during recalculation)
-  // If points are not stored but we have rank, calculate with rank
-  // Otherwise, fall back to base calculation
-  const [displayPoints, setDisplayPoints] = useState<number | null>(null);
-  
+  // Calculate points when run data changes (must be before early returns)
   useEffect(() => {
+    if (!run) {
+      setDisplayPoints(null);
+      return;
+    }
+
     const calculateDisplayPoints = async () => {
+      const category = categories.find((c) => c.id === run.category);
+      const platform = platforms.find((p) => p.id === run.platform);
+
       if (run.points !== undefined && run.points !== null && run.points > 0) {
         // Use stored points (should already include rank-based calculation)
         setDisplayPoints(run.points);
@@ -392,10 +379,26 @@ const RunDetails = () => {
       }
     };
     
-    if (run) {
-      calculateDisplayPoints();
-    }
-  }, [run?.points, run?.verified, run?.isObsolete, run?.rank, run?.time, run?.category, run?.platform, category?.name, platform?.name]);
+    calculateDisplayPoints();
+  }, [run?.points, run?.verified, run?.isObsolete, run?.rank, run?.time, run?.category, run?.platform, categories, platforms]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#1e1e2e] text-ctp-text py-8">
+        <div className="max-w-6xl mx-auto px-4">
+          <LoadingSpinner />
+        </div>
+      </div>
+    );
+  }
+
+  if (!run) {
+    return null;
+  }
+
+  const category = categories.find((c) => c.id === run.category);
+  const platform = platforms.find((p) => p.id === run.platform);
+  const runType = runTypes.find((rt) => rt.id === run.runType);
   
   // Use stored points as fallback while calculating
   const finalDisplayPoints = displayPoints !== null ? displayPoints : (run.points || 0);
