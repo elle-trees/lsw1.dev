@@ -45,17 +45,14 @@ const Downloads = () => {
     <div className="min-h-screen bg-[#1e1e2e] text-[hsl(220,17%,92%)] py-8">
       <div className="max-w-5xl mx-auto px-4">
         {/* Animated Header */}
-        <div className="text-center mb-12 animate-fade-in">
-          <div className="inline-flex items-center justify-center mb-6">
-            <div className="relative">
-              <div className="absolute inset-0 bg-[#cba6f7]/20 blur-3xl rounded-full animate-pulse"></div>
-              <Download className="h-12 w-12 text-[#cba6f7] relative z-10 animate-bounce-slow" />
-            </div>
+        <div className="text-center mb-8 animate-fade-in">
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <Download className="h-6 w-6 text-[#cba6f7]" />
+            <h1 className="text-3xl md:text-4xl font-bold text-[#cba6f7]">
+              Downloads & Resources
+            </h1>
           </div>
-          <h1 className="text-5xl font-bold mb-4 flex items-center justify-center gap-3 text-[#cba6f7]">
-            Downloads & Resources
-          </h1>
-          <p className="text-[hsl(222,15%,60%)] max-w-2xl mx-auto text-lg leading-relaxed animate-fade-in-delay">
+          <p className="text-base text-ctp-subtext1 max-w-3xl mx-auto animate-fade-in-delay">
             Find useful tools, guides, and save files to help with your speedrunning journey.
           </p>
         </div>

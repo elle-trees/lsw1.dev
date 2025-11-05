@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "react-router-dom";
-import { TrendingUp, Sparkles, Zap } from "lucide-react";
+import { TrendingUp, Sparkles, Plus } from "lucide-react";
 import { Player } from "@/types/database";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { getPlayersByPoints } from "@/lib/db";
@@ -35,10 +35,13 @@ const PointsLeaderboard = () => {
     <div className="min-h-screen bg-[#1e1e2e] text-[hsl(220,17%,92%)] py-6">
       <div className="max-w-7xl mx-auto px-6">
         <div className="text-center mb-8 animate-fade-in">
-          <h1 className="text-3xl md:text-4xl font-bold text-[#fab387] mb-4">
-            Points Leaderboard
-          </h1>
-          <p className="text-base text-[hsl(222,15%,70%)] max-w-3xl mx-auto">
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <Plus className="h-6 w-6 text-[#fab387]" />
+            <h1 className="text-3xl md:text-4xl font-bold text-[#fab387]">
+              Points Leaderboard
+            </h1>
+          </div>
+          <p className="text-base text-ctp-subtext1 max-w-3xl mx-auto animate-fade-in-delay">
             Top players ranked by their total points. Points are only awarded for <strong className="text-[#cba6f7]">GameCube</strong> runs in <strong className="text-[#cba6f7]">Any%</strong> and <strong className="text-[#cba6f7]">Nocuts Noships</strong> categories. Points are calculated exponentially for faster times, with special bonuses for exceptional milestone times!
           </p>
         </div>
@@ -126,7 +129,7 @@ const PointsLeaderboard = () => {
                           {/* Points */}
                           <div className="text-right flex-shrink-0">
                             <div className="flex items-center gap-1.5 justify-end mb-1">
-                              <Zap className="h-5 w-5 text-[#FFD700] group-hover:scale-110 transition-transform duration-300" />
+                              <Plus className="h-5 w-5 text-[#FFD700] group-hover:scale-110 transition-transform duration-300" />
                               <div className="text-2xl font-bold bg-gradient-to-r from-[#FFD700] via-[#FFA500] to-[#FFD700] bg-clip-text text-transparent group-hover:scale-110 transition-transform duration-300">
                                 {formatPoints(points)}
                               </div>

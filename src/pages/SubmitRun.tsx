@@ -243,16 +243,14 @@ const SubmitRun = () => {
   return (
     <div className="min-h-screen bg-[#1e1e2e] text-ctp-text py-6">
       <div className="max-w-7xl mx-auto px-6">
-        <div className="text-center mb-6 animate-fade-in">
-          <div className="flex items-center justify-center gap-3 mb-3">
-            <div className="p-2 rounded-xl bg-gradient-to-br from-ctp-mauve to-ctp-lavender shadow-lg">
-              <Upload className="h-8 w-8 text-ctp-crust" />
-            </div>
-            <h1 className="text-4xl md:text-5xl font-bold text-[#eba0ac]">
+        <div className="text-center mb-8 animate-fade-in">
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <Upload className="h-6 w-6 text-[#eba0ac]" />
+            <h1 className="text-3xl md:text-4xl font-bold text-[#eba0ac]">
               Submit Your Run
             </h1>
           </div>
-          <p className="text-lg text-ctp-subtext1 max-w-3xl mx-auto">
+          <p className="text-base text-ctp-subtext1 max-w-3xl mx-auto animate-fade-in-delay">
             Share your PB with the community. Make sure to follow our submission guidelines!
           </p>
         </div>

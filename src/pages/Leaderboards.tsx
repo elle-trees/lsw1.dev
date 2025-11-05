@@ -136,9 +136,12 @@ const Leaderboards = () => {
     <div className="min-h-screen bg-[#1e1e2e] text-ctp-text py-6">
       <div className="max-w-7xl mx-auto px-6">
         <div className="text-center mb-8 animate-fade-in">
-          <h1 className="text-3xl md:text-4xl font-bold text-[#a6e3a1] mb-4">
-            Leaderboards
-          </h1>
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <Trophy className="h-6 w-6 text-[#a6e3a1]" />
+            <h1 className="text-3xl md:text-4xl font-bold text-[#a6e3a1]">
+              Leaderboards
+            </h1>
+          </div>
           <p className="text-base text-ctp-subtext1 max-w-3xl mx-auto animate-fade-in-delay">
             Browse the fastest times across all categories and platforms
           </p>

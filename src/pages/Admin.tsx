@@ -1142,18 +1142,13 @@ const Admin = () => {
     <div className="min-h-screen bg-[#1e1e2e] text-[hsl(220,17%,92%)] py-6">
       <div className="max-w-7xl mx-auto px-4">
         <div className="text-center mb-8 animate-fade-in">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="relative">
-              <div className="absolute inset-0 bg-[#cba6f7]/20 blur-3xl rounded-full animate-pulse"></div>
-              <div className="p-3 rounded-xl bg-gradient-to-br from-[#cba6f7] to-[#b4a0e2] shadow-lg relative z-10">
-                <ShieldAlert className="h-8 w-8 text-[hsl(240,21%,15%)]" />
-              </div>
-            </div>
-            <h1 className="text-4xl md:text-5xl font-bold text-[#f2cdcd]">
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <ShieldAlert className="h-6 w-6 text-[#f2cdcd]" />
+            <h1 className="text-3xl md:text-4xl font-bold text-[#f2cdcd]">
               Admin Panel
             </h1>
           </div>
-          <p className="text-[hsl(222,15%,70%)] max-w-2xl mx-auto text-base animate-fade-in-delay">
+          <p className="text-base text-ctp-subtext1 max-w-3xl mx-auto animate-fade-in-delay">
             Review and manage submitted speedruns and site resources.
           </p>
         </div>
