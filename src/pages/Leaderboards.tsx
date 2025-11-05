@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Filter, User, Users, Trophy, Sparkles, TrendingUp, Star, Gem } from "lucide-react";
 import { LeaderboardTable } from "@/components/LeaderboardTable";
-import { getLeaderboardEntries, getCategories, getPlatforms, runTypes } from "@/lib/db";
+import { getLeaderboardEntries, getCategories, getPlatforms, runTypes, getLevels } from "@/lib/db";
 import { LeaderboardEntry } from "@/types/database";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,30 +14,50 @@ import LegoGoldBrickIcon from "@/components/icons/LegoGoldBrickIcon";
 const Leaderboards = () => {
   const [leaderboardType, setLeaderboardType] = useState<'regular' | 'individual-level' | 'community-golds'>('regular');
   const [availableCategories, setAvailableCategories] = useState<{ id: string; name: string }[]>([]);
+  const [availableLevels, setAvailableLevels] = useState<{ id: string; name: string }[]>([]);
   const [availablePlatforms, setAvailablePlatforms] = useState<{ id: string; name: string }[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedLevel, setSelectedLevel] = useState("");
   const [selectedPlatform, setSelectedPlatform] = useState("");
   const [selectedRunType, setSelectedRunType] = useState(runTypes[0]?.id || "");
   const [showObsoleteRuns, setShowObsoleteRuns] = useState("false");
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [levelsLoading, setLevelsLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       setCategoriesLoading(true);
+      setLevelsLoading(true);
       try {
-        const [fetchedCategories, fetchedPlatforms] = await Promise.all([
-          getCategories(leaderboardType),
+        // For Individual Level: fetch Story/Free Play categories
+        // For Community Golds: fetch full game categories
+        // For Regular: fetch regular categories
+        const categoryType = leaderboardType === 'community-golds' ? 'regular' : leaderboardType;
+        
+        const [fetchedCategories, fetchedLevels, fetchedPlatforms] = await Promise.all([
+          getCategories(categoryType),
+          getLevels(),
           getPlatforms()
         ]);
+        
         setAvailableCategories(fetchedCategories);
+        setAvailableLevels(fetchedLevels);
         setAvailablePlatforms(fetchedPlatforms);
+        
         if (fetchedCategories.length > 0) {
           setSelectedCategory(fetchedCategories[0].id);
         } else {
           setSelectedCategory("");
         }
+        
+        if (fetchedLevels.length > 0) {
+          setSelectedLevel(fetchedLevels[0].id);
+        } else {
+          setSelectedLevel("");
+        }
+        
         if (fetchedPlatforms.length > 0 && !selectedPlatform) {
           setSelectedPlatform(fetchedPlatforms[0].id);
         }
@@ -45,6 +65,7 @@ const Leaderboards = () => {
         // Silent fail
       } finally {
         setCategoriesLoading(false);
+        setLevelsLoading(false);
       }
     };
     
@@ -60,7 +81,8 @@ const Leaderboards = () => {
           selectedPlatform,
           selectedRunType,
           showObsoleteRuns === "true",
-          leaderboardType
+          leaderboardType,
+          (leaderboardType === 'individual-level' || leaderboardType === 'community-golds') ? selectedLevel : undefined
         );
         setLeaderboardData(data);
       } catch (error) {
@@ -70,10 +92,13 @@ const Leaderboards = () => {
       }
     };
 
-    if (selectedCategory && selectedPlatform && selectedRunType) {
+    const hasRequiredFilters = selectedCategory && selectedPlatform && selectedRunType;
+    const hasLevelFilter = leaderboardType === 'regular' || (leaderboardType !== 'regular' && selectedLevel);
+    
+    if (hasRequiredFilters && hasLevelFilter) {
       fetchLeaderboardData();
     }
-  }, [selectedCategory, selectedPlatform, selectedRunType, showObsoleteRuns, leaderboardType]);
+  }, [selectedCategory, selectedPlatform, selectedRunType, selectedLevel, showObsoleteRuns, leaderboardType]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[hsl(240,21%,15%)] to-[hsl(235,19%,13%)] text-[hsl(220,17%,92%)] py-6">
@@ -97,7 +122,7 @@ const Leaderboards = () => {
           <TabsList className="grid w-full grid-cols-3 bg-[hsl(240,21%,16%)] border border-[hsl(235,13%,30%)] mb-6">
             <TabsTrigger value="regular" className="data-[state=active]:bg-[hsl(240,21%,18%)]">
               <Trophy className="h-4 w-4 mr-2" />
-              Regular
+              Full Game
             </TabsTrigger>
             <TabsTrigger value="individual-level" className="data-[state=active]:bg-[hsl(240,21%,18%)]">
               <Star className="h-4 w-4 mr-2" />
@@ -110,6 +135,23 @@ const Leaderboards = () => {
           </TabsList>
 
           <TabsContent value={leaderboardType} className="mt-0">
+            {/* Category Tabs */}
+            {availableCategories.length > 0 && (
+              <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl mb-6">
+                <CardContent className="p-4">
+                  <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
+                    <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${availableCategories.length}, 1fr)` }}>
+                      {availableCategories.map((category) => (
+                        <TabsTrigger key={category.id} value={category.id} className="data-[state=active]:bg-[hsl(240,21%,18%)]">
+                          {category.name}
+                        </TabsTrigger>
+                      ))}
+                    </TabsList>
+                  </Tabs>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Filters */}
             <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl mb-6">
           <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
@@ -124,21 +166,23 @@ const Leaderboards = () => {
           </CardHeader>
           <CardContent className="p-5">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div>
-                <label className="block text-sm font-semibold mb-2 text-[hsl(220,17%,92%)]">Category</label>
-                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                  <SelectTrigger className="bg-[hsl(240,21%,18%)] border-[hsl(235,13%,30%)] h-10 text-sm hover:border-[hsl(var(--mocha-mauve))] transition-colors">
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableCategories.map((category) => (
-                      <SelectItem key={category.id} value={category.id} className="text-sm">
-                        {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {(leaderboardType === 'individual-level' || leaderboardType === 'community-golds') && (
+                <div>
+                  <label className="block text-sm font-semibold mb-2 text-[hsl(220,17%,92%)]">Levels</label>
+                  <Select value={selectedLevel} onValueChange={setSelectedLevel}>
+                    <SelectTrigger className="bg-[hsl(240,21%,18%)] border-[hsl(235,13%,30%)] h-10 text-sm hover:border-[hsl(var(--mocha-mauve))] transition-colors">
+                      <SelectValue placeholder="Select level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableLevels.map((level) => (
+                        <SelectItem key={level.id} value={level.id} className="text-sm">
+                          {level.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-semibold mb-2 text-[hsl(220,17%,92%)]">Platform</label>
                 <Select value={selectedPlatform} onValueChange={setSelectedPlatform}>

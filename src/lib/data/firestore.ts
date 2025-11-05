@@ -1,6 +1,6 @@
 import { db } from "@/lib/firebase";
 import { collection, doc, getDoc, setDoc, updateDoc, deleteDoc, getDocs, query, where, orderBy, limit as firestoreLimit, deleteField, startAfter } from "firebase/firestore";
-import { Player, LeaderboardEntry, DownloadEntry, Category, Platform } from "@/types/database";
+import { Player, LeaderboardEntry, DownloadEntry, Category, Platform, Level } from "@/types/database";
 import { calculatePoints } from "@/lib/utils";
 
 export const getLeaderboardEntriesFirestore = async (
@@ -8,7 +8,8 @@ export const getLeaderboardEntriesFirestore = async (
   platformId?: string,
   runType?: 'solo' | 'co-op',
   includeObsolete?: boolean,
-  leaderboardType?: 'regular' | 'individual-level' | 'community-golds'
+  leaderboardType?: 'regular' | 'individual-level' | 'community-golds',
+  levelId?: string
 ): Promise<LeaderboardEntry[]> => {
   if (!db) return [];
   
@@ -33,6 +34,8 @@ export const getLeaderboardEntriesFirestore = async (
         const entryLeaderboardType = entry.leaderboardType || 'regular';
         const requestedType = leaderboardType || 'regular';
         if (entryLeaderboardType !== requestedType) return false;
+        // Filter by level if specified
+        if (levelId && levelId !== "all" && entry.level !== levelId) return false;
         return true;
       });
 
@@ -142,6 +145,9 @@ export const addLeaderboardEntryFirestore = async (entry: Omit<LeaderboardEntry,
     // Only include optional fields if they have values
     if (entry.player2Name) {
       newEntry.player2Name = entry.player2Name;
+    }
+    if (entry.level) {
+      newEntry.level = entry.level;
     }
     if (entry.videoUrl) {
       newEntry.videoUrl = entry.videoUrl;
@@ -1827,5 +1833,170 @@ export const backfillPointsForAllRunsFirestore = async (): Promise<{
     result.errors.push(`Fatal error: ${error instanceof Error ? error.message : String(error)}`);
     console.error("Backfill fatal error:", error);
     return result;
+  }
+};
+
+// Level management functions
+export const getLevelsFirestore = async (): Promise<Level[]> => {
+  if (!db) return [];
+  try {
+    let q = query(collection(db, "levels"));
+    const querySnapshot = await getDocs(q);
+    const levels = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Level));
+    
+    levels.sort((a, b) => {
+      const orderA = a.order !== undefined ? a.order : Infinity;
+      const orderB = b.order !== undefined ? b.order : Infinity;
+      if (orderA !== orderB) {
+        return orderA - orderB;
+      }
+      return (a.name || "").localeCompare(b.name || "");
+    });
+    
+    return levels;
+  } catch (error) {
+    return [];
+  }
+};
+
+export const addLevelFirestore = async (name: string): Promise<string | null> => {
+  if (!db) return null;
+  try {
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      return null;
+    }
+    
+    const q = query(collection(db, "levels"));
+    const existingSnapshot = await getDocs(q);
+    const existingLevel = existingSnapshot.docs.find(
+      doc => doc.data().name?.trim().toLowerCase() === trimmedName.toLowerCase()
+    );
+    
+    if (existingLevel) {
+      return null;
+    }
+    
+    const existingLevels = existingSnapshot.docs.map(doc => doc.data());
+    const maxOrder = existingLevels.reduce((max, level) => {
+      const order = level.order !== undefined ? level.order : -1;
+      return Math.max(max, order);
+    }, -1);
+    const nextOrder = maxOrder + 1;
+    
+    const newDocRef = doc(collection(db, "levels"));
+    await setDoc(newDocRef, { name: trimmedName, order: nextOrder });
+    return newDocRef.id;
+  } catch (error) {
+    return null;
+  }
+};
+
+export const updateLevelFirestore = async (id: string, name: string): Promise<boolean> => {
+  if (!db) return false;
+  try {
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      return false;
+    }
+    
+    const q = query(collection(db, "levels"));
+    const existingSnapshot = await getDocs(q);
+    const existingLevel = existingSnapshot.docs.find(
+      doc => doc.id !== id && doc.data().name?.trim().toLowerCase() === trimmedName.toLowerCase()
+    );
+    
+    if (existingLevel) {
+      return false;
+    }
+    
+    const levelDocRef = doc(db, "levels", id);
+    await updateDoc(levelDocRef, { name: trimmedName });
+    return true;
+  } catch (error) {
+    return false;
+  }
+};
+
+export const deleteLevelFirestore = async (id: string): Promise<boolean> => {
+  if (!db) return false;
+  try {
+    const levelDocRef = doc(db, "levels", id);
+    await deleteDoc(levelDocRef);
+    return true;
+  } catch (error) {
+    return false;
+  }
+};
+
+export const moveLevelUpFirestore = async (id: string): Promise<boolean> => {
+  if (!db) return false;
+  try {
+    const q = query(collection(db, "levels"));
+    const querySnapshot = await getDocs(q);
+    const levels = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Level));
+    
+    levels.sort((a, b) => {
+      const orderA = a.order !== undefined ? a.order : Infinity;
+      const orderB = b.order !== undefined ? b.order : Infinity;
+      if (orderA !== orderB) {
+        return orderA - orderB;
+      }
+      return (a.name || "").localeCompare(b.name || "");
+    });
+    
+    const currentIndex = levels.findIndex(l => l.id === id);
+    if (currentIndex <= 0) return false;
+    
+    const currentLevel = levels[currentIndex];
+    const previousLevel = levels[currentIndex - 1];
+    
+    const currentOrder = currentLevel.order !== undefined ? currentLevel.order : currentIndex;
+    const previousOrder = previousLevel.order !== undefined ? previousLevel.order : currentIndex - 1;
+    
+    await Promise.all([
+      updateDoc(doc(db, "levels", currentLevel.id), { order: previousOrder }),
+      updateDoc(doc(db, "levels", previousLevel.id), { order: currentOrder })
+    ]);
+    
+    return true;
+  } catch (error) {
+    return false;
+  }
+};
+
+export const moveLevelDownFirestore = async (id: string): Promise<boolean> => {
+  if (!db) return false;
+  try {
+    const q = query(collection(db, "levels"));
+    const querySnapshot = await getDocs(q);
+    const levels = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Level));
+    
+    levels.sort((a, b) => {
+      const orderA = a.order !== undefined ? a.order : Infinity;
+      const orderB = b.order !== undefined ? b.order : Infinity;
+      if (orderA !== orderB) {
+        return orderA - orderB;
+      }
+      return (a.name || "").localeCompare(b.name || "");
+    });
+    
+    const currentIndex = levels.findIndex(l => l.id === id);
+    if (currentIndex < 0 || currentIndex >= levels.length - 1) return false;
+    
+    const currentLevel = levels[currentIndex];
+    const nextLevel = levels[currentIndex + 1];
+    
+    const currentOrder = currentLevel.order !== undefined ? currentLevel.order : currentIndex;
+    const nextOrder = nextLevel.order !== undefined ? nextLevel.order : currentIndex + 1;
+    
+    await Promise.all([
+      updateDoc(doc(db, "levels", currentLevel.id), { order: nextOrder }),
+      updateDoc(doc(db, "levels", nextLevel.id), { order: currentOrder })
+    ]);
+    
+    return true;
+  } catch (error) {
+    return false;
   }
 };

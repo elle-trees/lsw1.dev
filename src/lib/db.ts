@@ -38,6 +38,12 @@ import {
   claimRunFirestore,
   getAllVerifiedRunsFirestore,
   getPlayersByPointsFirestore,
+  getLevelsFirestore,
+  addLevelFirestore,
+  updateLevelFirestore,
+  deleteLevelFirestore,
+  moveLevelUpFirestore,
+  moveLevelDownFirestore,
 } from "./data/firestore";
 
 const defaultCategories = [
@@ -126,9 +132,10 @@ export const getLeaderboardEntries = async (
   platformId?: string,
   runType?: 'solo' | 'co-op',
   includeObsolete?: boolean,
-  leaderboardType?: 'regular' | 'individual-level' | 'community-golds'
+  leaderboardType?: 'regular' | 'individual-level' | 'community-golds',
+  levelId?: string
 ): Promise<LeaderboardEntry[]> => {
-  return getLeaderboardEntriesFirestore(categoryId, platformId, runType, includeObsolete, leaderboardType);
+  return getLeaderboardEntriesFirestore(categoryId, platformId, runType, includeObsolete, leaderboardType, levelId);
 };
 export const getLeaderboardEntryById = getLeaderboardEntryByIdFirestore;
 export const addLeaderboardEntry = addLeaderboardEntryFirestore;
@@ -185,6 +192,13 @@ export const claimRun = claimRunFirestore;
 export const getAllVerifiedRuns = getAllVerifiedRunsFirestore;
 
 export const getPlayersByPoints = getPlayersByPointsFirestore;
+
+export const getLevels = getLevelsFirestore;
+export const addLevel = addLevelFirestore;
+export const updateLevel = updateLevelFirestore;
+export const deleteLevel = deleteLevelFirestore;
+export const moveLevelUp = moveLevelUpFirestore;
+export const moveLevelDown = moveLevelDownFirestore;
 
 export const backfillPointsForAllRuns = async () => {
   const { backfillPointsForAllRunsFirestore } = await import("./data/firestore");

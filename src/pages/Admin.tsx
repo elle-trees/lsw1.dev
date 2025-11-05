@@ -38,6 +38,12 @@ import {
   deletePlatform,
   movePlatformUp,
   movePlatformDown,
+  getLevels,
+  addLevel,
+  updateLevel,
+  deleteLevel,
+  moveLevelUp,
+  moveLevelDown,
   backfillPointsForAllRuns,
 } from "@/lib/db";
 import { useUploadThing } from "@/lib/uploadthing";
@@ -91,12 +97,21 @@ const Admin = () => {
   const [updatingPlatform, setUpdatingPlatform] = useState(false);
   const [reorderingPlatform, setReorderingPlatform] = useState<string | null>(null);
   
+  const [newLevelName, setNewLevelName] = useState("");
+  const [editingLevel, setEditingLevel] = useState<{ id: string; name: string } | null>(null);
+  const [editingLevelName, setEditingLevelName] = useState("");
+  const [addingLevel, setAddingLevel] = useState(false);
+  const [updatingLevel, setUpdatingLevel] = useState(false);
+  const [reorderingLevel, setReorderingLevel] = useState<string | null>(null);
+  
   const [manualRunLeaderboardType, setManualRunLeaderboardType] = useState<'regular' | 'individual-level' | 'community-golds'>('regular');
+  const [availableLevels, setAvailableLevels] = useState<{ id: string; name: string }[]>([]);
   const [manualRun, setManualRun] = useState({
     playerName: "",
     playerUsername: "",
     player2Name: "",
     category: "",
+    level: "",
     platform: "",
     runType: "solo" as 'solo' | 'co-op',
     time: "",
@@ -120,7 +135,21 @@ const Admin = () => {
   useEffect(() => {
     fetchPlatforms();
     fetchCategories('regular'); // Load regular categories by default
+    fetchLevels();
   }, []);
+
+  const fetchLevels = async () => {
+    try {
+      const levelsData = await getLevels();
+      setAvailableLevels(levelsData);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load levels.",
+        variant: "destructive",
+      });
+    }
+  };
 
   useEffect(() => {
     if (firestorePlatforms.length > 0 && !manualRun.platform) {
@@ -130,8 +159,9 @@ const Admin = () => {
 
   useEffect(() => {
     // Fetch categories when leaderboard type changes for manual run
-    fetchCategories(manualRunLeaderboardType);
-    setManualRun(prev => ({ ...prev, category: "" })); // Reset category when type changes
+    const categoryType = manualRunLeaderboardType === 'community-golds' ? 'regular' : manualRunLeaderboardType;
+    fetchCategories(categoryType);
+    setManualRun(prev => ({ ...prev, category: "", level: "" })); // Reset category and level when type changes
   }, [manualRunLeaderboardType]);
 
   const fetchAllData = async () => {
@@ -734,6 +764,147 @@ const Admin = () => {
       setReorderingPlatform(null);
     }
   };
+
+  // Level management handlers
+  const handleAddLevel = async () => {
+    if (!newLevelName.trim()) {
+      return;
+    }
+    setAddingLevel(true);
+    try {
+      const levelId = await addLevel(newLevelName.trim());
+      if (levelId) {
+        toast({
+          title: "Level Added",
+          description: "Level has been added.",
+        });
+        setNewLevelName("");
+        await fetchLevels();
+      } else {
+        throw new Error("Another level with this name already exists.");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add level.",
+        variant: "destructive",
+      });
+    } finally {
+      setAddingLevel(false);
+    }
+  };
+
+  const handleStartEditLevel = (level: { id: string; name: string }) => {
+    setEditingLevel(level);
+    setEditingLevelName(level.name);
+  };
+
+  const handleCancelEditLevel = () => {
+    setEditingLevel(null);
+    setEditingLevelName("");
+  };
+
+  const handleSaveEditLevel = async () => {
+    if (!editingLevel || !editingLevelName.trim()) {
+      return;
+    }
+    
+    setUpdatingLevel(true);
+    try {
+      const success = await updateLevel(editingLevel.id, editingLevelName.trim());
+      if (success) {
+        toast({
+          title: "Level Updated",
+          description: "Level has been updated.",
+        });
+        setEditingLevel(null);
+        setEditingLevelName("");
+        await fetchLevels();
+      } else {
+        throw new Error("Another level with this name already exists.");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update level.",
+        variant: "destructive",
+      });
+    } finally {
+      setUpdatingLevel(false);
+    }
+  };
+
+  const handleDeleteLevel = async (levelId: string) => {
+    if (!window.confirm("Are you sure you want to delete this level? This may affect existing runs.")) {
+      return;
+    }
+    try {
+      const success = await deleteLevel(levelId);
+      if (success) {
+        toast({
+          title: "Level Deleted",
+          description: "Level has been removed.",
+        });
+        await fetchLevels();
+      } else {
+        throw new Error("Failed to delete level. It may not exist or you may not have permission.");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete level.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleMoveLevelUp = async (levelId: string) => {
+    setReorderingLevel(levelId);
+    try {
+      const success = await moveLevelUp(levelId);
+      if (success) {
+        await fetchLevels();
+      } else {
+        toast({
+          title: "Cannot Move",
+          description: "Level is already at the top.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to move level.",
+        variant: "destructive",
+      });
+    } finally {
+      setReorderingLevel(null);
+    }
+  };
+
+  const handleMoveLevelDown = async (levelId: string) => {
+    setReorderingLevel(levelId);
+    try {
+      const success = await moveLevelDown(levelId);
+      if (success) {
+        await fetchLevels();
+      } else {
+        toast({
+          title: "Cannot Move",
+          description: "Level is already at the bottom.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to move level.",
+        variant: "destructive",
+      });
+    } finally {
+      setReorderingLevel(null);
+    }
+  };
   
   // Manual run input handler
   const handleSearchPlayer = async () => {
@@ -821,6 +992,16 @@ const Admin = () => {
       });
       return;
     }
+
+    // For ILs and Community Golds, level is required
+    if ((manualRunLeaderboardType === 'individual-level' || manualRunLeaderboardType === 'community-golds') && !manualRun.level) {
+      toast({
+        title: "Missing Information",
+        description: "Please select a level.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     if (manualRun.runType === 'co-op' && !manualRun.player2Name) {
       toast({
@@ -890,6 +1071,9 @@ const Admin = () => {
       if (manualRun.runType === 'co-op' && manualRun.player2Name && manualRun.player2Name.trim()) {
         entry.player2Name = manualRun.player2Name.trim();
       }
+      if ((manualRunLeaderboardType === 'individual-level' || manualRunLeaderboardType === 'community-golds') && manualRun.level) {
+        entry.level = manualRun.level;
+      }
       if (manualRun.videoUrl && manualRun.videoUrl.trim()) {
         entry.videoUrl = manualRun.videoUrl.trim();
       }
@@ -916,6 +1100,7 @@ const Admin = () => {
                           playerUsername: "",
                           player2Name: "",
                           category: "",
+                          level: "",
                           platform: firestorePlatforms[0]?.id || "",
                           runType: "solo",
                           time: "",
@@ -974,7 +1159,7 @@ const Admin = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-5 mb-6 bg-[hsl(240,21%,18%)] border border-[hsl(235,13%,30%)] rounded-lg p-1 shadow-lg">
+          <TabsList className="grid w-full grid-cols-6 mb-6 bg-[hsl(240,21%,18%)] border border-[hsl(235,13%,30%)] rounded-lg p-1 shadow-lg">
             <TabsTrigger 
               value="runs" 
               className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#cba6f7] data-[state=active]:to-[#b4a0e2] data-[state=active]:text-[hsl(240,21%,15%)] data-[state=active]:shadow-lg transition-all duration-300 rounded-md font-medium hover:bg-[hsl(240,21%,20%)]"
@@ -986,6 +1171,12 @@ const Admin = () => {
               className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#cba6f7] data-[state=active]:to-[#b4a0e2] data-[state=active]:text-[hsl(240,21%,15%)] data-[state=active]:shadow-lg transition-all duration-300 rounded-md font-medium hover:bg-[hsl(240,21%,20%)]"
             >
               Categories
+            </TabsTrigger>
+            <TabsTrigger 
+              value="levels" 
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#cba6f7] data-[state=active]:to-[#b4a0e2] data-[state=active]:text-[hsl(240,21%,15%)] data-[state=active]:shadow-lg transition-all duration-300 rounded-md font-medium hover:bg-[hsl(240,21%,20%)]"
+            >
+              Levels
             </TabsTrigger>
             <TabsTrigger 
               value="platforms" 
@@ -1184,7 +1375,7 @@ const Admin = () => {
                         <SelectItem value="regular">
                           <div className="flex items-center gap-2">
                             <Trophy className="h-4 w-4" />
-                            Regular Leaderboard
+                            Full Game
                           </div>
                         </SelectItem>
                         <SelectItem value="individual-level">
@@ -1203,25 +1394,49 @@ const Admin = () => {
                     </Select>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Category Selection - Tabs */}
+                  {firestoreCategories.length > 0 && (
                     <div>
-                      <Label htmlFor="manualCategory">Category *</Label>
+                      <Label className="text-sm font-semibold mb-2 block">
+                        {manualRunLeaderboardType === 'individual-level' ? 'Category Type *' : 
+                         manualRunLeaderboardType === 'community-golds' ? 'Full Game Category *' : 
+                         'Category *'}
+                      </Label>
+                      <Tabs value={manualRun.category} onValueChange={(value) => setManualRun({ ...manualRun, category: value })}>
+                        <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${firestoreCategories.length}, 1fr)` }}>
+                          {firestoreCategories.map((category) => (
+                            <TabsTrigger key={category.id} value={category.id} className="data-[state=active]:bg-[hsl(240,21%,18%)] text-sm">
+                              {category.name}
+                            </TabsTrigger>
+                          ))}
+                        </TabsList>
+                      </Tabs>
+                    </div>
+                  )}
+
+                  {/* Level Selection for ILs and Community Golds */}
+                  {(manualRunLeaderboardType === 'individual-level' || manualRunLeaderboardType === 'community-golds') && (
+                    <div>
+                      <Label htmlFor="manualLevel">Level *</Label>
                       <Select
-                        value={manualRun.category}
-                        onValueChange={(value) => setManualRun({ ...manualRun, category: value })}
+                        value={manualRun.level}
+                        onValueChange={(value) => setManualRun({ ...manualRun, level: value })}
                       >
                         <SelectTrigger className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]">
-                          <SelectValue placeholder="Select category" />
+                          <SelectValue placeholder="Select level" />
                         </SelectTrigger>
                         <SelectContent>
-                          {firestoreCategories.map((category) => (
-                            <SelectItem key={category.id} value={category.id}>
-                              {category.name}
+                          {availableLevels.map((level) => (
+                            <SelectItem key={level.id} value={level.id}>
+                              {level.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="manualPlatform">Platform *</Label>
                       <Select
@@ -1526,7 +1741,7 @@ const Admin = () => {
               <TabsList className="grid w-full grid-cols-3 bg-[hsl(240,21%,16%)] border border-[hsl(235,13%,30%)] mb-4">
                 <TabsTrigger value="regular" className="data-[state=active]:bg-[hsl(240,21%,18%)]">
                   <Trophy className="h-4 w-4 mr-2" />
-                  Regular
+                  Full Game
                 </TabsTrigger>
                 <TabsTrigger value="individual-level" className="data-[state=active]:bg-[hsl(240,21%,18%)]">
                   <Star className="h-4 w-4 mr-2" />
@@ -1669,6 +1884,150 @@ const Admin = () => {
             </Tabs>
           </CardContent>
         </Card>
+          </TabsContent>
+
+          {/* Level Management Section */}
+          <TabsContent value="levels" className="space-y-4 animate-fade-in">
+            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl hover:shadow-[#cba6f7]/20 hover:border-[#cba6f7]/50">
+              <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <div className="p-1.5 rounded-lg bg-gradient-to-br from-[#cba6f7] to-[#b4a0e2]">
+                    <Star className="h-5 w-5 text-[hsl(240,21%,15%)]" />
+                  </div>
+                  <span className="bg-gradient-to-r from-[#cba6f7] to-[#f38ba8] bg-clip-text text-transparent">
+                    Manage Levels
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div>
+                    <h3 className="text-base font-semibold mb-3">Add New Level</h3>
+                    <form onSubmit={(e) => { e.preventDefault(); handleAddLevel(); }} className="space-y-3">
+                      <div>
+                        <Label htmlFor="levelName" className="text-sm">Level Name</Label>
+                        <Input
+                          id="levelName"
+                          type="text"
+                          value={newLevelName}
+                          onChange={(e) => setNewLevelName(e.target.value)}
+                          placeholder="e.g., Level 1"
+                          required
+                          className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] h-9 text-sm"
+                        />
+                      </div>
+                      <Button 
+                        type="submit" 
+                        disabled={addingLevel}
+                        size="sm"
+                        className="bg-gradient-to-r from-[#cba6f7] to-[#b4a0e2] hover:from-[#b4a0e2] hover:to-[#cba6f7] text-[hsl(240,21%,15%)] font-bold flex items-center gap-2 transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                      >
+                        <PlusCircle className="h-3 w-3" />
+                        {addingLevel ? "Adding..." : "Add Level"}
+                      </Button>
+                    </form>
+                  </div>
+                  <div>
+                    <h3 className="text-base font-semibold mb-3">Existing Levels</h3>
+                    {availableLevels.length === 0 ? (
+                      <p className="text-[hsl(222,15%,60%)] text-center py-4 text-sm">No levels found.</p>
+                    ) : (
+                      <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="border-b border-[hsl(235,13%,30%)] hover:bg-transparent">
+                              <TableHead className="py-2 px-3 text-left text-xs">Name</TableHead>
+                              <TableHead className="py-2 px-3 text-center text-xs">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {availableLevels.map((level, index) => (
+                              <TableRow key={level.id} className="border-b border-[hsl(235,13%,30%)] hover:bg-[hsl(235,19%,13%)] transition-all duration-200 hover:shadow-sm">
+                                <TableCell className="py-2 px-3 font-medium text-sm">
+                                  {editingLevel?.id === level.id ? (
+                                    <Input
+                                      value={editingLevelName}
+                                      onChange={(e) => setEditingLevelName(e.target.value)}
+                                      className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] h-8 text-sm"
+                                      autoFocus
+                                    />
+                                  ) : (
+                                    level.name
+                                  )}
+                                </TableCell>
+                                <TableCell className="py-2 px-3 text-center space-x-1">
+                                  {editingLevel?.id === level.id ? (
+                                    <>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={handleSaveEditLevel}
+                                        disabled={updatingLevel}
+                                        className="text-green-500 hover:bg-green-900/20 h-7"
+                                      >
+                                        Save
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={handleCancelEditLevel}
+                                        disabled={updatingLevel}
+                                        className="text-gray-500 hover:bg-gray-900/20 h-7"
+                                      >
+                                        Cancel
+                                      </Button>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleMoveLevelUp(level.id)}
+                                        disabled={reorderingLevel === level.id || index === 0}
+                                        className="text-purple-500 hover:bg-purple-900/20 disabled:opacity-50 h-7 w-7 p-0 transition-all duration-200 hover:scale-110"
+                                        title="Move up"
+                                      >
+                                        <ArrowUp className="h-3 w-3" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleMoveLevelDown(level.id)}
+                                        disabled={reorderingLevel === level.id || index === availableLevels.length - 1}
+                                        className="text-purple-500 hover:bg-purple-900/20 disabled:opacity-50 h-7 w-7 p-0 transition-all duration-200 hover:scale-110"
+                                        title="Move down"
+                                      >
+                                        <ArrowDown className="h-3 w-3" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleStartEditLevel(level)}
+                                        className="text-blue-500 hover:bg-blue-900/20 h-7 w-7 p-0 transition-all duration-200 hover:scale-110"
+                                      >
+                                        <Edit2 className="h-3 w-3" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleDeleteLevel(level.id)}
+                                        className="text-red-500 hover:bg-red-900/20 h-7 w-7 p-0 transition-all duration-200 hover:scale-110"
+                                      >
+                                        <Trash2 className="h-3 w-3" />
+                                      </Button>
+                                    </>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Platform Management Section */}

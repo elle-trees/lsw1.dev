@@ -7,9 +7,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Upload, Gamepad2, Timer, User, Users, FileText, Sparkles, CheckCircle, Calendar, ChevronDown, ChevronUp, Trophy, Star, Gem } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
-import { addLeaderboardEntry, getCategories, getPlatforms, runTypes, getPlayerByDisplayName } from "@/lib/db";
+import { addLeaderboardEntry, getCategories, getPlatforms, runTypes, getPlayerByDisplayName, getLevels } from "@/lib/db";
 import { useNavigate } from "react-router-dom";
 
 const SubmitRun = () => {
@@ -18,6 +19,7 @@ const SubmitRun = () => {
   const navigate = useNavigate();
   
   const [availableCategories, setAvailableCategories] = useState<{ id: string; name: string }[]>([]);
+  const [availableLevels, setAvailableLevels] = useState<{ id: string; name: string }[]>([]);
   const [availablePlatforms, setAvailablePlatforms] = useState<{ id: string; name: string }[]>([]);
   const [leaderboardType, setLeaderboardType] = useState<'regular' | 'individual-level' | 'community-golds'>('regular');
   
@@ -25,6 +27,7 @@ const SubmitRun = () => {
     playerName: currentUser?.displayName || "",
     player2Name: "", // New state for player2Name
     category: "",
+    level: "", // Level for ILs and Community Golds
     platform: "",
     runType: "",
     time: "",
@@ -39,16 +42,28 @@ const SubmitRun = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [fetchedCategories, fetchedPlatforms] = await Promise.all([
-          getCategories(leaderboardType),
+        // For Individual Level: fetch Story/Free Play categories
+        // For Community Golds: fetch full game categories
+        // For Regular: fetch regular categories
+        const categoryType = leaderboardType === 'community-golds' ? 'regular' : leaderboardType;
+        
+        const [fetchedCategories, fetchedLevels, fetchedPlatforms] = await Promise.all([
+          getCategories(categoryType),
+          getLevels(),
           getPlatforms()
         ]);
         setAvailableCategories(fetchedCategories);
+        setAvailableLevels(fetchedLevels);
         setAvailablePlatforms(fetchedPlatforms);
         if (fetchedCategories.length > 0 && !formData.category) {
           setFormData(prev => ({ ...prev, category: fetchedCategories[0].id }));
         } else if (fetchedCategories.length === 0) {
           setFormData(prev => ({ ...prev, category: "" }));
+        }
+        if (fetchedLevels.length > 0 && (leaderboardType === 'individual-level' || leaderboardType === 'community-golds') && !formData.level) {
+          setFormData(prev => ({ ...prev, level: fetchedLevels[0].id }));
+        } else if (leaderboardType === 'regular') {
+          setFormData(prev => ({ ...prev, level: "" }));
         }
       } catch (error) {
         // Silent fail
@@ -173,6 +188,11 @@ const SubmitRun = () => {
         date: formData.date,
         verified: false,
       };
+
+      // Add level for ILs and Community Golds
+      if (formData.level && (leaderboardType === 'individual-level' || leaderboardType === 'community-golds')) {
+        entry.level = formData.level;
+      }
       
       // Only include player2Name for co-op runs with a valid value
       if (formData.runType === 'co-op' && formData.player2Name && formData.player2Name.trim()) {
@@ -271,7 +291,7 @@ const SubmitRun = () => {
                       <SelectItem value="regular" className="text-sm">
                         <div className="flex items-center gap-2">
                           <Trophy className="h-4 w-4" />
-                          Regular Leaderboard
+                          Full Game
                         </div>
                       </SelectItem>
                       <SelectItem value="individual-level" className="text-sm">
@@ -369,22 +389,46 @@ const SubmitRun = () => {
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-4">
+                {/* Category Selection - Tabs for all types */}
+                {availableCategories.length > 0 && (
                   <div>
-                    <Label htmlFor="category" className="text-sm font-semibold mb-1.5">Category *</Label>
-                    <Select value={formData.category} onValueChange={(value) => handleSelectChange("category", value)}>
+                    <Label className="text-sm font-semibold mb-2 block">
+                      {leaderboardType === 'individual-level' ? 'Category Type *' : 
+                       leaderboardType === 'community-golds' ? 'Full Game Category *' : 
+                       'Category *'}
+                    </Label>
+                    <Tabs value={formData.category} onValueChange={(value) => handleSelectChange("category", value)}>
+                      <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${availableCategories.length}, 1fr)` }}>
+                        {availableCategories.map((category) => (
+                          <TabsTrigger key={category.id} value={category.id} className="data-[state=active]:bg-[hsl(240,21%,18%)] text-sm">
+                            {category.name}
+                          </TabsTrigger>
+                        ))}
+                      </TabsList>
+                    </Tabs>
+                  </div>
+                )}
+
+                {/* Level Selection for ILs and Community Golds */}
+                {(leaderboardType === 'individual-level' || leaderboardType === 'community-golds') && (
+                  <div>
+                    <Label htmlFor="level" className="text-sm font-semibold mb-1.5">Level *</Label>
+                    <Select value={formData.level} onValueChange={(value) => handleSelectChange("level", value)}>
                       <SelectTrigger className="bg-[hsl(240,21%,18%)] border-[hsl(235,13%,30%)] h-10 text-sm hover:border-[hsl(var(--mocha-mauve))] transition-colors">
-                        <SelectValue placeholder="Select category" />
+                        <SelectValue placeholder="Select level" />
                       </SelectTrigger>
                       <SelectContent>
-                        {availableCategories.map((category) => (
-                          <SelectItem key={category.id} value={category.id} className="text-sm">
-                            {category.name}
+                        {availableLevels.map((level) => (
+                          <SelectItem key={level.id} value={level.id} className="text-sm">
+                            {level.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="platform" className="text-sm font-semibold mb-1.5">Platform *</Label>
                     <Select value={formData.platform} onValueChange={(value) => handleSelectChange("platform", value)}>
