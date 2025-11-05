@@ -137,8 +137,6 @@ const Admin = () => {
   const [pointsConfig, setPointsConfig] = useState<PointsConfig | null>(null);
   const [loadingPointsConfig, setLoadingPointsConfig] = useState(false);
   const [savingPointsConfig, setSavingPointsConfig] = useState(false);
-  const [anyPercentTimeInput, setAnyPercentTimeInput] = useState<string>("");
-  const [nocutsNoshipsTimeInput, setNocutsNoshipsTimeInput] = useState<string>("");
 
   useEffect(() => {
     fetchPlatforms();
@@ -152,25 +150,6 @@ const Admin = () => {
     try {
       const config = await getPointsConfig();
       setPointsConfig(config);
-      
-      // Initialize time input strings from config
-      const anyPercentSeconds = config.anyPercentThreshold ?? 3300;
-      const nocutsSeconds = config.nocutsNoshipsThreshold ?? 1740;
-      const anyPercentHours = Math.floor(anyPercentSeconds / 3600);
-      const anyPercentMinutes = Math.floor((anyPercentSeconds % 3600) / 60);
-      const anyPercentSecs = anyPercentSeconds % 60;
-      const nocutsHours = Math.floor(nocutsSeconds / 3600);
-      const nocutsMinutes = Math.floor((nocutsSeconds % 3600) / 60);
-      const nocutsSecs = nocutsSeconds % 60;
-      
-      setAnyPercentTimeInput(`${anyPercentHours.toString().padStart(2, '0')}:${anyPercentMinutes.toString().padStart(2, '0')}:${anyPercentSecs.toString().padStart(2, '0')}`);
-      setNocutsNoshipsTimeInput(`${nocutsHours.toString().padStart(2, '0')}:${nocutsMinutes.toString().padStart(2, '0')}:${nocutsSecs.toString().padStart(2, '0')}`);
-      
-      // Also fetch all categories for the eligible categories list
-      // Fetch regular categories if not already loaded
-      if (firestoreCategories.length === 0) {
-        await fetchCategories('regular');
-      }
     } catch (error) {
       toast({
         title: "Error",
@@ -1183,8 +1162,8 @@ const Admin = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#1e1e2e] text-ctp-text py-4 sm:py-6">
-      <div className="max-w-7xl mx-auto px-2 sm:px-4">
+    <div className="min-h-screen bg-[#1e1e2e] text-ctp-text py-4 sm:py-6 overflow-x-hidden">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 w-full">
         <div className="text-center mb-8 animate-fade-in">
           <div className="flex items-center justify-center gap-2 mb-4">
             <ShieldAlert className="h-6 w-6 text-[#f2cdcd]" />
@@ -1198,7 +1177,7 @@ const Admin = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 sm:grid-cols-7 mb-6 p-0.5 gap-1 overflow-x-auto">
+          <TabsList className="flex w-full mb-6 p-0.5 gap-1 overflow-x-auto overflow-y-hidden scrollbar-hide" style={{ minWidth: 'max-content' }}>
             <TabsTrigger 
               value="runs" 
               className="data-[state=active]:bg-[#f9e2af] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#f9e2af]/50 text-xs sm:text-sm py-1.5 sm:py-2 px-2 sm:px-3 whitespace-nowrap"
@@ -1305,23 +1284,121 @@ const Admin = () => {
                       </div>
 
                       <div>
-                        <Label htmlFor="baseMultiplier">Base Multiplier</Label>
+                        <Label htmlFor="basePointsPerRun">Base Points Per Run</Label>
                         <Input
-                          id="baseMultiplier"
+                          id="basePointsPerRun"
                           type="number"
-                          value={pointsConfig.baseMultiplier}
-                          onChange={(e) => setPointsConfig({ ...pointsConfig, baseMultiplier: Number(e.target.value) })}
-                          min="1"
+                          value={pointsConfig.basePointsPerRun ?? 10}
+                          onChange={(e) => setPointsConfig({ ...pointsConfig, basePointsPerRun: Number(e.target.value) })}
+                          min="0"
                           step="1"
                           className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
                         />
                         <p className="text-sm text-ctp-overlay0 mt-1">
-                          Base multiplier for exponential point calculation. Faster times get exponentially more points. Default: 800
+                          Flat amount of points awarded for all verified full game runs. Default: 10
                         </p>
                       </div>
                     </div>
 
                     <div className="space-y-4">
+                      <div>
+                        <Label className="text-base font-semibold mb-2 block">Top 3 Bonus Points</Label>
+                        <p className="text-sm text-ctp-overlay0 mb-4">
+                          Additional bonus points for runs ranked 1st, 2nd, or 3rd in their category/platform/runType combination.
+                        </p>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <Label htmlFor="rank1Bonus">1st Place Bonus</Label>
+                            <Input
+                              id="rank1Bonus"
+                              type="number"
+                              value={pointsConfig.top3BonusPoints?.rank1 ?? 50}
+                              onChange={(e) => setPointsConfig({ 
+                                ...pointsConfig, 
+                                top3BonusPoints: {
+                                  rank1: Number(e.target.value),
+                                  rank2: pointsConfig.top3BonusPoints?.rank2 ?? 30,
+                                  rank3: pointsConfig.top3BonusPoints?.rank3 ?? 20,
+                                }
+                              })}
+                              min="0"
+                              step="1"
+                              className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                            />
+                            <p className="text-sm text-ctp-overlay0 mt-1">
+                              Default: 50
+                            </p>
+                          </div>
+                          <div>
+                            <Label htmlFor="rank2Bonus">2nd Place Bonus</Label>
+                            <Input
+                              id="rank2Bonus"
+                              type="number"
+                              value={pointsConfig.top3BonusPoints?.rank2 ?? 30}
+                              onChange={(e) => setPointsConfig({ 
+                                ...pointsConfig, 
+                                top3BonusPoints: {
+                                  rank1: pointsConfig.top3BonusPoints?.rank1 ?? 50,
+                                  rank2: Number(e.target.value),
+                                  rank3: pointsConfig.top3BonusPoints?.rank3 ?? 20,
+                                }
+                              })}
+                              min="0"
+                              step="1"
+                              className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                            />
+                            <p className="text-sm text-ctp-overlay0 mt-1">
+                              Default: 30
+                            </p>
+                          </div>
+                          <div>
+                            <Label htmlFor="rank3Bonus">3rd Place Bonus</Label>
+                            <Input
+                              id="rank3Bonus"
+                              type="number"
+                              value={pointsConfig.top3BonusPoints?.rank3 ?? 20}
+                              onChange={(e) => setPointsConfig({ 
+                                ...pointsConfig, 
+                                top3BonusPoints: {
+                                  rank1: pointsConfig.top3BonusPoints?.rank1 ?? 50,
+                                  rank2: pointsConfig.top3BonusPoints?.rank2 ?? 30,
+                                  rank3: Number(e.target.value),
+                                }
+                              })}
+                              min="0"
+                              step="1"
+                              className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                            />
+                            <p className="text-sm text-ctp-overlay0 mt-1">
+                              Default: 20
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="platformPoints">Platform Points (Optional)</Label>
+                        <Input
+                          id="platformPoints"
+                          type="number"
+                          value={pointsConfig.platformPoints ?? ""}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setPointsConfig({ 
+                              ...pointsConfig, 
+                              platformPoints: value === "" ? undefined : Number(value)
+                            });
+                          }}
+                          min="0"
+                          step="1"
+                          placeholder="Leave empty to use base points for all platforms"
+                          className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                        />
+                        <p className="text-sm text-ctp-overlay0 mt-1">
+                          Optional: If set, this amount will be used instead of base points for all platforms. Leave empty to use base points for all platforms.
+                        </p>
+                      </div>
+
                       <div>
                         <Label className="text-base font-semibold mb-2 block">Points Eligibility</Label>
                         <p className="text-sm text-ctp-overlay0 mb-4">
@@ -1329,177 +1406,11 @@ const Admin = () => {
                         </p>
                         <ul className="list-disc list-inside space-y-1 text-sm text-ctp-subtext1 ml-4">
                           <li>Full game runs only (not Individual Levels or Community Golds)</li>
-                          <li>GameCube platform only</li>
-                          <li>Any% and Nocuts Noships categories only</li>
-                          <li>All runs get points, but runs UNDER the threshold time get a bonus multiplier</li>
+                          <li>All platforms (configurable flat amount)</li>
+                          <li>All categories</li>
                           <li>Both solo and co-op runs are eligible</li>
+                          <li>Top 3 runs in each category/platform/runType combination receive bonus points</li>
                         </ul>
-                      </div>
-
-                      <div>
-                        <Label className="text-base font-semibold mb-2 block">Category Threshold Times</Label>
-                        <p className="text-sm text-ctp-overlay0 mb-4">
-                          Set the threshold time for each category. Runs UNDER these times receive a bonus multiplier. All runs get points, but faster times get exponentially more. Points are calculated exponentially - faster times get exponentially more points.
-                        </p>
-                        <div className="space-y-4">
-                          <div>
-                            <Label htmlFor="anyPercentThreshold">Any% Threshold Time</Label>
-                            <Input
-                              id="anyPercentThreshold"
-                              type="text"
-                              value={anyPercentTimeInput || (() => {
-                                const seconds = pointsConfig.anyPercentThreshold ?? 3300;
-                                const hours = Math.floor(seconds / 3600);
-                                const minutes = Math.floor((seconds % 3600) / 60);
-                                const secs = seconds % 60;
-                                return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-                              })()}
-                              onChange={(e) => {
-                                const timeStr = e.target.value.trim();
-                                setAnyPercentTimeInput(timeStr);
-                                
-                                // Parse and update config if valid
-                                const parts = timeStr.split(':').map(s => {
-                                  const num = parseInt(s, 10);
-                                  return isNaN(num) ? null : num;
-                                });
-                                
-                                let totalSeconds = pointsConfig?.anyPercentThreshold ?? 3300;
-                                
-                                if (parts.length === 3 && parts.every(p => p !== null)) {
-                                  totalSeconds = parts[0]! * 3600 + parts[1]! * 60 + parts[2]!;
-                                } else if (parts.length === 2 && parts.every(p => p !== null)) {
-                                  totalSeconds = parts[0]! * 60 + parts[1]!;
-                                } else if (parts.length === 1 && parts[0] !== null && parts[0]! >= 0) {
-                                  if (parts[0]! < 10000) {
-                                    totalSeconds = parts[0]!;
-                                  } else {
-                                    totalSeconds = parts[0]! * 60;
-                                  }
-                                }
-                                
-                                if (totalSeconds > 0 && pointsConfig) {
-                                  setPointsConfig({ ...pointsConfig, anyPercentThreshold: totalSeconds });
-                                }
-                              }}
-                              onBlur={(e) => {
-                                const timeStr = e.target.value.trim();
-                                const parts = timeStr.split(':').map(s => {
-                                  const num = parseInt(s, 10);
-                                  return isNaN(num) ? null : num;
-                                });
-                                
-                                let totalSeconds = pointsConfig?.anyPercentThreshold ?? 3300;
-                                
-                                if (parts.length === 3 && parts.every(p => p !== null)) {
-                                  totalSeconds = parts[0]! * 3600 + parts[1]! * 60 + parts[2]!;
-                                } else if (parts.length === 2 && parts.every(p => p !== null)) {
-                                  totalSeconds = parts[0]! * 60 + parts[1]!;
-                                } else if (parts.length === 1 && parts[0] !== null && parts[0]! >= 0) {
-                                  if (parts[0]! < 10000) {
-                                    totalSeconds = parts[0]!;
-                                  } else {
-                                    totalSeconds = parts[0]! * 60;
-                                  }
-                                }
-                                
-                                // Format the display value
-                                const hours = Math.floor(totalSeconds / 3600);
-                                const minutes = Math.floor((totalSeconds % 3600) / 60);
-                                const secs = totalSeconds % 60;
-                                setAnyPercentTimeInput(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`);
-                                
-                                if (totalSeconds > 0 && pointsConfig) {
-                                  setPointsConfig({ ...pointsConfig, anyPercentThreshold: totalSeconds });
-                                }
-                              }}
-                              placeholder="HH:MM:SS or MM:SS"
-                              className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] font-mono"
-                            />
-                            <p className="text-sm text-ctp-overlay0 mt-1">
-                              Any% runs under this time receive a bonus multiplier. All runs get points. Default: 00:55:00 (55 minutes). You can type in HH:MM:SS, MM:SS, or just seconds.
-                            </p>
-                          </div>
-
-                          <div>
-                            <Label htmlFor="nocutsNoshipsThreshold">Nocuts Noships Threshold Time</Label>
-                            <Input
-                              id="nocutsNoshipsThreshold"
-                              type="text"
-                              value={nocutsNoshipsTimeInput || (() => {
-                                const seconds = pointsConfig.nocutsNoshipsThreshold ?? 1740;
-                                const hours = Math.floor(seconds / 3600);
-                                const minutes = Math.floor((seconds % 3600) / 60);
-                                const secs = seconds % 60;
-                                return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-                              })()}
-                              onChange={(e) => {
-                                const timeStr = e.target.value.trim();
-                                setNocutsNoshipsTimeInput(timeStr);
-                                
-                                // Parse and update config if valid
-                                const parts = timeStr.split(':').map(s => {
-                                  const num = parseInt(s, 10);
-                                  return isNaN(num) ? null : num;
-                                });
-                                
-                                let totalSeconds = pointsConfig?.nocutsNoshipsThreshold ?? 1740;
-                                
-                                if (parts.length === 3 && parts.every(p => p !== null)) {
-                                  totalSeconds = parts[0]! * 3600 + parts[1]! * 60 + parts[2]!;
-                                } else if (parts.length === 2 && parts.every(p => p !== null)) {
-                                  totalSeconds = parts[0]! * 60 + parts[1]!;
-                                } else if (parts.length === 1 && parts[0] !== null && parts[0]! >= 0) {
-                                  if (parts[0]! < 10000) {
-                                    totalSeconds = parts[0]!;
-                                  } else {
-                                    totalSeconds = parts[0]! * 60;
-                                  }
-                                }
-                                
-                                if (totalSeconds > 0 && pointsConfig) {
-                                  setPointsConfig({ ...pointsConfig, nocutsNoshipsThreshold: totalSeconds });
-                                }
-                              }}
-                              onBlur={(e) => {
-                                const timeStr = e.target.value.trim();
-                                const parts = timeStr.split(':').map(s => {
-                                  const num = parseInt(s, 10);
-                                  return isNaN(num) ? null : num;
-                                });
-                                
-                                let totalSeconds = pointsConfig?.nocutsNoshipsThreshold ?? 1740;
-                                
-                                if (parts.length === 3 && parts.every(p => p !== null)) {
-                                  totalSeconds = parts[0]! * 3600 + parts[1]! * 60 + parts[2]!;
-                                } else if (parts.length === 2 && parts.every(p => p !== null)) {
-                                  totalSeconds = parts[0]! * 60 + parts[1]!;
-                                } else if (parts.length === 1 && parts[0] !== null && parts[0]! >= 0) {
-                                  if (parts[0]! < 10000) {
-                                    totalSeconds = parts[0]!;
-                                  } else {
-                                    totalSeconds = parts[0]! * 60;
-                                  }
-                                }
-                                
-                                // Format the display value
-                                const hours = Math.floor(totalSeconds / 3600);
-                                const minutes = Math.floor((totalSeconds % 3600) / 60);
-                                const secs = totalSeconds % 60;
-                                setNocutsNoshipsTimeInput(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`);
-                                
-                                if (totalSeconds > 0 && pointsConfig) {
-                                  setPointsConfig({ ...pointsConfig, nocutsNoshipsThreshold: totalSeconds });
-                                }
-                              }}
-                              placeholder="HH:MM:SS or MM:SS"
-                              className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] font-mono"
-                            />
-                            <p className="text-sm text-ctp-overlay0 mt-1">
-                              Nocuts Noships runs under this time receive a bonus multiplier. All runs get points. Default: 00:29:00 (29 minutes). You can type in HH:MM:SS, MM:SS, or just seconds.
-                            </p>
-                          </div>
-                        </div>
                       </div>
                     </div>
 

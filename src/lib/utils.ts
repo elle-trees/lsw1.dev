@@ -86,23 +86,25 @@ export function formatTime(timeString: string): string {
 }
 
 /**
- * Calculate points for a run
+ * Calculate points for a run using simple flat rates
  * Points are awarded for:
- * - Full game runs (not ILs or community golds)
- * - GameCube platform
- * - Any% or Nocuts Noships categories
+ * - Full game runs only (regular leaderboardType, not ILs or community golds)
+ * - All platforms (configurable flat amount)
+ * - All categories
  * - Both solo and co-op runs are eligible
  * 
- * Points are calculated exponentially: faster times get exponentially more points
- * Runs UNDER the threshold time get a bonus multiplier
+ * Points calculation:
+ * - Base points: flat amount for all verified full game runs
+ * - Top 3 bonus: additional points for runs ranked 1st, 2nd, or 3rd in their category
  * 
- * @param timeString - Time string in HH:MM:SS format
- * @param categoryName - Name of the category (e.g., "Any%")
- * @param platformName - Name of the platform (e.g., "GameCube")
- * @param categoryId - Optional category ID for config lookup
- * @param platformId - Optional platform ID for config lookup
- * @param pointsConfig - Optional points configuration, if not provided will use defaults
- * @returns Points awarded for the run (0 for non-supported categories or platforms)
+ * @param timeString - Time string in HH:MM:SS format (not used in new system but kept for compatibility)
+ * @param categoryName - Name of the category (not used in new system but kept for compatibility)
+ * @param platformName - Name of the platform (not used in new system but kept for compatibility)
+ * @param categoryId - Optional category ID (not used in new system but kept for compatibility)
+ * @param platformId - Optional platform ID (not used in new system but kept for compatibility)
+ * @param pointsConfig - Points configuration with basePointsPerRun and top3BonusPoints
+ * @param rank - Optional rank of the run in its category (1-3 for bonus points)
+ * @returns Points awarded for the run
  */
 export function calculatePoints(
   timeString: string, 
@@ -111,77 +113,39 @@ export function calculatePoints(
   categoryId?: string,
   platformId?: string,
   pointsConfig?: { 
-    baseMultiplier?: number;
-    anyPercentThreshold?: number;
-    nocutsNoshipsThreshold?: number;
+    basePointsPerRun?: number;
+    top3BonusPoints?: {
+      rank1?: number;
+      rank2?: number;
+      rank3?: number;
+    };
+    platformPoints?: number;
     enabled?: boolean;
-  }
+  },
+  rank?: number
 ): number {
-  const totalSeconds = parseTimeToSeconds(timeString);
-  if (totalSeconds <= 0) return 0;
-
   // Use config values or defaults
   const config = pointsConfig || {};
   const enabled = config.enabled !== false; // Default to true if not specified
   if (!enabled) return 0;
 
-  const baseMultiplier = config.baseMultiplier ?? 800;
-
-  // Hardcoded: Only GameCube platform is eligible
-  const normalizedPlatform = platformName?.toLowerCase().trim() || "";
-  const platformIdLower = platformId?.toLowerCase().trim() || "";
-  const isGameCube = normalizedPlatform === "gamecube" || 
-                     normalizedPlatform === "game cube" ||
-                     platformIdLower === "gamecube" ||
-                     platformIdLower === "game cube";
+  // Base points for all runs (use platformPoints if specified, otherwise basePointsPerRun)
+  const basePoints = config.platformPoints ?? config.basePointsPerRun ?? 10;
   
-  if (!isGameCube) {
-    return 0;
+  // Start with base points
+  let points = basePoints;
+
+  // Add top 3 bonus if applicable
+  if (rank !== undefined && rank >= 1 && rank <= 3) {
+    const top3Bonus = config.top3BonusPoints || { rank1: 50, rank2: 30, rank3: 20 };
+    if (rank === 1 && top3Bonus.rank1) {
+      points += top3Bonus.rank1;
+    } else if (rank === 2 && top3Bonus.rank2) {
+      points += top3Bonus.rank2;
+    } else if (rank === 3 && top3Bonus.rank3) {
+      points += top3Bonus.rank3;
+    }
   }
 
-  // Hardcoded: Only Any% and Nocuts Noships categories are eligible
-  const normalizedCategory = categoryName.toLowerCase().trim();
-  const categoryIdLower = categoryId?.toLowerCase().trim() || "";
-  const isAnyPercent = normalizedCategory === "any%" || 
-                       categoryIdLower === "any%" ||
-                       categoryIdLower.includes("any%");
-  const isNocutsNoships = normalizedCategory === "nocuts noships" || 
-                          normalizedCategory === "nocutsnoships" ||
-                          categoryIdLower.includes("nocuts") ||
-                          categoryIdLower.includes("noships");
-  
-  if (!isAnyPercent && !isNocutsNoships) {
-    return 0;
-  }
-
-  // Get threshold time for this category
-  let thresholdSeconds: number;
-  if (isAnyPercent) {
-    thresholdSeconds = config.anyPercentThreshold ?? 3300; // 55 minutes default
-  } else {
-    thresholdSeconds = config.nocutsNoshipsThreshold ?? 1740; // 29 minutes default
-  }
-
-  // Calculate base points exponentially for all runs
-  // Formula: points = baseMultiplier * e^(-time/scaleFactor)
-  // Scale factor determines how fast the exponential decay is
-  const scaleFactor = thresholdSeconds / 2; // Half the threshold time as scale factor for good curve
-  let points = baseMultiplier * Math.exp(-totalSeconds / scaleFactor);
-
-  // Apply bonus multiplier for runs UNDER the threshold time
-  // The closer to the threshold, the smaller the bonus. Faster times get exponentially larger bonuses
-  if (totalSeconds < thresholdSeconds) {
-    // Calculate a multiplier that increases as the time gets faster
-    // At exactly the threshold time, multiplier = 1.0 (no bonus)
-    // As time approaches 0, multiplier approaches infinity (but we cap it reasonably)
-    const timeRatio = totalSeconds / thresholdSeconds; // 0 to 1, where 1 = at threshold
-    // Bonus multiplier: 1.0 at threshold, increases exponentially as time decreases
-    // Using: multiplier = 1 + (1 - timeRatio)^2 * 2
-    // This gives: 1.0 at threshold, 1.5 at 50% of threshold, 3.0 at 0
-    const bonusMultiplier = 1.0 + Math.pow(1 - timeRatio, 2) * 2.0;
-    points *= bonusMultiplier;
-  }
-
-  // Round to nearest integer
   return Math.round(points);
 }

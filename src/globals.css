@@ -70,6 +70,21 @@
     animation: gradient 3s ease infinite;
   }
 
+  /* Scrollbar utilities */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Smooth scrolling */
+  .overflow-x-auto {
+    scroll-behavior: smooth;
+  }
+
   /* Smooth transitions for all interactive elements */
   * {
     @apply transition-colors duration-200;

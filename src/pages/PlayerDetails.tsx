@@ -99,8 +99,8 @@ const PlayerDetails = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#1e1e2e] text-ctp-text py-8">
-      <div className="max-w-6xl mx-auto px-4">
+    <div className="min-h-screen bg-[#1e1e2e] text-ctp-text py-8 overflow-x-hidden">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 w-full">
         <div className="mb-6">
           <Button variant="outline" className="text-[hsl(220,17%,92%)] border-[hsl(235,13%,30%)] hover:bg-[hsl(234,14%,29%)]" asChild>
             <Link to="/leaderboards">

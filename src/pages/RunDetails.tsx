@@ -357,8 +357,8 @@ const RunDetails = () => {
     : 0);
 
   return (
-    <div className="min-h-screen bg-[#1e1e2e] text-ctp-text py-8">
-      <div className="max-w-[120rem] mx-auto px-4" id="page-container">
+    <div className="min-h-screen bg-[#1e1e2e] text-ctp-text py-8 overflow-x-hidden">
+      <div className="max-w-[120rem] mx-auto px-4 sm:px-6 w-full" id="page-container">
         <Button
           variant="ghost"
           onClick={() => navigate("/leaderboards")}

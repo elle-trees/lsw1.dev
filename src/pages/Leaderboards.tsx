@@ -133,8 +133,8 @@ const Leaderboards = () => {
   }, [selectedCategory, selectedPlatform, selectedRunType, selectedLevel, showObsoleteRuns, leaderboardType]);
 
   return (
-    <div className="min-h-screen bg-[#1e1e2e] text-ctp-text py-4 sm:py-6">
-      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6">
+    <div className="min-h-screen bg-[#1e1e2e] text-ctp-text py-4 sm:py-6 overflow-x-hidden">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 w-full">
         <div className="text-center mb-8 animate-fade-in">
           <div className="flex items-center justify-center gap-2 mb-4">
             <Trophy className="h-6 w-6 text-[#a6e3a1]" />
@@ -181,7 +181,7 @@ const Leaderboards = () => {
             {availableCategories.length > 0 && (
               <div className="mb-6 animate-slide-up">
                 <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
-                  <TabsList className="grid w-full p-0.5 gap-1 overflow-x-auto" style={{ gridTemplateColumns: `repeat(${availableCategories.length}, 1fr)` }}>
+                  <TabsList className="flex w-full p-0.5 gap-1 overflow-x-auto overflow-y-hidden scrollbar-hide" style={{ minWidth: 'max-content' }}>
                     {availableCategories.map((category, index) => (
                       <TabsTrigger 
                         key={category.id} 

@@ -84,11 +84,16 @@ export interface CustomUser extends FirebaseAuthUser {
 
 export interface PointsConfig {
   id: string;
-  baseMultiplier: number;
-  // Threshold times in seconds - runs UNDER these times get a bonus multiplier
-  // All runs get points, but faster times get exponentially more points
-  // Runs under the threshold get an additional bonus multiplier
-  anyPercentThreshold: number; // Threshold time for Any% (in seconds)
-  nocutsNoshipsThreshold: number; // Threshold time for Nocuts Noships (in seconds)
+  // Flat amount of points for all verified full game runs
+  basePointsPerRun: number;
+  // Bonus points for top 3 runs in any category
+  top3BonusPoints: {
+    rank1: number; // Bonus points for 1st place
+    rank2: number; // Bonus points for 2nd place
+    rank3: number; // Bonus points for 3rd place
+  };
+  // Flat amount of points for runs on any platform (if different from basePointsPerRun)
+  // If not specified, uses basePointsPerRun for all platforms
+  platformPoints?: number;
   enabled: boolean; // Master switch to enable/disable points
 }

@@ -356,8 +356,8 @@ const UserSettings = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#1e1e2e] text-ctp-text py-8">
-      <div className="max-w-3xl mx-auto px-4">
+    <div className="min-h-screen bg-[#1e1e2e] text-ctp-text py-8 overflow-x-hidden">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 w-full">
         <div className="text-center mb-10">
           <h1 className="text-4xl font-bold mb-4 flex items-center justify-center gap-2">
             <Settings className="h-8 w-8 text-[#cba6f7]" />

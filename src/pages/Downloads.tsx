@@ -42,8 +42,8 @@ const Downloads = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#1e1e2e] text-[hsl(220,17%,92%)] py-8">
-      <div className="max-w-5xl mx-auto px-4">
+    <div className="min-h-screen bg-[#1e1e2e] text-[hsl(220,17%,92%)] py-8 overflow-x-hidden">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 w-full">
         {/* Animated Header */}
         <div className="text-center mb-8 animate-fade-in">
           <div className="flex items-center justify-center gap-2 mb-4">

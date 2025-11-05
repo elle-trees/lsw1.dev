@@ -1,7 +1,7 @@
 import { db } from "@/lib/firebase";
 import { collection, doc, getDoc, setDoc, updateDoc, deleteDoc, getDocs, query, where, orderBy, limit as firestoreLimit, deleteField } from "firebase/firestore";
 import { Player, LeaderboardEntry, DownloadEntry, Category, Platform, Level, PointsConfig } from "@/types/database";
-import { calculatePoints } from "@/lib/utils";
+import { calculatePoints, parseTimeToSeconds } from "@/lib/utils";
 
 export const getLeaderboardEntriesFirestore = async (
   categoryId?: string,
@@ -857,6 +857,8 @@ export const updateRunVerificationStatusFirestore = async (runId: string, verifi
       }
         
       // Get points config and calculate points
+      // Note: Rank calculation would require fetching all runs for this category/platform/runType
+      // For now, calculate without rank (will be updated during full recalculation)
       const pointsConfig = await getPointsConfigFirestore();
       const points = calculatePoints(
         runData.time, 
@@ -1011,8 +1013,9 @@ export const recalculatePlayerPointsFirestore = async (playerId: string): Promis
     // Get points config once for all calculations
     const pointsConfig = await getPointsConfigFirestore();
     
-    let totalPoints = 0;
-    const runsToUpdate: { id: string; points: number }[] = [];
+    // To calculate ranks, we need to fetch all runs for each category/platform combination
+    // Group runs by category + platform + runType to calculate ranks within each group
+    const runsByGroup = new Map<string, LeaderboardEntry[]>();
     
     // Process all runs (solo and co-op) for this player
     const allRuns = [
@@ -1020,18 +1023,70 @@ export const recalculatePlayerPointsFirestore = async (playerId: string): Promis
       ...player2Runs
     ].filter(run => !run.isObsolete);
     
+    // Group runs by category + platform + runType
     for (const runData of allRuns) {
+      const groupKey = `${runData.category}_${runData.platform}_${runData.runType || 'solo'}`;
+      if (!runsByGroup.has(groupKey)) {
+        runsByGroup.set(groupKey, []);
+      }
+      runsByGroup.get(groupKey)!.push(runData);
+    }
+    
+    // For each group, fetch all runs to calculate ranks
+    const allRunsWithRanks: Array<{ run: LeaderboardEntry; rank: number }> = [];
+    
+    for (const [groupKey, runs] of runsByGroup.entries()) {
+      const [categoryId, platformId, runType] = groupKey.split('_');
+      
+      // Fetch all verified runs for this category/platform/runType combination
+      const groupQuery = query(
+        collection(db, "leaderboardEntries"),
+        where("verified", "==", true),
+        where("leaderboardType", "==", "regular"),
+        where("category", "==", categoryId),
+        where("platform", "==", platformId),
+        where("runType", "==", runType || 'solo'),
+        firestoreLimit(200)
+      );
+      
+      const groupSnapshot = await getDocs(groupQuery);
+      const groupRuns = groupSnapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() } as LeaderboardEntry))
+        .filter(run => !run.isObsolete)
+        .sort((a, b) => {
+          const timeA = parseTimeToSeconds(a.time);
+          const timeB = parseTimeToSeconds(b.time);
+          return timeA - timeB;
+        });
+      
+      // Assign ranks
+      groupRuns.forEach((run, index) => {
+        const rank = index + 1;
+        // Update the run if it's one of this player's runs
+        const playerRun = runs.find(r => r.id === run.id);
+        if (playerRun) {
+          allRunsWithRanks.push({ run: playerRun, rank });
+        }
+      });
+    }
+    
+    let totalPoints = 0;
+    const runsToUpdate: { id: string; points: number }[] = [];
+    
+    // Calculate points with ranks
+    for (const { run: runData, rank } of allRunsWithRanks) {
       const categoryName = categoryMap.get(runData.category) || "Unknown";
       const platformName = platformMap.get(runData.platform) || "Unknown";
       
-      // Calculate points using the new system (includes co-op runs)
+      // Calculate points using the new system with rank
       const points = calculatePoints(
         runData.time, 
         categoryName, 
         platformName,
         runData.category,
         runData.platform,
-        pointsConfig
+        pointsConfig,
+        rank
       );
       runsToUpdate.push({ id: runData.id, points });
       totalPoints += points;
@@ -1793,7 +1848,9 @@ export const getPlayersByPointsFirestore = async (limit: number = 100): Promise<
     // Get points config once for all calculations
     const pointsConfig = await getPointsConfigFirestore();
 
-    // Process each run (both solo and co-op runs count for points)
+    // Group runs by category + platform + runType to calculate ranks
+    const runsByGroup = new Map<string, LeaderboardEntry[]>();
+    
     for (const runDoc of runsSnapshot.docs) {
       const runData = runDoc.data() as LeaderboardEntry;
       
@@ -1804,24 +1861,52 @@ export const getPlayersByPointsFirestore = async (limit: number = 100): Promise<
         continue;
       }
 
-      // Recalculate points for all eligible runs
-      const categoryName = categoryMap.get(runData.category) || "Unknown";
-      const platformName = platformMap.get(runData.platform) || "Unknown";
-      const points = calculatePoints(
-        runData.time, 
-        categoryName, 
-        platformName,
-        runData.category,
-        runData.platform,
-        pointsConfig
-      );
-      
-      // Update the run with recalculated points (async, don't wait)
-      try {
-        const runDocRef = doc(db, "leaderboardEntries", runDoc.id);
-        updateDoc(runDocRef, { points }).catch(() => {}); // Fire and forget
-      } catch {}
+      const groupKey = `${runData.category}_${runData.platform}_${runData.runType || 'solo'}`;
+      if (!runsByGroup.has(groupKey)) {
+        runsByGroup.set(groupKey, []);
+      }
+      runsByGroup.get(groupKey)!.push(runData);
+    }
 
+    // Calculate ranks for each group and assign points
+    const runsWithPoints: Array<{ run: LeaderboardEntry; points: number }> = [];
+    
+    for (const [groupKey, runs] of runsByGroup.entries()) {
+      // Sort runs by time within this group
+      const sortedRuns = [...runs].sort((a, b) => {
+        const timeA = parseTimeToSeconds(a.time);
+        const timeB = parseTimeToSeconds(b.time);
+        return timeA - timeB;
+      });
+
+      // Assign ranks and calculate points
+      sortedRuns.forEach((runData, index) => {
+        const rank = index + 1;
+        const categoryName = categoryMap.get(runData.category) || "Unknown";
+        const platformName = platformMap.get(runData.platform) || "Unknown";
+        
+        const points = calculatePoints(
+          runData.time, 
+          categoryName, 
+          platformName,
+          runData.category,
+          runData.platform,
+          pointsConfig,
+          rank
+        );
+        
+        runsWithPoints.push({ run: runData, points });
+        
+        // Update the run with recalculated points (async, don't wait)
+        try {
+          const runDocRef = doc(db, "leaderboardEntries", runData.id);
+          updateDoc(runDocRef, { points }).catch(() => {}); // Fire and forget
+        } catch {}
+      });
+    }
+
+    // Aggregate points by player
+    for (const { run: runData, points } of runsWithPoints) {
       // Determine aggregation key: use playerName for unlinked players, playerId for others
       const isUnlinked = runData.playerId.startsWith("unlinked_");
       const aggregationKey = isUnlinked 
@@ -2252,9 +2337,12 @@ export const moveLevelDownFirestore = async (id: string): Promise<boolean> => {
 
 // Points Configuration Management
 const DEFAULT_POINTS_CONFIG: Omit<PointsConfig, 'id'> = {
-  baseMultiplier: 800,
-  anyPercentThreshold: 3300, // 55 minutes in seconds
-  nocutsNoshipsThreshold: 1740, // 29 minutes in seconds
+  basePointsPerRun: 10, // Flat points for all verified full game runs
+  top3BonusPoints: {
+    rank1: 50, // Bonus for 1st place
+    rank2: 30, // Bonus for 2nd place
+    rank3: 20, // Bonus for 3rd place
+  },
   enabled: true,
 };
 
@@ -2269,42 +2357,21 @@ export const getPointsConfigFirestore = async (): Promise<PointsConfig> => {
     
     if (configDocSnap.exists()) {
       const data = configDocSnap.data();
-      // Migrate old config format to new simplified format
-      let anyPercentThreshold = data.anyPercentThreshold ?? DEFAULT_POINTS_CONFIG.anyPercentThreshold;
-      let nocutsNoshipsThreshold = data.nocutsNoshipsThreshold ?? DEFAULT_POINTS_CONFIG.nocutsNoshipsThreshold;
       
-      // Migration: If old format exists, extract threshold times
-      if (data.categoryMilestones) {
-        // Try to find Any% and Nocuts thresholds from old milestone config
-        Object.entries(data.categoryMilestones).forEach(([catId, milestone]: [string, any]) => {
-          const catLower = catId.toLowerCase();
-          if (catLower.includes("any%") || catLower === "any%") {
-            anyPercentThreshold = milestone.thresholdSeconds ?? anyPercentThreshold;
-          } else if (catLower.includes("nocuts") || catLower.includes("noships")) {
-            nocutsNoshipsThreshold = milestone.thresholdSeconds ?? nocutsNoshipsThreshold;
-          }
-        });
+      // Check if this is the new format (has basePointsPerRun)
+      if (data.basePointsPerRun !== undefined) {
+        return {
+          id: configDocSnap.id,
+          basePointsPerRun: data.basePointsPerRun ?? DEFAULT_POINTS_CONFIG.basePointsPerRun,
+          top3BonusPoints: data.top3BonusPoints ?? DEFAULT_POINTS_CONFIG.top3BonusPoints,
+          platformPoints: data.platformPoints,
+          enabled: data.enabled !== undefined ? data.enabled : DEFAULT_POINTS_CONFIG.enabled,
+        } as PointsConfig;
       }
       
-      // Also check categoryMinTimes for migration
-      if (data.categoryMinTimes) {
-        Object.entries(data.categoryMinTimes).forEach(([catId, time]: [string, any]) => {
-          const catLower = catId.toLowerCase();
-          if (catLower.includes("any%") || catLower === "any%") {
-            anyPercentThreshold = time ?? anyPercentThreshold;
-          } else if (catLower.includes("nocuts") || catLower.includes("noships")) {
-            nocutsNoshipsThreshold = time ?? nocutsNoshipsThreshold;
-          }
-        });
-      }
-      
-      return {
-        id: configDocSnap.id,
-        baseMultiplier: data.baseMultiplier ?? DEFAULT_POINTS_CONFIG.baseMultiplier,
-        anyPercentThreshold: anyPercentThreshold,
-        nocutsNoshipsThreshold: nocutsNoshipsThreshold,
-        enabled: data.enabled !== undefined ? data.enabled : DEFAULT_POINTS_CONFIG.enabled,
-      } as PointsConfig;
+      // Migration from old format - use defaults for new system
+      // Old configs will be replaced with defaults when admin updates
+      return { id: configDocSnap.id, ...DEFAULT_POINTS_CONFIG };
     }
     
     // Return default config if none exists
