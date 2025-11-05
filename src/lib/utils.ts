@@ -88,14 +88,14 @@ export function formatTime(timeString: string): string {
 /**
  * Calculate points for a run using simple flat rates
  * Points are awarded for:
- * - Full game runs only (regular leaderboardType, not ILs or community golds)
- * - All platforms (configurable flat amount)
+ * - All verified runs (full game, individual levels, and community golds)
+ * - All platforms
  * - All categories
  * - Both solo and co-op runs are eligible
  * 
  * Points calculation:
- * - Base points: flat amount for all verified full game runs
- * - Top 3 bonus: additional points for runs ranked 1st, 2nd, or 3rd in their category
+ * - Base points: flat amount for all verified runs
+ * - Top 3 bonus: additional points for runs ranked 1st, 2nd, or 3rd in their category/platform/runType/level combination
  * 
  * @param timeString - Time string in HH:MM:SS format (not used in new system but kept for compatibility)
  * @param categoryName - Name of the category (not used in new system but kept for compatibility)
@@ -119,7 +119,6 @@ export function calculatePoints(
       rank2?: number;
       rank3?: number;
     };
-    platformPoints?: number;
     enabled?: boolean;
   },
   rank?: number
@@ -129,8 +128,8 @@ export function calculatePoints(
   const enabled = config.enabled !== false; // Default to true if not specified
   if (!enabled) return 0;
 
-  // Base points for all runs (use platformPoints if specified, otherwise basePointsPerRun)
-  const basePoints = config.platformPoints ?? config.basePointsPerRun ?? 10;
+  // Base points for all runs
+  const basePoints = config.basePointsPerRun ?? 10;
   
   // Start with base points
   let points = basePoints;

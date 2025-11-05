@@ -1377,39 +1377,18 @@ const Admin = () => {
                       </div>
 
                       <div>
-                        <Label htmlFor="platformPoints">Platform Points (Optional)</Label>
-                        <Input
-                          id="platformPoints"
-                          type="number"
-                          value={pointsConfig.platformPoints ?? ""}
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            setPointsConfig({ 
-                              ...pointsConfig, 
-                              platformPoints: value === "" ? undefined : Number(value)
-                            });
-                          }}
-                          min="0"
-                          step="1"
-                          placeholder="Leave empty to use base points for all platforms"
-                          className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                        />
-                        <p className="text-sm text-ctp-overlay0 mt-1">
-                          Optional: If set, this amount will be used instead of base points for all platforms. Leave empty to use base points for all platforms.
-                        </p>
-                      </div>
-
-                      <div>
                         <Label className="text-base font-semibold mb-2 block">Points Eligibility</Label>
                         <p className="text-sm text-ctp-overlay0 mb-4">
                           Points are automatically awarded for:
                         </p>
                         <ul className="list-disc list-inside space-y-1 text-sm text-ctp-subtext1 ml-4">
-                          <li>Full game runs only (not Individual Levels or Community Golds)</li>
-                          <li>All platforms (configurable flat amount)</li>
+                          <li>All verified runs (Full Game, Individual Levels, and Community Golds)</li>
+                          <li>All platforms</li>
                           <li>All categories</li>
                           <li>Both solo and co-op runs are eligible</li>
-                          <li>Top 3 runs in each category/platform/runType combination receive bonus points</li>
+                          <li>Obsolete runs receive base points only (no top 3 bonus)</li>
+                          <li>Top 3 runs in each category/platform/runType/level combination receive bonus points</li>
+                          <li>Individual Levels and Community Golds are ranked separately per level</li>
                         </ul>
                       </div>
                     </div>

@@ -955,9 +955,9 @@ export const updatePlayerPointsFirestore = async (playerId: string, pointsToAdd:
 };
 
 /**
- * Recalculate total points for a player based on all their verified full game runs
+ * Recalculate total points for a player based on all their verified runs
  * Includes both solo runs (where player is player1) and co-op runs (where player is player2)
- * Only full game runs (regular leaderboardType) count for points
+ * Includes all leaderboard types: regular, individual-level, and community-golds
  */
 export const recalculatePlayerPointsFirestore = async (playerId: string): Promise<boolean> => {
   if (!db) return false;
@@ -972,35 +972,30 @@ export const recalculatePlayerPointsFirestore = async (playerId: string): Promis
       playerDocSnap = null;
     }
     
-    // Get all verified full game runs where this player is player1
-    // Only full game runs (regular leaderboardType) count for points
-    // Co-op runs are now included in points calculation
+    // Get all verified runs where this player is player1 (all leaderboard types)
     const q = query(
       collection(db, "leaderboardEntries"),
       where("playerId", "==", playerId),
       where("verified", "==", true),
-      where("leaderboardType", "==", "regular"), // Only full game runs
-      firestoreLimit(200)
+      firestoreLimit(500) // Increased limit to include all run types
     );
     const querySnapshot = await getDocs(q);
     
-    // Also check for co-op runs where this player is player2
+    // Also check for co-op runs where this player is player2 (all leaderboard types)
     let player2Runs: LeaderboardEntry[] = [];
     const player = await getPlayerByUidFirestore(playerId);
     if (player?.displayName) {
       const coOpQuery = query(
         collection(db, "leaderboardEntries"),
         where("verified", "==", true),
-        where("leaderboardType", "==", "regular"),
         where("runType", "==", "co-op"),
-        firestoreLimit(200)
+        firestoreLimit(500) // Increased limit to include all run types
       );
       const coOpSnapshot = await getDocs(coOpQuery);
       player2Runs = coOpSnapshot.docs
         .map(doc => ({ id: doc.id, ...doc.data() } as LeaderboardEntry))
         .filter(entry => 
-          entry.player2Name?.trim().toLowerCase() === player.displayName.trim().toLowerCase() &&
-          !entry.isObsolete
+          entry.player2Name?.trim().toLowerCase() === player.displayName.trim().toLowerCase()
         );
     }
     
@@ -1018,14 +1013,22 @@ export const recalculatePlayerPointsFirestore = async (playerId: string): Promis
     const runsByGroup = new Map<string, LeaderboardEntry[]>();
     
     // Process all runs (solo and co-op) for this player
+    // Include obsolete runs - they get base points but no top 3 bonus
     const allRuns = [
       ...querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LeaderboardEntry)),
       ...player2Runs
-    ].filter(run => !run.isObsolete);
+    ];
     
-    // Group runs by category + platform + runType
+    // Group runs by leaderboardType + level + category + platform + runType
+    // For ranking: ILs and community golds are ranked within their level, regular runs are ranked globally
     for (const runData of allRuns) {
-      const groupKey = `${runData.category}_${runData.platform}_${runData.runType || 'solo'}`;
+      const leaderboardType = runData.leaderboardType || 'regular';
+      const level = runData.level || '';
+      // For regular runs, group by category+platform+runType
+      // For ILs and community golds, also include level in the group key
+      const groupKey = leaderboardType === 'regular' 
+        ? `${leaderboardType}_${runData.category}_${runData.platform}_${runData.runType || 'solo'}`
+        : `${leaderboardType}_${level}_${runData.category}_${runData.platform}_${runData.runType || 'solo'}`;
       if (!runsByGroup.has(groupKey)) {
         runsByGroup.set(groupKey, []);
       }
@@ -1036,21 +1039,52 @@ export const recalculatePlayerPointsFirestore = async (playerId: string): Promis
     const allRunsWithRanks: Array<{ run: LeaderboardEntry; rank: number }> = [];
     
     for (const [groupKey, runs] of runsByGroup.entries()) {
-      const [categoryId, platformId, runType] = groupKey.split('_');
+      const parts = groupKey.split('_');
+      const leaderboardType = parts[0] as 'regular' | 'individual-level' | 'community-golds';
       
-      // Fetch all verified runs for this category/platform/runType combination
-      const groupQuery = query(
-        collection(db, "leaderboardEntries"),
+      let categoryId: string;
+      let platformId: string;
+      let runType: string;
+      let levelId: string | undefined;
+      
+      if (leaderboardType === 'regular') {
+        // Format: regular_category_platform_runType
+        categoryId = parts[1]!;
+        platformId = parts[2]!;
+        runType = parts[3] || 'solo';
+      } else {
+        // Format: leaderboardType_level_category_platform_runType
+        levelId = parts[1];
+        categoryId = parts[2]!;
+        platformId = parts[3]!;
+        runType = parts[4] || 'solo';
+      }
+      
+      // Build query constraints based on leaderboard type
+      const constraints: any[] = [
         where("verified", "==", true),
-        where("leaderboardType", "==", "regular"),
+        where("leaderboardType", "==", leaderboardType),
         where("category", "==", categoryId),
         where("platform", "==", platformId),
         where("runType", "==", runType || 'solo'),
-        firestoreLimit(200)
+      ];
+      
+      // For ILs and community golds, also filter by level
+      if (leaderboardType !== 'regular' && levelId) {
+        constraints.push(where("level", "==", levelId));
+      }
+      
+      constraints.push(firestoreLimit(200));
+      
+      // Fetch all verified runs for this group combination
+      const groupQuery = query(
+        collection(db, "leaderboardEntries"),
+        ...constraints
       );
       
       const groupSnapshot = await getDocs(groupQuery);
-      const groupRuns = groupSnapshot.docs
+      // Filter out obsolete runs for ranking purposes (only non-obsolete runs count for top 3)
+      const nonObsoleteRuns = groupSnapshot.docs
         .map(doc => ({ id: doc.id, ...doc.data() } as LeaderboardEntry))
         .filter(run => !run.isObsolete)
         .sort((a, b) => {
@@ -1059,15 +1093,18 @@ export const recalculatePlayerPointsFirestore = async (playerId: string): Promis
           return timeA - timeB;
         });
       
-      // Assign ranks
-      groupRuns.forEach((run, index) => {
+      // Assign ranks to non-obsolete runs only
+      const rankMap = new Map<string, number>();
+      nonObsoleteRuns.forEach((run, index) => {
         const rank = index + 1;
-        // Update the run if it's one of this player's runs
-        const playerRun = runs.find(r => r.id === run.id);
-        if (playerRun) {
-          allRunsWithRanks.push({ run: playerRun, rank });
-        }
+        rankMap.set(run.id, rank);
       });
+      
+      // Process all player runs (including obsolete) - obsolete runs get base points only
+      for (const playerRun of runs) {
+        const rank = playerRun.isObsolete ? undefined : rankMap.get(playerRun.id);
+        allRunsWithRanks.push({ run: playerRun, rank: rank });
+      }
     }
     
     let totalPoints = 0;
@@ -1814,16 +1851,16 @@ export const claimRunFirestore = async (runId: string, userId: string): Promise<
 /**
  * Get all players sorted by total points (descending)
  * This function queries verified runs and aggregates points by player for reliability
+ * Includes all leaderboard types: regular, individual-level, and community-golds
  */
 export const getPlayersByPointsFirestore = async (limit: number = 100): Promise<Player[]> => {
   if (!db) return [];
   try {
-    // Get all verified full game runs
+    // Get all verified runs (all leaderboard types)
     const q = query(
       collection(db, "leaderboardEntries"),
       where("verified", "==", true),
-      where("leaderboardType", "==", "regular"), // Only full game runs
-      firestoreLimit(2000)
+      firestoreLimit(5000) // Increased limit to include all run types
     );
     const runsSnapshot = await getDocs(q);
 
@@ -1854,14 +1891,16 @@ export const getPlayersByPointsFirestore = async (limit: number = 100): Promise<
     for (const runDoc of runsSnapshot.docs) {
       const runData = runDoc.data() as LeaderboardEntry;
       
-      if (!runData.playerId || runData.isObsolete) continue;
+      if (!runData.playerId) continue;
 
-      // Only process full game runs (not ILs or community golds)
-      if (runData.leaderboardType && runData.leaderboardType !== 'regular') {
-        continue;
-      }
-
-      const groupKey = `${runData.category}_${runData.platform}_${runData.runType || 'solo'}`;
+      // Group runs by leaderboardType + level + category + platform + runType
+      const leaderboardType = runData.leaderboardType || 'regular';
+      const level = runData.level || '';
+      // For regular runs, group by category+platform+runType
+      // For ILs and community golds, also include level in the group key
+      const groupKey = leaderboardType === 'regular' 
+        ? `${leaderboardType}_${runData.category}_${runData.platform}_${runData.runType || 'solo'}`
+        : `${leaderboardType}_${level}_${runData.category}_${runData.platform}_${runData.runType || 'solo'}`;
       if (!runsByGroup.has(groupKey)) {
         runsByGroup.set(groupKey, []);
       }
@@ -1869,19 +1908,77 @@ export const getPlayersByPointsFirestore = async (limit: number = 100): Promise<
     }
 
     // Calculate ranks for each group and assign points
+    // For each group, we need to fetch all runs to calculate ranks properly
     const runsWithPoints: Array<{ run: LeaderboardEntry; points: number }> = [];
     
     for (const [groupKey, runs] of runsByGroup.entries()) {
-      // Sort runs by time within this group
-      const sortedRuns = [...runs].sort((a, b) => {
-        const timeA = parseTimeToSeconds(a.time);
-        const timeB = parseTimeToSeconds(b.time);
-        return timeA - timeB;
-      });
+      const parts = groupKey.split('_');
+      const leaderboardType = parts[0] as 'regular' | 'individual-level' | 'community-golds';
+      
+      let categoryId: string;
+      let platformId: string;
+      let runType: string;
+      let levelId: string | undefined;
+      
+      if (leaderboardType === 'regular') {
+        // Format: regular_category_platform_runType
+        categoryId = parts[1]!;
+        platformId = parts[2]!;
+        runType = parts[3] || 'solo';
+      } else {
+        // Format: leaderboardType_level_category_platform_runType
+        levelId = parts[1];
+        categoryId = parts[2]!;
+        platformId = parts[3]!;
+        runType = parts[4] || 'solo';
+      }
+      
+      // Build query constraints based on leaderboard type
+      const constraints: any[] = [
+        where("verified", "==", true),
+        where("leaderboardType", "==", leaderboardType),
+        where("category", "==", categoryId),
+        where("platform", "==", platformId),
+        where("runType", "==", runType || 'solo'),
+      ];
+      
+      // For ILs and community golds, also filter by level
+      if (leaderboardType !== 'regular' && levelId) {
+        constraints.push(where("level", "==", levelId));
+      }
+      
+      constraints.push(firestoreLimit(200));
+      
+      // Fetch all verified runs for this group combination to calculate ranks
+      const groupQuery = query(
+        collection(db, "leaderboardEntries"),
+        ...constraints
+      );
+      
+      const groupSnapshot = await getDocs(groupQuery);
+      // Filter out obsolete runs for ranking purposes (only non-obsolete runs count for top 3)
+      const nonObsoleteRuns = groupSnapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() } as LeaderboardEntry))
+        .filter(run => !run.isObsolete)
+        .sort((a, b) => {
+          const timeA = parseTimeToSeconds(a.time);
+          const timeB = parseTimeToSeconds(b.time);
+          return timeA - timeB;
+        });
 
-      // Assign ranks and calculate points
-      sortedRuns.forEach((runData, index) => {
+      // Create rank map for non-obsolete runs
+      const rankMap = new Map<string, number>();
+      nonObsoleteRuns.forEach((runData, index) => {
         const rank = index + 1;
+        rankMap.set(runData.id, rank);
+      });
+      
+      // Process all runs in this group (including obsolete) - obsolete runs get base points only
+      const allGroupRuns = groupSnapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() } as LeaderboardEntry));
+      
+      for (const runData of allGroupRuns) {
+        const rank = runData.isObsolete ? undefined : rankMap.get(runData.id);
         const categoryName = categoryMap.get(runData.category) || "Unknown";
         const platformName = platformMap.get(runData.platform) || "Unknown";
         
@@ -1895,14 +1992,18 @@ export const getPlayersByPointsFirestore = async (limit: number = 100): Promise<
           rank
         );
         
-        runsWithPoints.push({ run: runData, points });
+        // Only add to runsWithPoints if this run is one of the runs we're processing
+        const isInOriginalRuns = runs.some(r => r.id === runData.id);
+        if (isInOriginalRuns) {
+          runsWithPoints.push({ run: runData, points });
+        }
         
         // Update the run with recalculated points (async, don't wait)
         try {
           const runDocRef = doc(db, "leaderboardEntries", runData.id);
           updateDoc(runDocRef, { points }).catch(() => {}); // Fire and forget
         } catch {}
-      });
+      }
     }
 
     // Aggregate points by player
@@ -2364,7 +2465,6 @@ export const getPointsConfigFirestore = async (): Promise<PointsConfig> => {
           id: configDocSnap.id,
           basePointsPerRun: data.basePointsPerRun ?? DEFAULT_POINTS_CONFIG.basePointsPerRun,
           top3BonusPoints: data.top3BonusPoints ?? DEFAULT_POINTS_CONFIG.top3BonusPoints,
-          platformPoints: data.platformPoints,
           enabled: data.enabled !== undefined ? data.enabled : DEFAULT_POINTS_CONFIG.enabled,
         } as PointsConfig;
       }

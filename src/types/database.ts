@@ -92,8 +92,5 @@ export interface PointsConfig {
     rank2: number; // Bonus points for 2nd place
     rank3: number; // Bonus points for 3rd place
   };
-  // Flat amount of points for runs on any platform (if different from basePointsPerRun)
-  // If not specified, uses basePointsPerRun for all platforms
-  platformPoints?: number;
   enabled: boolean; // Master switch to enable/disable points
 }
