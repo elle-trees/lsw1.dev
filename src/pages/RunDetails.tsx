@@ -222,33 +222,33 @@ const RunDetails = () => {
       } else {
         // Admin edit mode: allow all fields
         updateData = {
-          playerName: editFormData.playerName.trim(),
-          time: editFormData.time.trim(),
-          category: editFormData.category,
-          platform: editFormData.platform,
-          runType: editFormData.runType as 'solo' | 'co-op',
-          date: editFormData.date,
-        };
+        playerName: editFormData.playerName.trim(),
+        time: editFormData.time.trim(),
+        category: editFormData.category,
+        platform: editFormData.platform,
+        runType: editFormData.runType as 'solo' | 'co-op',
+        date: editFormData.date,
+      };
 
-        if (editFormData.runType === 'co-op' && editFormData.player2Name.trim()) {
-          updateData.player2Name = editFormData.player2Name.trim();
-        } else if (editFormData.runType === 'solo') {
-          // Don't include player2Name for solo runs - it will be removed if it exists
-          updateData.player2Name = null;
-        }
+      if (editFormData.runType === 'co-op' && editFormData.player2Name.trim()) {
+        updateData.player2Name = editFormData.player2Name.trim();
+      } else if (editFormData.runType === 'solo') {
+        // Don't include player2Name for solo runs - it will be removed if it exists
+        updateData.player2Name = null;
+      }
 
-        if (editFormData.videoUrl.trim()) {
-          updateData.videoUrl = editFormData.videoUrl.trim();
-        } else {
-          // Set to null to remove the field
-          updateData.videoUrl = null;
-        }
+      if (editFormData.videoUrl.trim()) {
+        updateData.videoUrl = editFormData.videoUrl.trim();
+      } else {
+        // Set to null to remove the field
+        updateData.videoUrl = null;
+      }
 
-        if (editFormData.comment.trim()) {
-          updateData.comment = editFormData.comment.trim();
-        } else {
-          // Set to null to remove the field
-          updateData.comment = null;
+      if (editFormData.comment.trim()) {
+        updateData.comment = editFormData.comment.trim();
+      } else {
+        // Set to null to remove the field
+        updateData.comment = null;
         }
       }
 
@@ -418,25 +418,25 @@ const RunDetails = () => {
                       {/* Show full admin controls */}
                       {currentUser?.isAdmin && (
                         <>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleEditClick}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleEditClick}
                             className="border-[hsl(235,13%,30%)] bg-gradient-to-r from-transparent via-[hsl(237,16%,24%)]/50 to-transparent hover:from-[hsl(237,16%,24%)] hover:via-[hsl(237,16%,28%)] hover:to-[hsl(237,16%,24%)] hover:border-[#cba6f7]/50"
-                          >
-                            <Edit2 className="h-4 w-4 mr-2" />
-                            Edit
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleDeleteRun}
-                            disabled={deleting}
+                      >
+                        <Edit2 className="h-4 w-4 mr-2" />
+                        Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleDeleteRun}
+                        disabled={deleting}
                             className="border-red-500/50 text-red-500 bg-gradient-to-r from-transparent via-red-500/10 to-transparent hover:from-red-500/20 hover:via-red-500/30 hover:to-red-500/20 hover:bg-red-500 hover:text-white hover:border-red-500"
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            {deleting ? "Deleting..." : "Delete"}
-                          </Button>
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        {deleting ? "Deleting..." : "Delete"}
+                      </Button>
                         </>
                       )}
                     </div>
@@ -498,129 +498,129 @@ const RunDetails = () => {
                       </>
                     ) : (
                       // Admin edit mode: all fields
-                      <>
-                        <div>
-                          <Label htmlFor="edit-playerName">Player 1 Name</Label>
-                          <Input
-                            id="edit-playerName"
-                            value={editFormData.playerName}
-                            onChange={(e) => setEditFormData({ ...editFormData, playerName: e.target.value })}
+                  <>
+                    <div>
+                      <Label htmlFor="edit-playerName">Player 1 Name</Label>
+                      <Input
+                        id="edit-playerName"
+                        value={editFormData.playerName}
+                        onChange={(e) => setEditFormData({ ...editFormData, playerName: e.target.value })}
+                        className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                      />
+                    </div>
+
+                    {editFormData.runType === 'co-op' && (
+                      <div>
+                        <Label htmlFor="edit-player2Name">Player 2 Name</Label>
+                        <Input
+                          id="edit-player2Name"
+                          value={editFormData.player2Name}
+                          onChange={(e) => setEditFormData({ ...editFormData, player2Name: e.target.value })}
+                          className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                        />
+                      </div>
+                    )}
+
+                    <div>
+                      <Label htmlFor="edit-time">Time</Label>
+                      <Input
+                        id="edit-time"
+                        value={editFormData.time}
+                        onChange={(e) => setEditFormData({ ...editFormData, time: e.target.value })}
+                        placeholder="HH:MM:SS"
                             className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                          />
-                        </div>
+                      />
+                    </div>
 
-                        {editFormData.runType === 'co-op' && (
-                          <div>
-                            <Label htmlFor="edit-player2Name">Player 2 Name</Label>
-                            <Input
-                              id="edit-player2Name"
-                              value={editFormData.player2Name}
-                              onChange={(e) => setEditFormData({ ...editFormData, player2Name: e.target.value })}
-                              className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                            />
-                          </div>
-                        )}
+                    <div>
+                      <Label htmlFor="edit-category">Category</Label>
+                      <Select
+                        value={editFormData.category}
+                        onValueChange={(value) => setEditFormData({ ...editFormData, category: value })}
+                      >
+                        <SelectTrigger className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categories.map((cat) => (
+                            <SelectItem key={cat.id} value={cat.id}>
+                              {cat.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                        <div>
-                          <Label htmlFor="edit-time">Time</Label>
-                          <Input
-                            id="edit-time"
-                            value={editFormData.time}
-                            onChange={(e) => setEditFormData({ ...editFormData, time: e.target.value })}
-                            placeholder="HH:MM:SS"
-                            className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                          />
-                        </div>
+                    <div>
+                      <Label htmlFor="edit-platform">Platform</Label>
+                      <Select
+                        value={editFormData.platform}
+                        onValueChange={(value) => setEditFormData({ ...editFormData, platform: value })}
+                      >
+                        <SelectTrigger className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {platforms.map((plat) => (
+                            <SelectItem key={plat.id} value={plat.id}>
+                              {plat.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                        <div>
-                          <Label htmlFor="edit-category">Category</Label>
-                          <Select
-                            value={editFormData.category}
-                            onValueChange={(value) => setEditFormData({ ...editFormData, category: value })}
-                          >
-                            <SelectTrigger className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {categories.map((cat) => (
-                                <SelectItem key={cat.id} value={cat.id}>
-                                  {cat.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                    <div>
+                      <Label htmlFor="edit-runType">Run Type</Label>
+                      <Select
+                        value={editFormData.runType}
+                        onValueChange={(value) => setEditFormData({ ...editFormData, runType: value as 'solo' | 'co-op' })}
+                      >
+                        <SelectTrigger className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {runTypes.map((type) => (
+                            <SelectItem key={type.id} value={type.id}>
+                              {type.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                        <div>
-                          <Label htmlFor="edit-platform">Platform</Label>
-                          <Select
-                            value={editFormData.platform}
-                            onValueChange={(value) => setEditFormData({ ...editFormData, platform: value })}
-                          >
-                            <SelectTrigger className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {platforms.map((plat) => (
-                                <SelectItem key={plat.id} value={plat.id}>
-                                  {plat.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                    <div>
+                      <Label htmlFor="edit-date">Date</Label>
+                      <Input
+                        id="edit-date"
+                        type="date"
+                        value={editFormData.date}
+                        onChange={(e) => setEditFormData({ ...editFormData, date: e.target.value })}
+                        className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                      />
+                    </div>
 
-                        <div>
-                          <Label htmlFor="edit-runType">Run Type</Label>
-                          <Select
-                            value={editFormData.runType}
-                            onValueChange={(value) => setEditFormData({ ...editFormData, runType: value as 'solo' | 'co-op' })}
-                          >
-                            <SelectTrigger className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {runTypes.map((type) => (
-                                <SelectItem key={type.id} value={type.id}>
-                                  {type.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                    <div>
+                      <Label htmlFor="edit-videoUrl">Video URL</Label>
+                      <Input
+                        id="edit-videoUrl"
+                        value={editFormData.videoUrl}
+                        onChange={(e) => setEditFormData({ ...editFormData, videoUrl: e.target.value })}
+                        placeholder="https://youtube.com/watch?v=..."
+                        className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                      />
+                    </div>
 
-                        <div>
-                          <Label htmlFor="edit-date">Date</Label>
-                          <Input
-                            id="edit-date"
-                            type="date"
-                            value={editFormData.date}
-                            onChange={(e) => setEditFormData({ ...editFormData, date: e.target.value })}
-                            className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                          />
-                        </div>
-
-                        <div>
-                          <Label htmlFor="edit-videoUrl">Video URL</Label>
-                          <Input
-                            id="edit-videoUrl"
-                            value={editFormData.videoUrl}
-                            onChange={(e) => setEditFormData({ ...editFormData, videoUrl: e.target.value })}
-                            placeholder="https://youtube.com/watch?v=..."
-                            className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                          />
-                        </div>
-
-                        <div>
-                          <Label htmlFor="edit-comment">Comment</Label>
-                          <Textarea
-                            id="edit-comment"
-                            value={editFormData.comment}
-                            onChange={(e) => setEditFormData({ ...editFormData, comment: e.target.value })}
-                            className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                            rows={3}
-                          />
-                        </div>
+                    <div>
+                      <Label htmlFor="edit-comment">Comment</Label>
+                      <Textarea
+                        id="edit-comment"
+                        value={editFormData.comment}
+                        onChange={(e) => setEditFormData({ ...editFormData, comment: e.target.value })}
+                        className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                        rows={3}
+                      />
+                    </div>
                       </>
                     )}
                   </>

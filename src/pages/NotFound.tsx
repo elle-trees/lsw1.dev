@@ -28,9 +28,9 @@ const NotFound = () => {
             size="lg"
             className="bg-gradient-to-r from-[#cba6f7] to-[#b4a0e2] hover:from-[#b4a0e2] hover:to-[#cba6f7] text-[hsl(240,21%,15%)] font-bold shadow-lg hover:shadow-xl hover:shadow-[#cba6f7]/30 transition-all duration-300 hover:scale-105"
           >
-            <Link to="/">
-              <Home className="mr-2 h-5 w-5" />
-              Return to Home
+        <Link to="/">
+            <Home className="mr-2 h-5 w-5" />
+            Return to Home
             </Link>
           </Button>
         </CardContent>

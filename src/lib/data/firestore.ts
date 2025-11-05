@@ -66,8 +66,8 @@ export const getLeaderboardEntriesFirestore = async (
           if (entryLeaderboardType !== 'regular') return false;
         }
         
-        return true;
-      });
+          return true;
+        });
 
     // Sort by time in ascending order (fastest times first)
     const entriesWithTime = entries.map(entry => {
@@ -130,7 +130,7 @@ export const getLeaderboardEntriesFirestore = async (
       }
       
       // For co-op runs, look up player2
-      if (entry.player2Name && entry.runType === 'co-op') {
+        if (entry.player2Name && entry.runType === 'co-op') {
         const player2 = playerMap.get(entry.player2Name.trim().toLowerCase());
         if (player2) {
           entry.player2Name = player2.displayName || entry.player2Name;
@@ -287,13 +287,14 @@ export const updatePlayerProfileFirestore = async (uid: string, data: Partial<Pl
     const playerDocRef = doc(db, "players", uid);
     const docSnap = await getDoc(playerDocRef);
     
-    // Filter out undefined values and convert empty strings for bio/pronouns to deleteField
+    // Filter out undefined values and convert empty strings for bio/pronouns/twitchUsername to deleteField
+    // profilePicture: empty string should delete the field, undefined should skip (no change)
     const updateData: any = {};
     for (const [key, value] of Object.entries(data)) {
       if (value === undefined) {
-        // Skip undefined values
+        // Skip undefined values (no change)
         continue;
-      } else if ((key === 'bio' || key === 'pronouns' || key === 'twitchUsername') && value === '') {
+      } else if ((key === 'bio' || key === 'pronouns' || key === 'twitchUsername' || key === 'profilePicture') && value === '') {
         // Use deleteField to remove the field when it's an empty string
         updateData[key] = deleteField();
       } else {
@@ -333,7 +334,7 @@ export const updatePlayerProfileFirestore = async (uid: string, data: Partial<Pl
       }
       if (data.profilePicture) {
         newPlayer.profilePicture = data.profilePicture;
-      }
+    }
       
       await setDoc(playerDocRef, newPlayer);
     }
@@ -401,7 +402,7 @@ export const getRecentRunsFirestore = async (limitCount: number = 10): Promise<L
         }
       }
       
-      if (entry.player2Name && entry.runType === 'co-op') {
+        if (entry.player2Name && entry.runType === 'co-op') {
         const player2 = playerMap.get(entry.player2Name.trim().toLowerCase());
         if (player2) {
           entry.player2Name = player2.displayName || entry.player2Name;
@@ -510,8 +511,8 @@ export const getPlayerRunsFirestore = async (playerId: string): Promise<Leaderbo
           entry.playerName = player.displayName;
         }
         if (player.nameColor) {
-          entry.nameColor = player.nameColor;
-        }
+        entry.nameColor = player.nameColor;
+      }
       }
       
       // Assign rank based on the combination
@@ -599,8 +600,8 @@ export const getUnverifiedLeaderboardEntriesFirestore = async (): Promise<Leader
             entry.playerName = player.displayName;
           }
           if (player.nameColor) {
-            entry.nameColor = player.nameColor;
-          }
+          entry.nameColor = player.nameColor;
+        }
         }
         // For co-op runs, also fetch player2 display name and color
         if (entry.player2Name && entry.runType === 'co-op') {
@@ -609,7 +610,7 @@ export const getUnverifiedLeaderboardEntriesFirestore = async (): Promise<Leader
             // Update player2Name to use displayName from player document
             entry.player2Name = player2.displayName;
             if (player2.nameColor) {
-              entry.player2Color = player2.nameColor;
+            entry.player2Color = player2.nameColor;
             }
           }
         }
@@ -712,8 +713,8 @@ export const getLeaderboardEntryByIdFirestore = async (runId: string): Promise<L
             entry.playerName = player.displayName;
           }
           if (player.nameColor) {
-            entry.nameColor = player.nameColor;
-          }
+          entry.nameColor = player.nameColor;
+        }
         }
         // For co-op runs, also fetch player2 display name and color
         if (entry.player2Name && entry.runType === 'co-op') {
@@ -722,7 +723,7 @@ export const getLeaderboardEntryByIdFirestore = async (runId: string): Promise<L
             // Update player2Name to use displayName from player document
             entry.player2Name = player2.displayName;
             if (player2.nameColor) {
-              entry.player2Color = player2.nameColor;
+            entry.player2Color = player2.nameColor;
             }
           }
         }
@@ -801,7 +802,7 @@ export const updateLeaderboardEntryFirestore = async (runId: string, data: Parti
         platformName,
         newCategoryId,
         newPlatformId,
-        pointsConfig || undefined
+        pointsConfig
       );
       updateData.points = points;
       
@@ -841,30 +842,30 @@ export const updateRunVerificationStatusFirestore = async (runId: string, verifi
       updateData.verifiedBy = verifiedBy;
       
       // Calculate and store points when verifying (always recalculate to ensure accuracy)
-      // Get category and platform names
-      let categoryName = "Unknown";
-      let platformName = "Unknown";
-      try {
-        const categoryDocRef = doc(db, "categories", runData.category);
-        const categoryDocSnap = await getDoc(categoryDocRef);
-        if (categoryDocSnap.exists()) {
-          categoryName = categoryDocSnap.data().name || "Unknown";
-        }
-      } catch (error) {
+        // Get category and platform names
+        let categoryName = "Unknown";
+        let platformName = "Unknown";
+        try {
+          const categoryDocRef = doc(db, "categories", runData.category);
+          const categoryDocSnap = await getDoc(categoryDocRef);
+          if (categoryDocSnap.exists()) {
+            categoryName = categoryDocSnap.data().name || "Unknown";
+          }
+        } catch (error) {
         console.error("Error fetching category:", error);
-        // Silent fail - use default
-      }
-      try {
-        const platformDocRef = doc(db, "platforms", runData.platform);
-        const platformDocSnap = await getDoc(platformDocRef);
-        if (platformDocSnap.exists()) {
-          platformName = platformDocSnap.data().name || "Unknown";
+          // Silent fail - use default
         }
-      } catch (error) {
+        try {
+          const platformDocRef = doc(db, "platforms", runData.platform);
+          const platformDocSnap = await getDoc(platformDocRef);
+          if (platformDocSnap.exists()) {
+            platformName = platformDocSnap.data().name || "Unknown";
+          }
+        } catch (error) {
         console.error("Error fetching platform:", error);
-        // Silent fail - use default
-      }
-      
+          // Silent fail - use default
+        }
+        
       // Get points config and calculate points
       const pointsConfig = await getPointsConfigFirestore();
       const points = calculatePoints(
@@ -873,10 +874,10 @@ export const updateRunVerificationStatusFirestore = async (runId: string, verifi
         platformName,
         runData.category,
         runData.platform,
-        pointsConfig || undefined
+        pointsConfig
       );
-      updateData.points = points;
-      
+        updateData.points = points;
+        
       // Update the document first to mark it as verified, then recalculate points
       // This ensures the newly verified run is included in the recalculation
       await updateDoc(runDocRef, updateData);
@@ -912,7 +913,7 @@ export const updateRunVerificationStatusFirestore = async (runId: string, verifi
     } else if (!verified && runData.verified) {
       // When unverifying, update the document first, then recalculate points
       // This ensures the run is marked as unverified before recalculation
-      await updateDoc(runDocRef, updateData);
+    await updateDoc(runDocRef, updateData);
       
       // Recalculate points for all affected players
       // This will subtract the points since the run is no longer verified
@@ -1030,7 +1031,7 @@ export const recalculatePlayerPointsFirestore = async (playerId: string): Promis
         platformName,
         runData.category,
         runData.platform,
-        pointsConfig || undefined
+        pointsConfig
       );
       runsToUpdate.push({ id: runDoc.id, points });
       totalPoints += points;
@@ -1051,7 +1052,7 @@ export const recalculatePlayerPointsFirestore = async (playerId: string): Promis
     if (playerDocSnap && playerDocSnap.exists()) {
       // Only update totalPoints to avoid permission issues
       try {
-        await updateDoc(playerDocRef, { totalPoints });
+      await updateDoc(playerDocRef, { totalPoints });
       } catch (error: any) {
         console.error(`Error updating player ${playerId} totalPoints:`, error?.code, error?.message);
         throw error; // Re-throw to be caught by outer catch
@@ -1074,7 +1075,7 @@ export const recalculatePlayerPointsFirestore = async (playerId: string): Promis
         totalPoints,
       };
       try {
-        await setDoc(playerDocRef, playerData);
+      await setDoc(playerDocRef, playerData);
       } catch (error: any) {
         console.error(`Error creating player document ${playerId}:`, error?.code, error?.message);
         throw error; // Re-throw to be caught by outer catch
@@ -1781,20 +1782,20 @@ export const getPlayersByPointsFirestore = async (limit: number = 100): Promise<
       isUnlinked: boolean;
     }>();
 
+    // Get points config once for all calculations
+    const pointsConfig = await getPointsConfigFirestore();
+
     // Process each run (only solo runs count for points)
     for (const runDoc of runsSnapshot.docs) {
       const runData = runDoc.data() as LeaderboardEntry;
       
       if (!runData.playerId || runData.isObsolete) continue;
-      
+
       // Skip co-op runs - they don't award points
       if (runData.runType === 'co-op') {
         continue;
       }
 
-      // Get points config for calculation
-      const pointsConfig = await getPointsConfigFirestore();
-      
       // Recalculate points for all solo runs with the new formula
       const categoryName = categoryMap.get(runData.category) || "Unknown";
       const platformName = platformMap.get(runData.platform) || "Unknown";
@@ -1804,7 +1805,7 @@ export const getPlayersByPointsFirestore = async (limit: number = 100): Promise<
         platformName,
         runData.category,
         runData.platform,
-        pointsConfig || undefined
+        pointsConfig
       );
       
       // Update the run with recalculated points (async, don't wait)
@@ -1980,6 +1981,9 @@ export const backfillPointsForAllRunsFirestore = async (): Promise<{
       result.errors.push("Warning: Hit Firestore query limit of 10,000 runs. Some runs may not have been processed. Consider implementing pagination for databases with more than 10,000 verified runs.");
     }
 
+    // Get points config once for all calculations
+    const pointsConfig = await getPointsConfigFirestore();
+
     // Track unique player IDs
     const playerIdsSet = new Set<string>();
 
@@ -1998,9 +2002,6 @@ export const backfillPointsForAllRunsFirestore = async (): Promise<{
           continue;
         }
 
-        // Get points config for calculation
-        const pointsConfig = await getPointsConfigFirestore();
-        
         // Recalculate points for all runs with the current formula
         const categoryName = categoryMap.get(runData.category) || "Unknown";
         const platformName = platformMap.get(runData.platform) || "Unknown";
@@ -2010,7 +2011,7 @@ export const backfillPointsForAllRunsFirestore = async (): Promise<{
           platformName,
           runData.category,
           runData.platform,
-          pointsConfig || undefined
+          pointsConfig
         );
         
         runsToUpdate.push({
@@ -2022,7 +2023,7 @@ export const backfillPointsForAllRunsFirestore = async (): Promise<{
         // Track player IDs for later recalculation (only for solo runs)
         // Co-op runs don't award points, so we skip tracking player2
         if (runData.runType !== 'co-op') {
-          playerIdsSet.add(runData.playerId);
+        playerIdsSet.add(runData.playerId);
         }
       } catch (error) {
         result.errors.push(`Error processing run ${runData.id}: ${error instanceof Error ? error.message : String(error)}`);
@@ -2246,21 +2247,36 @@ const DEFAULT_POINTS_CONFIG: Omit<PointsConfig, 'id'> = {
   enabled: true,
 };
 
-export const getPointsConfigFirestore = async (): Promise<PointsConfig | null> => {
-  if (!db) return null;
+export const getPointsConfigFirestore = async (): Promise<PointsConfig> => {
+  if (!db) {
+    // Return default config if db is not initialized
+    return { id: "default", ...DEFAULT_POINTS_CONFIG };
+  }
   try {
     const configDocRef = doc(db, "pointsConfig", "default");
     const configDocSnap = await getDoc(configDocRef);
     
     if (configDocSnap.exists()) {
-      return { id: configDocSnap.id, ...configDocSnap.data() } as PointsConfig;
+      const data = configDocSnap.data();
+      // Ensure all required fields are present
+      return {
+        id: configDocSnap.id,
+        baseMultiplier: data.baseMultiplier ?? DEFAULT_POINTS_CONFIG.baseMultiplier,
+        minPoints: data.minPoints ?? DEFAULT_POINTS_CONFIG.minPoints,
+        eligiblePlatforms: data.eligiblePlatforms ?? DEFAULT_POINTS_CONFIG.eligiblePlatforms,
+        eligibleCategories: data.eligibleCategories ?? DEFAULT_POINTS_CONFIG.eligibleCategories,
+        categoryScaleFactors: data.categoryScaleFactors ?? DEFAULT_POINTS_CONFIG.categoryScaleFactors,
+        categoryMilestones: data.categoryMilestones ?? DEFAULT_POINTS_CONFIG.categoryMilestones,
+        enabled: data.enabled !== undefined ? data.enabled : DEFAULT_POINTS_CONFIG.enabled,
+      } as PointsConfig;
     }
     
     // Return default config if none exists
     return { id: "default", ...DEFAULT_POINTS_CONFIG };
   } catch (error) {
     console.error("Error fetching points config:", error);
-    return null;
+    // Return default config on error instead of null
+    return { id: "default", ...DEFAULT_POINTS_CONFIG };
   }
 };
 

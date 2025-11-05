@@ -101,17 +101,17 @@ const Leaderboards = () => {
         
         // Only update state if this is still the latest request
         if (currentRequest === requestCounterRef.current && !abortController.signal.aborted) {
-          setLeaderboardData(data);
+        setLeaderboardData(data);
         }
       } catch (error) {
         // Only handle error if this is still the latest request and not aborted
         if (currentRequest === requestCounterRef.current && !abortController.signal.aborted) {
-          // Silent fail
+        // Silent fail
         }
       } finally {
         // Only update loading state if this is still the latest request
         if (currentRequest === requestCounterRef.current) {
-          setLoading(false);
+        setLoading(false);
         }
       }
     };
@@ -197,7 +197,7 @@ const Leaderboards = () => {
               </div>
             )}
 
-            {/* Filters */}
+        {/* Filters */}
             <Card className="bg-gradient-to-br from-ctp-base to-ctp-mantle border-ctp-surface1 shadow-xl mb-6 transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl hover:shadow-ctp-mauve/20 hover:border-ctp-mauve/50 animate-slide-up-delay">
           <CardHeader className="bg-gradient-to-r from-ctp-base to-ctp-mantle border-b border-ctp-surface1">
             <CardTitle className="flex items-center gap-2 text-xl">
@@ -223,16 +223,16 @@ const Leaderboards = () => {
                   <Select value={selectedLevel} onValueChange={setSelectedLevel}>
                     <SelectTrigger className="bg-gradient-to-br from-ctp-base to-ctp-mantle border-ctp-surface1 h-10 text-sm hover:border-ctp-mauve hover:bg-gradient-to-br hover:from-ctp-surface0 hover:to-ctp-base transition-all duration-300 hover:shadow-lg hover:shadow-ctp-mauve/20">
                       <SelectValue placeholder="Select level" />
-                    </SelectTrigger>
-                    <SelectContent>
+                  </SelectTrigger>
+                  <SelectContent>
                       {availableLevels.map((level) => (
                         <SelectItem key={level.id} value={level.id} className="text-sm">
                           {level.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               )}
               <div className="animate-fade-in" style={{ animationDelay: '200ms' }}>
                 <label className="block text-sm font-semibold mb-2 text-ctp-text flex items-center gap-2">
@@ -337,7 +337,7 @@ const Leaderboards = () => {
               </div>
             ) : (
               <div className="animate-fade-in">
-                <LeaderboardTable data={leaderboardData} platforms={availablePlatforms} categories={availableCategories} />
+              <LeaderboardTable data={leaderboardData} platforms={availablePlatforms} categories={availableCategories} />
               </div>
             )}
           </CardContent>

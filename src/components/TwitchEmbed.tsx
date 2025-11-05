@@ -27,7 +27,7 @@ const TwitchEmbed: React.FC<TwitchEmbedProps> = ({ channel }) => {
       </div>
       <CardContent className="p-6 text-center space-y-3">
         <div className="flex items-center justify-center gap-2 flex-wrap">
-          <p className="text-lg font-semibold text-[hsl(220,17%,92%)]">
+        <p className="text-lg font-semibold text-[hsl(220,17%,92%)]">
             Watch <span className="text-[#cba6f7]">{channel}</span> live on Twitch!
           </p>
           <Badge variant="outline" className="border-[#9147ff] bg-[#9147ff]/10 text-[#9147ff]">

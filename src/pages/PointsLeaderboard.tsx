@@ -54,18 +54,18 @@ const PointsLeaderboard = () => {
               </span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-5">
+          <CardContent className="p-6 sm:p-8">
             {loading ? (
-              <LoadingSpinner size="sm" className="py-8" />
+              <LoadingSpinner size="sm" className="py-12" />
             ) : players.length === 0 ? (
-              <div className="text-center py-12">
-                <Sparkles className="h-12 w-12 mx-auto mb-3 text-[hsl(222,15%,60%)] opacity-50" />
-                <p className="text-base text-[hsl(222,15%,60%)]">
+              <div className="text-center py-16">
+                <Sparkles className="h-16 w-16 mx-auto mb-4 text-[hsl(222,15%,60%)] opacity-50" />
+                <p className="text-lg text-[hsl(222,15%,60%)]">
                   No players with points yet. Submit and verify runs to earn points!
                 </p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {players.map((player, index) => {
                   const rank = index + 1;
                   const points = player.totalPoints || 0;
@@ -80,29 +80,41 @@ const PointsLeaderboard = () => {
                       <div
                         className={`relative overflow-hidden transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl animate-fade-in ${
                           rank === 1
-                            ? "bg-gradient-to-br from-[#89b4fa]/20 via-[#89b4fa]/15 to-[#89b4fa]/10 border-2 border-[#89b4fa]/50 hover:border-[#89b4fa] hover:shadow-[#89b4fa]/30"
+                            ? "bg-gradient-to-br from-[#89b4fa]/20 via-[#89b4fa]/15 to-[#89b4fa]/10 border-2 border-[#89b4fa]/50 hover:border-[#89b4fa] hover:shadow-[#89b4fa]/40"
                             : rank === 2
-                            ? "bg-gradient-to-br from-[#74c7ec]/20 via-[#74c7ec]/15 to-[#74c7ec]/10 border-2 border-[#74c7ec]/50 hover:border-[#74c7ec] hover:shadow-[#74c7ec]/30"
+                            ? "bg-gradient-to-br from-[#74c7ec]/20 via-[#74c7ec]/15 to-[#74c7ec]/10 border-2 border-[#74c7ec]/50 hover:border-[#74c7ec] hover:shadow-[#74c7ec]/40"
                             : rank === 3
-                            ? "bg-gradient-to-br from-[#89dceb]/20 via-[#89dceb]/15 to-[#89dceb]/10 border-2 border-[#89dceb]/50 hover:border-[#89dceb] hover:shadow-[#89dceb]/30"
-                            : "bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border border-[hsl(235,13%,30%)] hover:border-[hsl(var(--mocha-mauve))] hover:shadow-[hsl(var(--mocha-mauve))]/20"
+                            ? "bg-gradient-to-br from-[#89dceb]/20 via-[#89dceb]/15 to-[#89dceb]/10 border-2 border-[#89dceb]/50 hover:border-[#89dceb] hover:shadow-[#89dceb]/40"
+                            : "bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border border-[hsl(235,13%,30%)] hover:border-[#fab387]/50 hover:shadow-[#fab387]/20"
                         }`}
                         style={{ animationDelay: `${index * 0.05}s` }}
                       >
                         {/* Animated background gradient on hover */}
-                        <div className="absolute inset-0 bg-gradient-to-r from-[hsl(var(--mocha-mauve))]/0 via-[hsl(var(--mocha-mauve))]/5 to-[hsl(var(--mocha-mauve))]/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                        <div className="absolute inset-0 bg-gradient-to-r from-[#fab387]/0 via-[#fab387]/10 to-[#fab387]/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                         
-                        <div className="relative flex items-center gap-4 p-4">
+                        {/* Shine effect on hover */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                        
+                        <div className="relative flex items-center gap-6 p-6 sm:p-8">
                           {/* Rank */}
-                          <div className="flex items-center gap-2 flex-shrink-0">
+                          <div className="flex items-center gap-3 flex-shrink-0">
                             {rank === 1 ? (
-                              <LegoStudIcon size={40} color="#0055BF" />
+                              <div className="relative">
+                                <div className="absolute inset-0 bg-[#0055BF]/30 blur-xl animate-pulse" />
+                                <LegoStudIcon size={56} color="#0055BF" className="relative" />
+                              </div>
                             ) : rank === 2 ? (
-                              <LegoStudIcon size={40} color="#FFD700" />
+                              <div className="relative">
+                                <div className="absolute inset-0 bg-[#FFD700]/30 blur-xl animate-pulse" />
+                                <LegoStudIcon size={56} color="#FFD700" className="relative" />
+                              </div>
                             ) : rank === 3 ? (
-                              <LegoStudIcon size={40} color="#C0C0C0" />
+                              <div className="relative">
+                                <div className="absolute inset-0 bg-[#C0C0C0]/30 blur-xl animate-pulse" />
+                                <LegoStudIcon size={56} color="#C0C0C0" className="relative" />
+                              </div>
                             ) : (
-                              <span className="font-bold text-base text-ctp-text w-10 h-10 flex items-center justify-center">
+                              <span className="font-bold text-2xl text-ctp-text w-14 h-14 flex items-center justify-center bg-gradient-to-br from-[hsl(240,21%,18%)] to-[hsl(235,19%,15%)] border border-[hsl(235,13%,30%)] group-hover:border-[#fab387]/50 transition-colors">
                                 #{rank}
                               </span>
                             )}
@@ -110,28 +122,34 @@ const PointsLeaderboard = () => {
 
                           {/* Player Name */}
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1.5">
+                            <div className="flex items-center gap-2 mb-2">
                               <span
-                                className="font-bold text-lg group-hover:scale-105 transition-transform duration-300"
+                                className="font-bold text-xl sm:text-2xl group-hover:scale-105 transition-transform duration-300"
                                 style={{ color: player.nameColor || "#cba6f7" }}
                               >
                                 {displayName}
                               </span>
                             </div>
-                            <div className="flex items-center gap-1.5 text-xs text-ctp-subtext1">
-                              <span>{player.totalRuns || 0} verified run{player.totalRuns !== 1 ? 's' : ''}</span>
+                            <div className="flex items-center gap-2 text-sm text-ctp-subtext1">
+                              <span className="bg-[hsl(240,21%,18%)] px-3 py-1 border border-[hsl(235,13%,30%)] group-hover:border-[#fab387]/50 transition-colors">
+                                {player.totalRuns || 0} verified run{player.totalRuns !== 1 ? 's' : ''}
+                              </span>
                             </div>
                           </div>
 
                           {/* Points */}
                           <div className="text-right flex-shrink-0">
-                            <div className="flex items-center gap-1.5 justify-end mb-1">
-                              <Plus className="h-5 w-5 text-[#fab387] group-hover:scale-110 transition-transform duration-300" />
-                              <div className="text-2xl font-bold text-[#fab387] group-hover:scale-110 transition-transform duration-300">
-                                {formatPoints(points)}
+                            <div className="flex items-center gap-2 justify-end mb-2">
+                              <div className="relative">
+                                <div className="absolute inset-0 bg-[#fab387]/20 blur-md group-hover:blur-lg transition-all duration-300" />
+                                <Plus className="h-7 w-7 text-[#fab387] group-hover:scale-125 group-hover:rotate-90 transition-all duration-300 relative z-10" />
+                              </div>
+                              <div className="text-3xl sm:text-4xl font-bold text-[#fab387] group-hover:scale-110 transition-transform duration-300 relative">
+                                <div className="absolute inset-0 bg-[#fab387]/10 blur-xl group-hover:blur-2xl transition-all duration-300" />
+                                <span className="relative z-10">{formatPoints(points)}</span>
                               </div>
                             </div>
-                            <div className="text-xs text-ctp-overlay0 uppercase tracking-wider">points</div>
+                            <div className="text-sm text-ctp-overlay0 uppercase tracking-wider font-semibold">points</div>
                           </div>
                         </div>
                       </div>

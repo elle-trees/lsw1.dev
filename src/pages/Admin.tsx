@@ -1174,8 +1174,8 @@ const Admin = () => {
           <div className="flex items-center justify-center gap-2 mb-4">
             <ShieldAlert className="h-6 w-6 text-[#f2cdcd]" />
             <h1 className="text-3xl md:text-4xl font-bold text-[#f2cdcd]">
-              Admin Panel
-            </h1>
+            Admin Panel
+          </h1>
           </div>
           <p className="text-base text-ctp-subtext1 max-w-3xl mx-auto animate-fade-in-delay">
             Review and manage submitted speedruns and site resources.
@@ -1236,8 +1236,8 @@ const Admin = () => {
                   <span>
                     Points Configuration
                   </span>
-                </CardTitle>
-              </CardHeader>
+            </CardTitle>
+          </CardHeader>
               <CardContent className="pt-6">
                 {loadingPointsConfig ? (
                   <div className="flex items-center justify-center py-8">
@@ -1270,7 +1270,7 @@ const Admin = () => {
                     }
                   }} className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
+                  <div>
                         <Label htmlFor="pointsEnabled">Enable Points System</Label>
                         <Select
                           value={pointsConfig.enabled ? "true" : "false"}
@@ -1539,72 +1539,72 @@ const Admin = () => {
               <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
                 <CardTitle className="flex items-center gap-2 text-xl text-[#f2cdcd]">
                   <span>
-                    Backfill Points for All Runs
+                      Backfill Points for All Runs
                   </span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-6">
                 <p className="text-sm text-ctp-subtext1 leading-relaxed mb-4">
-                  Recalculate and update points for all verified runs using the current points formula. This will also recalculate all players' total points based on their verified runs. Obsolete runs will be excluded.
-                </p>
-                {backfillingPoints && (
+                      Recalculate and update points for all verified runs using the current points formula. This will also recalculate all players' total points based on their verified runs. Obsolete runs will be excluded.
+                    </p>
+                    {backfillingPoints && (
                   <p className="text-xs text-ctp-overlay0 mb-4 italic flex items-center gap-2">
                     <span className="animate-pulse">●</span>
-                    This may take a while depending on the number of runs...
-                  </p>
-                )}
-                <Button
-                  onClick={async () => {
-                    if (!currentUser) return;
-                    
-                    // Confirmation dialog
-                    if (!window.confirm(
-                      "This will recalculate points for ALL verified runs and update all player totals. " +
-                      "This operation cannot be undone and may take several minutes. Continue?"
-                    )) {
-                      return;
-                    }
-                    
-                    setBackfillingPoints(true);
-                    try {
-                      const result = await backfillPointsForAllRuns();
-                      if (result.errors.length > 0) {
+                        This may take a while depending on the number of runs...
+                      </p>
+                    )}
+                  <Button
+                    onClick={async () => {
+                      if (!currentUser) return;
+                      
+                      // Confirmation dialog
+                      if (!window.confirm(
+                        "This will recalculate points for ALL verified runs and update all player totals. " +
+                        "This operation cannot be undone and may take several minutes. Continue?"
+                      )) {
+                        return;
+                      }
+                      
+                      setBackfillingPoints(true);
+                      try {
+                        const result = await backfillPointsForAllRuns();
+                        if (result.errors.length > 0) {
+                          toast({
+                            title: "Backfill Complete with Errors",
+                            description: `Updated ${result.runsUpdated} runs and ${result.playersUpdated} players. ${result.errors.length} error(s) occurred.`,
+                            variant: "destructive",
+                          });
+                        } else {
+                          toast({
+                            title: "Backfill Complete",
+                            description: `Successfully recalculated points for ${result.runsUpdated} runs and updated ${result.playersUpdated} players.`,
+                          });
+                        }
+                      } catch (error: any) {
                         toast({
-                          title: "Backfill Complete with Errors",
-                          description: `Updated ${result.runsUpdated} runs and ${result.playersUpdated} players. ${result.errors.length} error(s) occurred.`,
+                          title: "Error",
+                          description: error.message || "Failed to backfill points.",
                           variant: "destructive",
                         });
-                      } else {
-                        toast({
-                          title: "Backfill Complete",
-                          description: `Successfully recalculated points for ${result.runsUpdated} runs and updated ${result.playersUpdated} players.`,
-                        });
+                      } finally {
+                        setBackfillingPoints(false);
                       }
-                    } catch (error: any) {
-                      toast({
-                        title: "Error",
-                        description: error.message || "Failed to backfill points.",
-                        variant: "destructive",
-                      });
-                    } finally {
-                      setBackfillingPoints(false);
-                    }
-                  }}
-                  disabled={backfillingPoints}
+                    }}
+                    disabled={backfillingPoints}
                   className="bg-gradient-to-r from-[#FFD700] to-[#FFA500] hover:from-[#FFA500] hover:to-[#FFD700] text-black font-semibold w-full sm:w-auto transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-[#FFD700]/50"
-                >
-                  {backfillingPoints ? (
-                    <>
-                      <LoadingSpinner size="sm" className="mr-2" />
-                      Processing Points...
-                    </>
-                  ) : (
-                    <>
-                      <Trophy className="h-4 w-4 mr-2" />
-                      Recalculate All Points
-                    </>
-                  )}
-                </Button>
+                  >
+                    {backfillingPoints ? (
+                      <>
+                        <LoadingSpinner size="sm" className="mr-2" />
+                        Processing Points...
+                      </>
+                    ) : (
+                      <>
+                        <Trophy className="h-4 w-4 mr-2" />
+                        Recalculate All Points
+                      </>
+                    )}
+                  </Button>
               </CardContent>
             </Card>
 
@@ -1631,7 +1631,7 @@ const Admin = () => {
                         required
                         className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
                       />
-                    </div>
+                </div>
                     <div>
                       <Label htmlFor="manualPlayerUsername">Player Username (Optional)</Label>
                       <Input
@@ -1645,8 +1645,8 @@ const Admin = () => {
                       <p className="text-sm text-[hsl(222,15%,60%)] mt-1">
                         If provided, the run will be linked to this player's account. If not found, the run will still be added with the provided player name.
                       </p>
-                    </div>
-                  </div>
+              </div>
+            </div>
                   {manualRun.runType === 'co-op' && (
                     <div>
                       <Label htmlFor="manualPlayer2Name">Player 2 Name *</Label>
@@ -1863,8 +1863,8 @@ const Admin = () => {
                     {addingManualRun ? "Adding..." : "Add Run"}
                   </Button>
                 </form>
-              </CardContent>
-            </Card>
+          </CardContent>
+        </Card>
 
             {/* Admin Management Section */}
             <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
@@ -1968,7 +1968,7 @@ const Admin = () => {
             </Card>
           </TabsContent>
 
-          {/* Unverified Runs Section */}
+        {/* Unverified Runs Section */}
           <TabsContent value="runs" className="space-y-4 animate-fade-in">
             <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
               <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
@@ -1977,7 +1977,7 @@ const Admin = () => {
                     Unverified Runs
                   </span>
                 </CardTitle>
-              </CardHeader>
+          </CardHeader>
           <CardContent>
             {unverifiedRuns.length === 0 ? (
               <p className="text-[hsl(222,15%,60%)] text-center py-8">No runs awaiting verification.</p>
@@ -2047,16 +2047,16 @@ const Admin = () => {
 
           </TabsContent>
 
-          {/* Category Management Section */}
+        {/* Category Management Section */}
           <TabsContent value="categories" className="space-y-4 animate-fade-in">
             <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
               <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
                 <CardTitle className="flex items-center gap-2 text-xl text-[#f2cdcd]">
                   <span>
-                    Manage Categories
+              Manage Categories
                   </span>
-                </CardTitle>
-              </CardHeader>
+            </CardTitle>
+          </CardHeader>
           <CardContent className="p-4">
             <Tabs value={categoryLeaderboardType} onValueChange={(value) => {
               setCategoryLeaderboardType(value as 'regular' | 'individual-level');
@@ -2075,129 +2075,129 @@ const Admin = () => {
 
               <TabsContent value={categoryLeaderboardType} className="mt-0">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <div>
+              <div>
                     <h3 className="text-base font-semibold mb-3">Add New Category</h3>
                     <form onSubmit={handleAddCategory} className="space-y-3">
                       <div>
                         <Label htmlFor="categoryName" className="text-sm">Category Name</Label>
-                        <Input
-                          id="categoryName"
-                          type="text"
-                          value={newCategoryName}
-                          onChange={(e) => setNewCategoryName(e.target.value)}
-                          placeholder="e.g., 100% Glitchless"
-                          required
+                <Input
+                  id="categoryName"
+                  type="text"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder="e.g., 100% Glitchless"
+                  required
                           className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] h-9 text-sm"
-                        />
-                      </div>
-                      <Button 
-                        type="submit" 
-                        disabled={addingCategory}
+                />
+              </div>
+              <Button 
+                type="submit" 
+                disabled={addingCategory}
                         size="sm"
                         className="bg-gradient-to-r from-[#cba6f7] to-[#b4a0e2] hover:from-[#b4a0e2] hover:to-[#cba6f7] text-[hsl(240,21%,15%)] font-bold flex items-center gap-2 transition-all duration-300 hover:scale-105 hover:shadow-lg"
-                      >
+              >
                         <PlusCircle className="h-3 w-3" />
-                        {addingCategory ? "Adding..." : "Add Category"}
-                      </Button>
-                    </form>
+                {addingCategory ? "Adding..." : "Add Category"}
+              </Button>
+            </form>
                   </div>
                   <div>
                     <h3 className="text-base font-semibold mb-3">Existing Categories</h3>
-                    {firestoreCategories.length === 0 ? (
+            {firestoreCategories.length === 0 ? (
                       <p className="text-[hsl(222,15%,60%)] text-center py-4 text-sm">No categories found. Add your first category!</p>
-                    ) : (
+            ) : (
                       <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
-                        <Table>
-                          <TableHeader>
-                            <TableRow className="border-b border-[hsl(235,13%,30%)] hover:bg-transparent">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-b border-[hsl(235,13%,30%)] hover:bg-transparent">
                               <TableHead className="py-2 px-3 text-left text-xs">Name</TableHead>
                               <TableHead className="py-2 px-3 text-center text-xs">Actions</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {firestoreCategories.map((category, index) => (
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {firestoreCategories.map((category, index) => (
                               <TableRow key={category.id} className="border-b border-[hsl(235,13%,30%)] hover:bg-[hsl(235,19%,13%)] transition-all duration-200 hover:shadow-sm">
                                 <TableCell className="py-2 px-3 font-medium text-sm">
-                                  {editingCategory?.id === category.id ? (
-                                    <Input
-                                      value={editingCategoryName}
-                                      onChange={(e) => setEditingCategoryName(e.target.value)}
+                          {editingCategory?.id === category.id ? (
+                            <Input
+                              value={editingCategoryName}
+                              onChange={(e) => setEditingCategoryName(e.target.value)}
                                       className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] h-8 text-sm"
-                                      autoFocus
-                                    />
-                                  ) : (
-                                    category.name
-                                  )}
-                                </TableCell>
+                              autoFocus
+                            />
+                          ) : (
+                            category.name
+                          )}
+                        </TableCell>
                                 <TableCell className="py-2 px-3 text-center space-x-1">
-                              {editingCategory?.id === category.id ? (
-                                <>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={handleSaveEditCategory}
-                                    disabled={updatingCategory}
-                                    className="text-green-500 hover:bg-green-900/20"
-                                  >
-                                    Save
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={handleCancelEditCategory}
-                                    disabled={updatingCategory}
-                                    className="text-gray-500 hover:bg-gray-900/20"
-                                  >
-                                    Cancel
-                                  </Button>
-                                </>
-                              ) : (
-                                <>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleMoveCategoryUp(category.id)}
-                                  disabled={reorderingCategory === category.id || index === 0}
+                          {editingCategory?.id === category.id ? (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={handleSaveEditCategory}
+                                disabled={updatingCategory}
+                                className="text-green-500 hover:bg-green-900/20"
+                              >
+                                Save
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={handleCancelEditCategory}
+                                disabled={updatingCategory}
+                                className="text-gray-500 hover:bg-gray-900/20"
+                              >
+                                Cancel
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleMoveCategoryUp(category.id)}
+                                disabled={reorderingCategory === category.id || index === 0}
                                   className="text-purple-500 hover:bg-purple-900/20 disabled:opacity-50 h-7 w-7 p-0 transition-all duration-200 hover:scale-110"
-                                  title="Move up"
-                                >
+                                title="Move up"
+                              >
                                   <ArrowUp className="h-3 w-3" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleMoveCategoryDown(category.id)}
-                                  disabled={reorderingCategory === category.id || index === firestoreCategories.length - 1}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleMoveCategoryDown(category.id)}
+                                disabled={reorderingCategory === category.id || index === firestoreCategories.length - 1}
                                   className="text-purple-500 hover:bg-purple-900/20 disabled:opacity-50 h-7 w-7 p-0 transition-all duration-200 hover:scale-110"
-                                  title="Move down"
-                                >
+                                title="Move down"
+                              >
                                   <ArrowDown className="h-3 w-3" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleStartEditCategory(category)}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleStartEditCategory(category)}
                                   className="text-blue-500 hover:bg-blue-900/20 h-7 w-7 p-0 transition-all duration-200 hover:scale-110"
-                                >
+                              >
                                   <Edit2 className="h-3 w-3" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleDeleteCategory(category.id)}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteCategory(category.id)}
                                   className="text-red-500 hover:bg-red-900/20 h-7 w-7 p-0 transition-all duration-200 hover:scale-110"
-                                >
+                              >
                                   <Trash2 className="h-3 w-3" />
-                                </Button>
-                                </>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                      </div>
-                    )}
+                              </Button>
+                            </>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
                   </div>
                 </div>
               </TabsContent>
@@ -2364,16 +2364,16 @@ const Admin = () => {
             </Card>
           </TabsContent>
 
-          {/* Platform Management Section */}
+        {/* Platform Management Section */}
           <TabsContent value="platforms" className="space-y-4 animate-fade-in">
             <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
               <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
                 <CardTitle className="flex items-center gap-2 text-xl text-[#f2cdcd]">
                   <span>
-                    Manage Platforms
+              Manage Platforms
                   </span>
-                </CardTitle>
-              </CardHeader>
+            </CardTitle>
+          </CardHeader>
           <CardContent className="p-4">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <div>
@@ -2381,124 +2381,124 @@ const Admin = () => {
                 <form onSubmit={(e) => { e.preventDefault(); handleAddPlatform(); }} className="space-y-3">
                   <div>
                     <Label htmlFor="platformName" className="text-sm">Platform Name</Label>
-                    <Input
-                      id="platformName"
-                      type="text"
-                      value={newPlatformName}
-                      onChange={(e) => setNewPlatformName(e.target.value)}
-                      placeholder="e.g., Nintendo Switch"
-                      required
+                <Input
+                  id="platformName"
+                  type="text"
+                  value={newPlatformName}
+                  onChange={(e) => setNewPlatformName(e.target.value)}
+                  placeholder="e.g., Nintendo Switch"
+                  required
                       className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] h-9 text-sm"
-                    />
-                  </div>
-                  <Button 
-                    type="submit" 
-                    disabled={addingPlatform}
+                />
+              </div>
+              <Button 
+                type="submit" 
+                disabled={addingPlatform}
                     size="sm"
                     className="bg-gradient-to-r from-[#cba6f7] to-[#b4a0e2] hover:from-[#b4a0e2] hover:to-[#cba6f7] text-[hsl(240,21%,15%)] font-bold flex items-center gap-2 transition-all duration-300 hover:scale-105 hover:shadow-lg"
-                  >
+              >
                     <PlusCircle className="h-3 w-3" />
-                    {addingPlatform ? "Adding..." : "Add Platform"}
-                  </Button>
-                </form>
+                {addingPlatform ? "Adding..." : "Add Platform"}
+              </Button>
+            </form>
               </div>
               <div>
                 <h3 className="text-base font-semibold mb-3">Existing Platforms</h3>
-                {firestorePlatforms.length === 0 ? (
+            {firestorePlatforms.length === 0 ? (
                   <p className="text-[hsl(222,15%,60%)] text-center py-4 text-sm">No platforms found.</p>
-                ) : (
+            ) : (
                   <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="border-b border-[hsl(235,13%,30%)] hover:bg-transparent">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-b border-[hsl(235,13%,30%)] hover:bg-transparent">
                           <TableHead className="py-2 px-3 text-left text-xs">Name</TableHead>
                           <TableHead className="py-2 px-3 text-center text-xs">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {firestorePlatforms.map((platform, index) => (
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {firestorePlatforms.map((platform, index) => (
                           <TableRow key={platform.id} className="border-b border-[hsl(235,13%,30%)] hover:bg-[hsl(235,19%,13%)] transition-all duration-200 hover:shadow-sm">
                             <TableCell className="py-2 px-3 font-medium text-sm">
-                              {editingPlatform?.id === platform.id ? (
-                                <Input
-                                  value={editingPlatformName}
-                                  onChange={(e) => setEditingPlatformName(e.target.value)}
+                          {editingPlatform?.id === platform.id ? (
+                            <Input
+                              value={editingPlatformName}
+                              onChange={(e) => setEditingPlatformName(e.target.value)}
                                   className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] h-8 text-sm"
-                                  autoFocus
-                                />
-                              ) : (
-                                platform.name
-                              )}
-                            </TableCell>
+                              autoFocus
+                            />
+                          ) : (
+                            platform.name
+                          )}
+                        </TableCell>
                             <TableCell className="py-2 px-3 text-center space-x-1">
-                              {editingPlatform?.id === platform.id ? (
-                                <>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={handleSaveEditPlatform}
-                                    disabled={updatingPlatform}
+                          {editingPlatform?.id === platform.id ? (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={handleSaveEditPlatform}
+                                disabled={updatingPlatform}
                                     className="text-green-500 hover:bg-green-900/20 h-7"
-                                  >
-                                    Save
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={handleCancelEditPlatform}
-                                    disabled={updatingPlatform}
+                              >
+                                Save
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={handleCancelEditPlatform}
+                                disabled={updatingPlatform}
                                     className="text-gray-500 hover:bg-gray-900/20 h-7"
-                                  >
-                                    Cancel
-                                  </Button>
-                                </>
-                              ) : (
-                                <>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleMovePlatformUp(platform.id)}
-                                    disabled={reorderingPlatform === platform.id || index === 0}
+                              >
+                                Cancel
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleMovePlatformUp(platform.id)}
+                                disabled={reorderingPlatform === platform.id || index === 0}
                                     className="text-purple-500 hover:bg-purple-900/20 disabled:opacity-50 h-7 w-7 p-0 transition-all duration-200 hover:scale-110"
-                                    title="Move up"
-                                  >
+                                title="Move up"
+                              >
                                     <ArrowUp className="h-3 w-3" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleMovePlatformDown(platform.id)}
-                                    disabled={reorderingPlatform === platform.id || index === firestorePlatforms.length - 1}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleMovePlatformDown(platform.id)}
+                                disabled={reorderingPlatform === platform.id || index === firestorePlatforms.length - 1}
                                     className="text-purple-500 hover:bg-purple-900/20 disabled:opacity-50 h-7 w-7 p-0 transition-all duration-200 hover:scale-110"
-                                    title="Move down"
-                                  >
+                                title="Move down"
+                              >
                                     <ArrowDown className="h-3 w-3" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleStartEditPlatform(platform)}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleStartEditPlatform(platform)}
                                     className="text-blue-500 hover:bg-blue-900/20 h-7 w-7 p-0 transition-all duration-200 hover:scale-110"
-                                  >
+                              >
                                     <Edit2 className="h-3 w-3" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleDeletePlatform(platform.id)}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeletePlatform(platform.id)}
                                     className="text-red-500 hover:bg-red-900/20 h-7 w-7 p-0 transition-all duration-200 hover:scale-110"
-                                  >
+                              >
                                     <Trash2 className="h-3 w-3" />
-                                  </Button>
-                                </>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
+                              </Button>
+                            </>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
               </div>
             </div>
           </CardContent>
@@ -2506,16 +2506,16 @@ const Admin = () => {
 
           </TabsContent>
 
-          {/* Manage Downloads Section */}
+        {/* Manage Downloads Section */}
           <TabsContent value="downloads" className="space-y-4 animate-fade-in">
             <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
               <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
                 <CardTitle className="flex items-center gap-2 text-xl text-[#f2cdcd]">
                   <span>
-                    Manage Downloads
+              Manage Downloads
                   </span>
-                </CardTitle>
-              </CardHeader>
+            </CardTitle>
+          </CardHeader>
           <CardContent className="pt-6">
             <h3 className="text-xl font-semibold mb-4">Add New Download</h3>
             <form onSubmit={handleAddDownload} className="space-y-4 mb-8">
@@ -2675,16 +2675,16 @@ const Admin = () => {
                     )}
                   </div>
                 ) : (
-                  <div>
-                    <Label htmlFor="downloadUrl">URL</Label>
-                    <Input
-                      id="downloadUrl"
-                      type="url"
-                      value={newDownload.url}
-                      onChange={(e) => setNewDownload({ ...newDownload, url: e.target.value })}
+              <div>
+                <Label htmlFor="downloadUrl">URL</Label>
+                <Input
+                  id="downloadUrl"
+                  type="url"
+                  value={newDownload.url}
+                  onChange={(e) => setNewDownload({ ...newDownload, url: e.target.value })}
                       required={!newDownload.useFileUpload}
-                      className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                    />
+                  className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                />
                   </div>
                 )}
               </div>
@@ -2762,9 +2762,9 @@ const Admin = () => {
                               File <Download className="h-4 w-4" />
                             </a>
                           ) : entry.url ? (
-                            <a href={entry.url} target="_blank" rel="noopener noreferrer" className="text-[#cba6f7] hover:underline flex items-center gap-1">
-                              Link <ExternalLink className="h-4 w-4" />
-                            </a>
+                          <a href={entry.url} target="_blank" rel="noopener noreferrer" className="text-[#cba6f7] hover:underline flex items-center gap-1">
+                            Link <ExternalLink className="h-4 w-4" />
+                          </a>
                           ) : (
                             <span className="text-[hsl(222,15%,60%)]">No link</span>
                           )}
@@ -2786,12 +2786,12 @@ const Admin = () => {
                 </Table>
               </div>
             )}
-              </CardContent>
-            </Card>
+          </CardContent>
+        </Card>
           </TabsContent>
         </Tabs>
-      </div>
-      
+              </div>
+
       <style>{`
         @keyframes fadeIn {
           from {

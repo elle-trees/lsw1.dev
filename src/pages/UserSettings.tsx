@@ -140,15 +140,34 @@ const UserSettings = () => {
       }
 
       // Update Firestore player profile (creates document if it doesn't exist)
-      const success = await updatePlayerProfile(currentUser.uid, { 
+      // profilePicture: pass the value directly (empty string will delete, undefined will skip, URL will save)
+      const profileData: any = {
         displayName: newDisplayName, 
         nameColor,
         email: currentUser.email || email || "",
-        profilePicture: profilePicture || undefined,
         bio: bio.trim() || "",
         pronouns: pronouns.trim() || "",
         twitchUsername: twitchUsername.trim() || ""
-      });
+      };
+      
+      // Only include profilePicture if it has a value (empty string will delete it)
+      if (profilePicture !== undefined) {
+        profileData.profilePicture = profilePicture;
+      }
+      
+      const success = await updatePlayerProfile(currentUser.uid, profileData);
+      
+      // Also update Firebase Auth profile picture if it exists
+      if (profilePicture && auth.currentUser) {
+        try {
+          await updateProfile(auth.currentUser, {
+            photoURL: profilePicture
+          });
+        } catch (error) {
+          console.error("Failed to update Firebase Auth photoURL:", error);
+          // Don't fail the whole update if this fails
+        }
+      }
 
       if (!success) {
         throw new Error("Failed to save profile to database.");

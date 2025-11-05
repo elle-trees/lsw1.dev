@@ -129,16 +129,16 @@ export function calculatePoints(
   const minPoints = config.minPoints ?? 10;
 
   // Check platform eligibility
+  const normalizedPlatform = platformName?.toLowerCase().trim() || "";
+  const platformIdLower = platformId?.toLowerCase().trim() || "";
+  
   if (config.eligiblePlatforms && config.eligiblePlatforms.length > 0) {
-    const normalizedPlatform = platformName?.toLowerCase().trim() || "";
-    const platformIdLower = platformId?.toLowerCase().trim() || "";
-    
     // Check if platform ID or name matches eligible platforms
     const isEligible = config.eligiblePlatforms.some(eligible => {
       const eligibleLower = eligible.toLowerCase().trim();
       return eligibleLower === normalizedPlatform || 
              eligibleLower === platformIdLower ||
-             eligibleLower === "gamecube" && (normalizedPlatform === "gamecube" || normalizedPlatform === "game cube");
+             (eligibleLower === "gamecube" && (normalizedPlatform === "gamecube" || normalizedPlatform === "game cube"));
     });
     
     if (!isEligible) {
@@ -146,7 +146,6 @@ export function calculatePoints(
     }
   } else {
     // Fallback to old behavior: only GameCube
-    const normalizedPlatform = platformName?.toLowerCase().trim() || "";
     const isGameCube = normalizedPlatform === "gamecube" || normalizedPlatform === "game cube";
     if (!isGameCube) {
       return 0;
@@ -184,8 +183,8 @@ export function calculatePoints(
     }
   } else {
     // Fallback to old behavior: Any% and Nocuts Noships
-    const isAnyPercent = normalizedCategory === "any%";
-    const isNocutsNoships = normalizedCategory === "nocuts noships" || normalizedCategory === "nocutsnoships";
+  const isAnyPercent = normalizedCategory === "any%";
+  const isNocutsNoships = normalizedCategory === "nocuts noships" || normalizedCategory === "nocutsnoships";
     isEligibleCategory = isAnyPercent || isNocutsNoships;
   }
   

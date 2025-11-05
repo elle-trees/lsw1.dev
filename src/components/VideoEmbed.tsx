@@ -63,13 +63,13 @@ export const VideoEmbed: React.FC<VideoEmbedProps> = ({ url, title }) => {
             variant="outline"
             className="border-[hsl(235,13%,30%)] hover:bg-[#cba6f7]/10 hover:border-[#cba6f7] transition-all duration-300"
           >
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
               className="flex items-center gap-2"
-            >
-              <span>View video on original site</span>
+        >
+          <span>View video on original site</span>
               <ExternalLink className="h-4 w-4" />
             </a>
           </Button>
