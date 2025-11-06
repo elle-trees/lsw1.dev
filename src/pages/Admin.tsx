@@ -654,9 +654,14 @@ const Admin = () => {
       // Show summary with unmatched player warnings
       const unmatchedCount = result.unmatchedPlayers.size;
       if (result.errors.length > 0) {
+        // Show first 3 errors in toast, log all errors to console
+        const errorPreview = result.errors.slice(0, 3).join('; ');
+        const remainingErrors = result.errors.length - 3;
+        console.error(`[Import] ${result.errors.length} errors occurred:`, result.errors);
+        
         toast({
           title: "Import Complete with Errors",
-          description: `Imported ${result.imported} runs, skipped ${result.skipped} runs. ${result.errors.length} error(s) occurred.`,
+          description: `Imported ${result.imported} runs, skipped ${result.skipped} runs. ${result.errors.length} error(s) occurred.${remainingErrors > 0 ? ` (Showing first 3, check console for all)` : ''} ${errorPreview}`,
           variant: "destructive",
         });
       } else if (unmatchedCount > 0) {

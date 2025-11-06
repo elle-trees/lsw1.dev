@@ -191,16 +191,36 @@ export async function importSRCRuns(
     }
 
     // Fetch runs from SRC
-    const srcRuns = await fetchRunsNotOnLeaderboards(gameId, 500);
+    let srcRuns: SRCRun[];
+    try {
+      srcRuns = await fetchRunsNotOnLeaderboards(gameId, 500);
+    } catch (error) {
+      result.errors.push(`Failed to fetch runs from speedrun.com: ${error instanceof Error ? error.message : String(error)}`);
+      return result;
+    }
+
     if (srcRuns.length === 0) {
+      result.errors.push("No runs found to import from speedrun.com");
       return result;
     }
 
     // Create mappings
-    const mappings = await createSRCMappings();
+    let mappings;
+    try {
+      mappings = await createSRCMappings();
+    } catch (error) {
+      result.errors.push(`Failed to create mappings: ${error instanceof Error ? error.message : String(error)}`);
+      return result;
+    }
 
     // Get existing runs for duplicate checking
-    const existingRuns = await getAllRunsForDuplicateCheck();
+    let existingRuns;
+    try {
+      existingRuns = await getAllRunsForDuplicateCheck();
+    } catch (error) {
+      result.errors.push(`Failed to fetch existing runs: ${error instanceof Error ? error.message : String(error)}`);
+      return result;
+    }
     const existingSRCRunIds = new Set(
       existingRuns.filter(r => r.srcRunId).map(r => r.srcRunId!)
     );
@@ -230,24 +250,43 @@ export async function importSRCRuns(
         }
 
               // Map the run
-              const mappedRun = mapSRCRunToLeaderboardEntry(
-                srcRun,
-                undefined,
-                mappings.categoryMapping,
-                mappings.platformMapping,
-                mappings.levelMapping,
-                "imported",
-                mappings.categoryNameMapping,
-                mappings.platformNameMapping,
-                mappings.srcPlatformIdToName,
-                mappings.srcCategoryIdToName,
-                mappings.srcLevelIdToName
-              );
+        let mappedRun;
+        try {
+          mappedRun = mapSRCRunToLeaderboardEntry(
+            srcRun,
+            undefined,
+            mappings.categoryMapping,
+            mappings.platformMapping,
+            mappings.levelMapping,
+            "imported",
+            mappings.categoryNameMapping,
+            mappings.platformNameMapping,
+            mappings.srcPlatformIdToName,
+            mappings.srcCategoryIdToName,
+            mappings.srcLevelIdToName
+          );
+        } catch (mapError) {
+          result.skipped++;
+          result.errors.push(`Run ${srcRun.id}: Failed to map run data: ${mapError instanceof Error ? mapError.message : String(mapError)}`);
+          console.error(`Error mapping run ${srcRun.id}:`, mapError);
+          onProgress?.({ total: srcRuns.length, imported: result.imported, skipped: result.skipped });
+          continue;
+        }
 
         // Set import flags - ensure importedFromSRC is explicitly true (boolean)
         mappedRun.importedFromSRC = true as boolean;
         mappedRun.srcRunId = srcRun.id;
         mappedRun.verified = false;
+        
+        // Ensure runType is set (required field)
+        if (!mappedRun.runType) {
+          mappedRun.runType = 'solo';
+        }
+        
+        // Ensure leaderboardType is set (required field)
+        if (!mappedRun.leaderboardType) {
+          mappedRun.leaderboardType = 'regular';
+        }
         
         // Ensure all required fields for import are present
         if (!mappedRun.srcCategoryName && !mappedRun.category) {
@@ -261,9 +300,35 @@ export async function importSRCRuns(
         if (!mappedRun.playerName || mappedRun.playerName.trim() === '') {
           mappedRun.playerName = 'Unknown';
         }
-        if (!mappedRun.time || !mappedRun.date) {
+        
+        // Validate and ensure time format is correct
+        if (!mappedRun.time || mappedRun.time.trim() === '') {
           result.skipped++;
-          result.errors.push(`Run ${srcRun.id}: missing time or date`);
+          result.errors.push(`Run ${srcRun.id}: missing time`);
+          onProgress?.({ total: srcRuns.length, imported: result.imported, skipped: result.skipped });
+          continue;
+        }
+        
+        // Validate time format (HH:MM:SS)
+        if (!/^\d{1,2}:\d{2}:\d{2}$/.test(mappedRun.time)) {
+          result.skipped++;
+          result.errors.push(`Run ${srcRun.id}: invalid time format "${mappedRun.time}" (expected HH:MM:SS)`);
+          onProgress?.({ total: srcRuns.length, imported: result.imported, skipped: result.skipped });
+          continue;
+        }
+        
+        // Validate and ensure date format is correct
+        if (!mappedRun.date || mappedRun.date.trim() === '') {
+          result.skipped++;
+          result.errors.push(`Run ${srcRun.id}: missing date`);
+          onProgress?.({ total: srcRuns.length, imported: result.imported, skipped: result.skipped });
+          continue;
+        }
+        
+        // Validate date format (YYYY-MM-DD)
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(mappedRun.date)) {
+          result.skipped++;
+          result.errors.push(`Run ${srcRun.id}: invalid date format "${mappedRun.date}" (expected YYYY-MM-DD)`);
           onProgress?.({ total: srcRuns.length, imported: result.imported, skipped: result.skipped });
           continue;
         }

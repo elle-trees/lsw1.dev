@@ -184,39 +184,55 @@ export async function fetchRunsNotOnLeaderboards(
   let offset = 0;
   const max = 200; // SRC API max per request
   
-  while (allRuns.length < limit) {
-    // Embed platform in system field - SRC API embeds platform when requested
-    const data = await fetchSRCAPI<SRCRunData>(
-      `/runs?game=${gameId}&status=verified&orderby=submitted&direction=desc&max=${max}&offset=${offset}&embed=players,category,level,platform`
-    );
-    
-    // Log first run's platform structure for debugging
-    if (allRuns.length === 0 && data.data && data.data.length > 0) {
-      const firstRun = data.data[0];
-      console.log('[SRC API] First run platform structure:', {
-        hasSystem: !!firstRun.system,
-        hasPlatform: !!firstRun.system?.platform,
-        platformType: typeof firstRun.system?.platform,
-        platformValue: firstRun.system?.platform,
-        platformIsObject: typeof firstRun.system?.platform === 'object',
-        platformData: firstRun.system?.platform,
-      });
+  try {
+    while (allRuns.length < limit) {
+      // Embed platform in system field - SRC API embeds platform when requested
+      let data: SRCRunData;
+      try {
+        data = await fetchSRCAPI<SRCRunData>(
+          `/runs?game=${gameId}&status=verified&orderby=submitted&direction=desc&max=${max}&offset=${offset}&embed=players,category,level,platform`
+        );
+      } catch (error) {
+        console.error(`[SRC API] Error fetching runs at offset ${offset}:`, error);
+        // If we have some runs, return what we have; otherwise throw
+        if (allRuns.length > 0) {
+          console.warn(`[SRC API] Returning ${allRuns.length} runs despite error`);
+          return allRuns.slice(0, limit);
+        }
+        throw error;
+      }
+      
+      // Log first run's platform structure for debugging
+      if (allRuns.length === 0 && data.data && data.data.length > 0) {
+        const firstRun = data.data[0];
+        console.log('[SRC API] First run platform structure:', {
+          hasSystem: !!firstRun.system,
+          hasPlatform: !!firstRun.system?.platform,
+          platformType: typeof firstRun.system?.platform,
+          platformValue: firstRun.system?.platform,
+          platformIsObject: typeof firstRun.system?.platform === 'object',
+          platformData: firstRun.system?.platform,
+        });
+      }
+      
+      if (!data.data || data.data.length === 0) {
+        break;
+      }
+      
+      allRuns.push(...data.data);
+      offset += data.data.length;
+      
+      // Check pagination limits
+      if (data.data.length < max || (data.pagination && offset >= data.pagination.max)) {
+        break;
+      }
     }
     
-    if (!data.data || data.data.length === 0) {
-      break;
-    }
-    
-    allRuns.push(...data.data);
-    offset += data.data.length;
-    
-    // Check pagination limits
-    if (data.data.length < max || (data.pagination && offset >= data.pagination.max)) {
-      break;
-    }
+    return allRuns.slice(0, limit);
+  } catch (error) {
+    console.error(`[SRC API] Error in fetchRunsNotOnLeaderboards:`, error);
+    throw error;
   }
-  
-  return allRuns.slice(0, limit);
 }
 
 /**
