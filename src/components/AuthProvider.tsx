@@ -4,6 +4,8 @@ import React, { createContext, useContext, useEffect, useState, useRef } from "r
 import { auth } from "@/lib/firebase";
 import { getPlayerByUid, createPlayer } from "@/lib/db";
 import { CustomUser } from "@/types/database";
+import type { User } from "firebase/auth";
+import { logError } from "@/lib/errorUtils";
 
 interface AuthContextType {
   currentUser: CustomUser | null;
@@ -21,7 +23,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const refreshPlayerData = async (user: any) => {
+  const refreshPlayerData = async (user: User) => {
     try {
       const playerData = await getPlayerByUid(user.uid);
       if (playerData) {
@@ -39,7 +41,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
       }
     } catch (error) {
-      // Silent fail
+      logError(error, "AuthProvider.refreshPlayerData");
+      // Silent fail - continue with existing user data
     }
   };
 
@@ -116,6 +119,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               createPlayer(newPlayer).catch(() => {});
             }
           } catch (error) {
+            logError(error, "AuthProvider.onAuthStateChanged");
             // Silent fail - user is already logged in
           }
           

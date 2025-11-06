@@ -1,7 +1,8 @@
 import { db } from "@/lib/firebase";
-import { collection, doc, getDoc, setDoc, updateDoc, deleteDoc, getDocs, query, where, orderBy, limit as firestoreLimit, deleteField, writeBatch, getDocsFromCache, getDocsFromServer } from "firebase/firestore";
+import { collection, doc, getDoc, setDoc, updateDoc, deleteDoc, getDocs, query, where, orderBy, limit as firestoreLimit, deleteField, writeBatch, getDocsFromCache, getDocsFromServer, type QueryConstraint } from "firebase/firestore";
 import { Player, LeaderboardEntry, DownloadEntry, Category, Platform, Level } from "@/types/database";
 import { calculatePoints, parseTimeToSeconds } from "@/lib/utils";
+import { logError, isFirebaseAuthError } from "@/lib/errorUtils";
 import { 
   normalizeLeaderboardEntry, 
   validateLeaderboardEntry,
@@ -26,7 +27,7 @@ async function calculateRanksForGroup(
 ): Promise<Map<string, number>> {
   if (!db) return new Map();
   
-  const constraints: any[] = [
+  const constraints: QueryConstraint[] = [
     where("verified", "==", true),
     where("leaderboardType", "==", leaderboardType),
     where("category", "==", categoryId),
@@ -101,14 +102,19 @@ export const getLeaderboardEntriesFirestore = async (
     const normalizedPlatformId = platformId && platformId !== "all" ? normalizePlatformId(platformId) : undefined;
     const normalizedLevelId = levelId && levelId !== "all" ? normalizeLevelId(levelId) : undefined;
     
+    // Fetch levels early to check for disabled categories
+    const levelsSnapshot = await getDocs(collection(db, "levels"));
+    const levels = levelsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Level));
+    const selectedLevelData = normalizedLevelId ? levels.find(l => l.id === normalizedLevelId) : undefined;
+    
     // Build query constraints dynamically based on filters
     // IMPORTANT: Only fetch verified runs - imported runs must be verified before appearing on leaderboards
-    const constraints: any[] = [
+    const constraints: QueryConstraint[] = [
       where("verified", "==", true),
     ];
 
     // Helper function to add shared filters to a constraint list
-    const addSharedFilters = (constraintList: any[]) => {
+    const addSharedFilters = (constraintList: QueryConstraint[]) => {
       // Add leaderboardType filter for non-regular types (required for composite indexes)
       if (leaderboardType && leaderboardType !== 'regular') {
         constraintList.push(where("leaderboardType", "==", leaderboardType));
@@ -304,19 +310,14 @@ export const getLeaderboardEntriesFirestore = async (
       });
     }
 
-    // Fetch categories, platforms, and levels for SRC name fallback and disabled category checking
-    const [categoriesSnapshot, platformsSnapshot, levelsSnapshot] = await Promise.all([
+    // Fetch categories, platforms for SRC name fallback (levels already fetched above)
+    const [categoriesSnapshot, platformsSnapshot] = await Promise.all([
       getDocs(collection(db, "categories")),
       getDocs(collection(db, "platforms")),
-      getDocs(collection(db, "levels"))
     ]);
     
     const categories = categoriesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
     const platforms = platformsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Platform));
-    const levels = levelsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Level));
-    
-    // Get the level data if we're filtering by level (for checking disabled categories)
-    const selectedLevelData = normalizedLevelId ? levels.find(l => l.id === normalizedLevelId) : undefined;
 
     // Enrich entries with player data and mark unclaimed runs
     const enrichedEntries = entries.map(entry => {
@@ -450,7 +451,7 @@ export const addLeaderboardEntryFirestore = async (entry: Omit<LeaderboardEntry,
     }
     
     const newDocRef = doc(collection(db, "leaderboardEntries"));
-    const newEntry: any = { 
+    const newEntry: Partial<LeaderboardEntry> & { id: string; verified: boolean; isObsolete: boolean } = { 
       id: newDocRef.id, 
       playerId: normalized.playerId || entry.playerId,
       playerName: normalized.playerName,
@@ -500,8 +501,9 @@ export const addLeaderboardEntryFirestore = async (entry: Omit<LeaderboardEntry,
     await setDoc(newDocRef, newEntry);
     console.log(`Saved entry with SRC names: category="${normalized.srcCategoryName}", platform="${normalized.srcPlatformName}", level="${normalized.srcLevelName}"`);
     return newDocRef.id;
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error adding leaderboard entry:", error);
+    logError(error, "addLeaderboardEntryFirestore");
     // Re-throw the error so the caller can see what went wrong
     throw error;
   }
@@ -619,8 +621,8 @@ export const createPlayerFirestore = async (player: Omit<Player, 'id'>): Promise
     const playerDocRef = doc(db, "players", player.uid);
     await setDoc(playerDocRef, player);
     return player.uid;
-  } catch (error: any) {
-    console.error("createPlayerFirestore error:", error);
+  } catch (error) {
+    logError(error, "createPlayerFirestore");
     return null;
   }
 };
@@ -920,7 +922,7 @@ export const updatePlayerProfileFirestore = async (uid: string, data: Partial<Pl
     
     // Filter out undefined values and convert empty strings for bio/pronouns/twitchUsername to deleteField
     // profilePicture: empty string should delete the field, undefined should skip (no change)
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(data)) {
       if (value === undefined) {
         // Skip undefined values (no change)
@@ -939,7 +941,7 @@ export const updatePlayerProfileFirestore = async (uid: string, data: Partial<Pl
       // Create a complete player document if it doesn't exist
       const today = new Date().toISOString().split('T')[0];
       // Build newPlayer object, only including bio/pronouns if they have values
-      const newPlayer: any = {
+      const newPlayer: Omit<Player, 'id'> = {
         uid: uid,
         displayName: data.displayName || "",
         email: data.email || "",
@@ -1010,8 +1012,8 @@ export const updatePlayerProfileFirestore = async (uid: string, data: Partial<Pl
     }
     
     return true;
-  } catch (error: any) {
-    console.error("updatePlayerProfileFirestore error:", error?.code, error?.message);
+  } catch (error) {
+    logError(error, "updatePlayerProfileFirestore");
     return false;
   }
 };
@@ -1336,7 +1338,7 @@ export const getLeaderboardEntryByIdFirestore = async (runId: string): Promise<L
       if (entry.verified && !entry.isObsolete) {
         try {
           // Build query constraints to get all verified entries for this run's category/platform/runType/leaderboardType/level
-          const constraints: any[] = [
+          const constraints: QueryConstraint[] = [
             where("verified", "==", true),
             where("category", "==", entry.category),
             where("platform", "==", entry.platform),
@@ -1428,7 +1430,7 @@ export const updateLeaderboardEntryFirestore = async (runId: string, data: Parti
     
     // If time, category, or platform changed, recalculate points if verified
     const runData = runDocSnap.data() as LeaderboardEntry;
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     
     // Filter out undefined values and convert null to deleteField for Firestore
     for (const [key, value] of Object.entries(data)) {
@@ -1526,8 +1528,8 @@ export const updateLeaderboardEntryFirestore = async (runId: string, data: Parti
     
     await updateDoc(runDocRef, updateData);
     return true;
-  } catch (error: any) {
-    console.error("Error updating leaderboard entry:", error);
+  } catch (error) {
+    logError(error, "updateLeaderboardEntryFirestore");
     // Re-throw the error so the caller can see what went wrong
     throw error;
   }
@@ -2011,8 +2013,8 @@ export const recalculatePlayerPointsFirestore = async (playerId: string): Promis
       // Update both totalPoints and totalRuns
       try {
       await updateDoc(playerDocRef, { totalPoints, totalRuns: totalVerifiedRuns });
-      } catch (error: any) {
-        console.error(`Error updating player ${playerId} totalPoints and totalRuns:`, error?.code, error?.message);
+      } catch (error) {
+        logError(error, `recalculatePointsForPlayer.updateDoc(${playerId})`);
         throw error; // Re-throw to be caught by outer catch
       }
     } else {
@@ -2025,9 +2027,9 @@ export const recalculatePlayerPointsFirestore = async (playerId: string): Promis
     }
     
     return true;
-  } catch (error: any) {
-    console.error(`Error recalculating points for player ${playerId}:`, error?.code, error?.message);
-    if (error?.code === 'permission-denied') {
+  } catch (error) {
+    logError(error, `recalculatePointsForPlayer(${playerId})`);
+    if (isFirebaseAuthError(error) && error.code === 'permission-denied') {
       console.error(`Permission denied. Make sure you are logged in as an admin and your admin status is set correctly in Firestore.`);
     }
     return false;

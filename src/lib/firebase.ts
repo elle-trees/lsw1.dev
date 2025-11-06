@@ -1,6 +1,6 @@
-import { initializeApp } from "firebase/app";
-import { getAuth, Auth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { initializeApp, type FirebaseApp } from "firebase/app";
+import { getAuth, type Auth } from "firebase/auth";
+import { getFirestore, type Firestore } from "firebase/firestore";
 
 /**
  * Firebase configuration loaded from environment variables
@@ -31,9 +31,9 @@ if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
   throw new Error(errorMsg);
 }
 
-let app;
+let app: FirebaseApp;
 let auth: Auth;
-let db;
+let db: Firestore;
 
 try {
   app = initializeApp(firebaseConfig);

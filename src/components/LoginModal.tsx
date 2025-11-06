@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, updateProfile } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { isDisplayNameAvailable } from "@/lib/db";
+import { getErrorMessage, logError } from "@/lib/errorUtils";
 
 interface LoginModalProps {
   open: boolean;
@@ -187,22 +188,9 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
       setDisplayName("");
       setSrcUsername("");
       onOpenChange(false);
-    } catch (error: any) {
-      // Generic error messages to prevent user enumeration
-      let errorMessage = "An error occurred. Please try again.";
-      if (error.code === "auth/invalid-email") {
-        errorMessage = "Invalid email address.";
-      } else if (error.code === "auth/user-disabled") {
-        errorMessage = "This account has been disabled.";
-      } else if (error.code === "auth/user-not-found" || error.code === "auth/wrong-password") {
-        errorMessage = "Invalid email or password.";
-      } else if (error.code === "auth/email-already-in-use") {
-        errorMessage = "An account with this email already exists.";
-      } else if (error.code === "auth/weak-password") {
-        errorMessage = "Password is too weak. Please use a stronger password.";
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
+    } catch (error) {
+      logError(error, "LoginModal.handleSubmit");
+      const errorMessage = getErrorMessage(error, "An error occurred. Please try again.");
       
       toast({
         title: "Error",
@@ -243,7 +231,8 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
         title: "Password Reset Email Sent",
         description: "If an account exists with this email, you will receive password reset instructions.",
       });
-    } catch (error: any) {
+    } catch (error) {
+      logError(error, "LoginModal.handlePasswordReset");
       // Always show success message to prevent user enumeration
       toast({
         title: "Password Reset Email Sent",

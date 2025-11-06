@@ -9,6 +9,7 @@ import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { LoginModal } from "@/components/LoginModal";
 import { useToast } from "@/hooks/use-toast";
+import { getErrorMessage, logError } from "@/lib/errorUtils";
 
 export function Header() {
   const { currentUser, loading } = useAuth();
@@ -23,10 +24,11 @@ export function Header() {
         title: "Logged Out",
         description: "You have been logged out successfully.",
       });
-    } catch (error: any) {
+    } catch (error) {
+      logError(error, "Header.handleLogout");
       toast({
         title: "Error",
-        description: error.message || "Failed to log out.",
+        description: getErrorMessage(error, "Failed to log out."),
         variant: "destructive",
       });
     }
