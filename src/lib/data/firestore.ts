@@ -2925,8 +2925,11 @@ export const checkSRCRunExistsFirestore = async (srcRunId: string): Promise<bool
 export const getImportedSRCRunsFirestore = async (): Promise<LeaderboardEntry[]> => {
   if (!db) return [];
   try {
+    // Query by both verified and importedFromSRC to match Firestore security rules
+    // Admins can read unverified entries, so we filter by verified == false
     const q = query(
       collection(db, "leaderboardEntries"),
+      where("verified", "==", false),
       where("importedFromSRC", "==", true),
       firestoreLimit(500)
     );

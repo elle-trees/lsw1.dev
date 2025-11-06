@@ -411,9 +411,15 @@ const Admin = () => {
       // Normalize player names for comparison
       const normalizeName = (name: string) => name.trim().toLowerCase();
       const existingRunKeys = new Set<string>();
-      for (const run of existingRuns) {
+      // Only check verified runs for duplicates (unverified runs can be duplicates during import)
+      for (const run of existingRuns.filter(r => r.verified)) {
         const key = `${normalizeName(run.playerName)}|${run.category}|${run.platform}|${run.runType}|${run.time}|${run.leaderboardType || 'regular'}|${run.level || ''}`;
         existingRunKeys.add(key);
+        // For co-op runs, also add the swapped key
+        if (run.runType === 'co-op' && run.player2Name) {
+          const swappedKey = `${normalizeName(run.player2Name)}|${run.category}|${run.platform}|${run.runType}|${run.time}|${run.leaderboardType || 'regular'}|${run.level || ''}`;
+          existingRunKeys.add(swappedKey);
+        }
       }
 
       // Get mappings for categories, platforms, and levels
@@ -486,6 +492,7 @@ const Admin = () => {
 
           // Check if we have a valid category and platform
           if (!mappedRun.category || !mappedRun.platform) {
+            console.log(`Skipping run ${srcRun.id}: missing category or platform. Category: ${mappedRun.category}, Platform: ${mappedRun.platform}`);
             skipped++;
             setImportProgress(prev => ({ ...prev, skipped: prev.skipped + 1 }));
             continue;
@@ -496,8 +503,9 @@ const Admin = () => {
           const player2Name = mappedRun.player2Name ? normalizeName(mappedRun.player2Name) : '';
           const runKey = `${player1Name}|${mappedRun.category}|${mappedRun.platform}|${mappedRun.runType}|${mappedRun.time}|${mappedRun.leaderboardType || 'regular'}|${mappedRun.level || ''}`;
           
-          // Check for exact duplicate
+          // Check for exact duplicate (only against verified runs)
           if (existingRunKeys.has(runKey)) {
+            console.log(`Skipping run ${srcRun.id}: duplicate found (verified run exists)`);
             skipped++;
             setImportProgress(prev => ({ ...prev, skipped: prev.skipped + 1 }));
             continue;
@@ -507,6 +515,7 @@ const Admin = () => {
           if (mappedRun.runType === 'co-op' && player2Name) {
             const swappedKey = `${player2Name}|${mappedRun.category}|${mappedRun.platform}|${mappedRun.runType}|${mappedRun.time}|${mappedRun.leaderboardType || 'regular'}|${mappedRun.level || ''}`;
             if (existingRunKeys.has(swappedKey)) {
+              console.log(`Skipping run ${srcRun.id}: duplicate found (verified co-op run exists with swapped players)`);
               skipped++;
               setImportProgress(prev => ({ ...prev, skipped: prev.skipped + 1 }));
               continue;
