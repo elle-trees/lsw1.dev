@@ -218,6 +218,7 @@ const UserSettings = () => {
         setBio(player.bio || "");
         setPronouns(player.pronouns || "");
         setTwitchUsername(player.twitchUsername || "");
+        setSrcUsername(player.srcUsername || "");
       } else {
         // Fallback to the new display name if player fetch fails
         setDisplayName(newDisplayName);
@@ -238,6 +239,9 @@ const UserSettings = () => {
 
       if (newDisplayName) {
         fetchUnclaimedRuns(newDisplayName);
+      }
+      if (srcUsername.trim()) {
+        fetchUnclaimedSRCRuns(srcUsername.trim());
       }
     } catch (error: any) {
       toast({
@@ -585,6 +589,21 @@ const UserSettings = () => {
                 />
                 <p className="text-sm text-ctp-overlay0 mt-1">
                   Your Twitch username (without @). If you're streaming, you'll appear on the live page when the official stream is offline.
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="srcUsername">Speedrun.com Username</Label>
+                <Input
+                  id="srcUsername"
+                  type="text"
+                  value={srcUsername}
+                  onChange={(e) => setSrcUsername(e.target.value)}
+                  placeholder="e.g., YourSRCUsername"
+                  className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                  maxLength={50}
+                />
+                <p className="text-sm text-ctp-overlay0 mt-1">
+                  Your exact Speedrun.com username. This is required to claim runs imported from Speedrun.com. Make sure it matches exactly (case-sensitive).
                 </p>
               </div>
               <Button type="submit" className="bg-[#cba6f7] hover:bg-[#b4a0e2] text-[hsl(240,21%,15%)] font-bold">

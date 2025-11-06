@@ -16,8 +16,7 @@ import {
   getCategoriesFromFirestore,
   getPlatformsFromFirestore,
   getLevels,
-  getAllRunsForDuplicateCheck,
-  getImportedSRCRuns,
+  getExistingSRCRunIds,
   addLeaderboardEntry,
   getPlayerByDisplayName,
 } from "../db";
@@ -55,8 +54,7 @@ interface SRCMappings {
   srcLevelIdToName: Map<string, string>;
 }
 
-// Cache for player and platform names fetched from API during import
-// This prevents duplicate API calls for the same ID
+// Cache for player and platform names fetched from API during import (prevents duplicate API calls)
 const playerIdToNameCache = new Map<string, string>();
 const platformIdToNameCache = new Map<string, string>();
 
@@ -88,14 +86,13 @@ function extractPlatformFromRun(run: SRCRun): { id: string; name: string } | nul
  * Create mapping between SRC IDs and our IDs for categories, platforms, and levels
  * Only fetches platforms that are actually used in the runs being imported
  */
-export async function createSRCMappings(srcRuns: SRCRun[]): Promise<SRCMappings> {
+export async function createSRCMappings(srcRuns: SRCRun[], gameId: string): Promise<SRCMappings> {
   if (!Array.isArray(srcRuns)) {
     throw new Error("srcRuns must be an array");
   }
 
-  const gameId = await getLSWGameId();
   if (!gameId) {
-    throw new Error("Could not find LEGO Star Wars game on speedrun.com");
+    throw new Error("gameId is required");
   }
 
   // Fetch our local data and SRC game-specific data in parallel
@@ -254,8 +251,6 @@ export async function createSRCMappings(srcRuns: SRCRun[]): Promise<SRCMappings>
   };
 }
 
-// Duplicate checking removed - we now import all runs, admin can handle duplicates manually
-
 /**
  * Validate a mapped run before importing
  * Returns validation errors if any
@@ -350,58 +345,69 @@ export async function importSRCRuns(
       return result;
     }
 
-    // Step 3: Create mappings (only for platforms used in these runs)
+    // Step 3: Get existing SRC run IDs to check for duplicates (optimized - only fetch IDs, not full runs)
+    let existingSRCRunIds: Set<string>;
+    try {
+      existingSRCRunIds = await getExistingSRCRunIds();
+    } catch (error) {
+      result.errors.push(`Failed to fetch existing run IDs: ${error instanceof Error ? error.message : String(error)}`);
+      return result;
+    }
+
+    // Step 4: Create mappings (only for platforms used in these runs) - pass gameId to avoid redundant API call
     let mappings: SRCMappings;
     try {
-      mappings = await createSRCMappings(srcRuns);
+      mappings = await createSRCMappings(srcRuns, gameId);
     } catch (error) {
       result.errors.push(`Failed to create mappings: ${error instanceof Error ? error.message : String(error)}`);
       return result;
     }
 
-    // Step 4: Get all existing runs (both verified and unverified) to check if they're already in the database
-    let existingRuns: LeaderboardEntry[];
-    try {
-      existingRuns = await getAllRunsForDuplicateCheck();
-    } catch (error) {
-      result.errors.push(`Failed to fetch existing runs: ${error instanceof Error ? error.message : String(error)}`);
-      return result;
-    }
-
-    // Also get unverified imported runs to check for duplicates
-    let unverifiedImportedRuns: LeaderboardEntry[] = [];
-    try {
-      unverifiedImportedRuns = await getImportedSRCRuns();
-    } catch (error) {
-      console.warn("Could not fetch unverified imported runs for duplicate check:", error);
-    }
-
-    // Build set of all SRC run IDs that already exist in the database (verified or unverified)
-    // Skip runs that are already linked on the boards with run pages
-    const existingSRCRunIds = new Set(
-      [
-        ...existingRuns.filter(r => r.srcRunId).map(r => r.srcRunId!),
-        ...unverifiedImportedRuns.filter(r => r.srcRunId).map(r => r.srcRunId!)
-      ]
-    );
-
     onProgress?.({ total: srcRuns.length, imported: 0, skipped: 0 });
 
-    // Step 5: Process each run
+    // Step 5: Pre-fetch all unique player names to batch lookups
+    const uniquePlayerNames = new Set<string>();
+    for (const srcRun of srcRuns) {
+      if (srcRun.players && Array.isArray(srcRun.players)) {
+        for (const player of srcRun.players) {
+          if (player && typeof player === 'object') {
+            const playerData = 'data' in player && Array.isArray(player.data) ? player.data[0] : 
+                             'data' in player ? player.data : player;
+            if (playerData?.names?.international) {
+              uniquePlayerNames.add(playerData.names.international.trim());
+            }
+          }
+        }
+      }
+    }
+
+    // Batch lookup all players at once
+    const playerNameCache = new Map<string, any>();
+    const playerLookupPromises = Array.from(uniquePlayerNames).map(async (name) => {
+      try {
+        const player = await getPlayerByDisplayName(name);
+        if (player) {
+          playerNameCache.set(name.toLowerCase(), player);
+        }
+      } catch (error) {
+        // Silently fail - player doesn't exist
+      }
+    });
+    await Promise.all(playerLookupPromises);
+
+    // Step 6: Process each run
     for (const srcRun of srcRuns) {
       try {
-        // Skip if already exists in database (verified or unverified - already linked on boards)
+        // Skip if already exists in database (already linked on boards)
         if (existingSRCRunIds.has(srcRun.id)) {
           result.skipped++;
           onProgress?.({ total: srcRuns.length, imported: result.imported, skipped: result.skipped });
           continue;
         }
 
-        // Map SRC run to our format (now async to support fetching names from API)
+        // Map SRC run to our format
         let mappedRun: Partial<LeaderboardEntry> & { srcRunId: string; importedFromSRC: boolean };
         try {
-          // Validation and normalization handled in mapSRCRunToLeaderboardEntry
-
           mappedRun = await mapSRCRunToLeaderboardEntry(
             srcRun,
             undefined,
@@ -442,7 +448,6 @@ export async function importSRCRuns(
           // Check if the source run actually has a time
           if (srcRun.times?.primary_t && srcRun.times.primary_t > 0) {
             // Time exists in source but was lost during conversion - try to fix it
-            const { secondsToTime } = await import('../speedruncom');
             const fixedTime = secondsToTime(srcRun.times.primary_t);
             if (fixedTime && fixedTime !== '00:00:00') {
               mappedRun.time = fixedTime;
@@ -453,7 +458,6 @@ export async function importSRCRuns(
             }
           } else if (srcRun.times?.primary && srcRun.times.primary.trim() !== '') {
             // Try ISO duration conversion
-            const { isoDurationToTime } = await import('../speedruncom');
             const fixedTime = isoDurationToTime(srcRun.times.primary);
             if (fixedTime && fixedTime !== '00:00:00') {
               mappedRun.time = fixedTime;
@@ -468,10 +472,8 @@ export async function importSRCRuns(
           }
         }
 
-        // Validate the mapped run (only essential fields - category/platform are optional)
+        // Validate the mapped run - only skip if essential fields are missing
         const validationErrors = validateMappedRun(mappedRun, srcRun.id);
-        // Only skip if essential fields are missing (time, date, playerName)
-        // Category/platform mismatches are warnings, not blockers
         const criticalErrors = validationErrors.filter(err => 
           err.includes('missing player name') || 
           err.includes('missing time') || 
@@ -487,7 +489,7 @@ export async function importSRCRuns(
           continue;
         }
         
-        // Log non-critical validation issues as warnings (category/platform)
+        // Log non-critical validation issues as warnings
         const warnings = validationErrors.filter(err => 
           !err.includes('missing player name') && 
           !err.includes('missing time') && 
@@ -525,11 +527,9 @@ export async function importSRCRuns(
           mappedRun.player2Name = undefined;
         }
 
-        // No duplicate checking - import all runs, admin can handle duplicates manually
-
-        // Check player matching (for warnings, doesn't block import)
-        const player1Matched = await getPlayerByDisplayName(mappedRun.playerName);
-        const player2Matched = mappedRun.player2Name ? await getPlayerByDisplayName(mappedRun.player2Name) : null;
+        // Check player matching (for warnings only, doesn't block import) - use cached lookups
+        const player1Matched = playerNameCache.get(mappedRun.playerName.toLowerCase());
+        const player2Matched = mappedRun.player2Name ? playerNameCache.get(mappedRun.player2Name.toLowerCase()) : null;
 
         const unmatched: { player1?: string; player2?: string } = {};
         if (!player1Matched) unmatched.player1 = mappedRun.playerName;
@@ -549,8 +549,6 @@ export async function importSRCRuns(
           if (unmatched.player1 || unmatched.player2) {
             result.unmatchedPlayers.set(addedRunId, unmatched);
           }
-
-          // No need to track run keys anymore - we're importing all runs
 
           result.imported++;
           onProgress?.({ total: srcRuns.length, imported: result.imported, skipped: result.skipped });

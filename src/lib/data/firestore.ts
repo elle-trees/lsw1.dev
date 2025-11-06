@@ -919,14 +919,14 @@ export const updatePlayerProfileFirestore = async (uid: string, data: Partial<Pl
     const newDisplayName = data.displayName?.trim();
     const displayNameChanged = newDisplayName && newDisplayName !== oldDisplayName;
     
-    // Filter out undefined values and convert empty strings for bio/pronouns/twitchUsername to deleteField
+    // Filter out undefined values and convert empty strings for bio/pronouns/twitchUsername/srcUsername to deleteField
     // profilePicture: empty string should delete the field, undefined should skip (no change)
     const updateData: UpdateData<DocumentData> = {};
     for (const [key, value] of Object.entries(data)) {
       if (value === undefined) {
         // Skip undefined values (no change)
         continue;
-      } else if ((key === 'bio' || key === 'pronouns' || key === 'twitchUsername' || key === 'profilePicture') && value === '') {
+      } else if ((key === 'bio' || key === 'pronouns' || key === 'twitchUsername' || key === 'srcUsername' || key === 'profilePicture') && value === '') {
         // Use deleteField to remove the field when it's an empty string
         updateData[key] = deleteField();
       } else {
@@ -954,7 +954,7 @@ export const updatePlayerProfileFirestore = async (uid: string, data: Partial<Pl
         totalPoints: 0,
       };
       
-      // Only add bio/pronouns/twitchUsername if they have non-empty values
+      // Only add bio/pronouns/twitchUsername/srcUsername if they have non-empty values
       if (data.bio && data.bio.trim()) {
         newPlayer.bio = data.bio.trim();
       }
@@ -964,9 +964,12 @@ export const updatePlayerProfileFirestore = async (uid: string, data: Partial<Pl
       if (data.twitchUsername && data.twitchUsername.trim()) {
         newPlayer.twitchUsername = data.twitchUsername.trim();
       }
+      if (data.srcUsername && data.srcUsername.trim()) {
+        newPlayer.srcUsername = data.srcUsername.trim();
+      }
       if (data.profilePicture) {
         newPlayer.profilePicture = data.profilePicture;
-    }
+      }
       
       await setDoc(playerDocRef, newPlayer);
     }
@@ -3089,37 +3092,32 @@ export const claimRunFirestore = async (runId: string, userId: string): Promise<
     
     // Must be unclaimed to claim
     if (!isUnclaimed) {
-      console.error(`Cannot claim run: Run is already claimed by user ${runData.playerId}`);
-      return false;
+      throw new Error("Cannot claim run: This run is already claimed by another user.");
     }
     
     // For imported runs, prioritize SRC username matching
     if (runData.importedFromSRC) {
       if (!normalizedUserSRCUsername) {
-        console.error("Cannot claim imported run: User does not have SRC username set");
-        return false;
+        throw new Error("Cannot claim imported run: You need to set your Speedrun.com username in Settings. Go to Settings > Profile Information and enter your exact Speedrun.com username.");
       }
       
       const srcNameMatches = normalizedRunSRCPlayerName === normalizedUserSRCUsername ||
                             (normalizedRunSRCPlayer2Name && normalizedRunSRCPlayer2Name === normalizedUserSRCUsername);
       
       if (!srcNameMatches) {
-        console.error(`Cannot claim run: SRC username "${player.srcUsername}" does not match run SRC player name "${runData.srcPlayerName}" or "${runData.srcPlayer2Name}"`);
-        return false;
+        throw new Error(`Cannot claim run: Your Speedrun.com username "${player.srcUsername}" does not match this run's player name "${runData.srcPlayerName || runData.srcPlayer2Name || 'Unknown'}". Make sure your SRC username in Settings matches exactly (case-sensitive).`);
       }
     } else {
       // For non-imported runs, check display name matching
       if (!normalizedUserDisplayName) {
-        console.error("Cannot claim run: User does not have display name set");
-        return false;
+        throw new Error("Cannot claim run: You need to set your display name in Settings.");
       }
       
       const nameMatches = normalizedRunPlayerName === normalizedUserDisplayName ||
                          (normalizedRunPlayer2Name && normalizedRunPlayer2Name === normalizedUserDisplayName);
       
       if (!nameMatches) {
-        console.error(`Cannot claim run: Display name "${player.displayName}" does not match run player name "${runData.playerName}" or player2 name "${runData.player2Name}"`);
-        return false;
+        throw new Error(`Cannot claim run: Your display name "${player.displayName}" does not match this run's player name "${runData.playerName || runData.player2Name || 'Unknown'}".`);
       }
     }
     
@@ -3308,7 +3306,11 @@ export const claimRunFirestore = async (runId: string, userId: string): Promise<
     return true;
   } catch (error) {
     console.error("Error claiming run:", error);
-    return false;
+    // Re-throw errors so they can be displayed to the user
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error("Failed to claim run. Please try again.");
   }
 };
 
