@@ -14,7 +14,7 @@ const TwitchEmbed: React.FC<TwitchEmbedProps> = ({ channel }) => {
   const parentDomain = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
 
   return (
-    <Card className="w-full h-full bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl overflow-hidden flex flex-col">
+    <Card className="w-full h-full bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl overflow-hidden flex flex-col rounded-none">
       <div className="relative flex-shrink-0" style={{ paddingBottom: '56.25%' /* 16:9 Aspect Ratio */ }}>
         <iframe
           src={`https://player.twitch.tv/?channel=${channel}&parent=${parentDomain}&autoplay=false&muted=true`}

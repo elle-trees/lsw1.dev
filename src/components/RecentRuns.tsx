@@ -153,7 +153,7 @@ export function RecentRuns({ runs, loading, showRankBadge = true, maxRuns }: Rec
   };
 
   return (
-    <Card className="bg-gradient-to-br from-[hsl(240,21%,15%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl h-full flex flex-col">
+    <Card className="bg-gradient-to-br from-[hsl(240,21%,15%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl h-full flex flex-col rounded-none">
       <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)] flex-shrink-0">
         <CardTitle className="flex items-center gap-2 text-ctp-text">
           <span>

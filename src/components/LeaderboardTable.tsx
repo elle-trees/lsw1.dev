@@ -24,7 +24,7 @@ export function LeaderboardTable({ data, platforms = [], categories = [] }: Lead
   }
 
   return (
-    <div className="overflow-x-auto -mx-2 sm:mx-0 scrollbar-custom rounded-lg">
+    <div className="overflow-x-auto -mx-2 sm:mx-0 scrollbar-custom rounded-none">
       <Table>
         <TableHeader>
           <TableRow className="border-b-2 border-ctp-surface1/50 hover:bg-transparent bg-gradient-to-r from-ctp-surface0/30 to-ctp-surface1/20">
@@ -56,20 +56,11 @@ export function LeaderboardTable({ data, platforms = [], categories = [] }: Lead
                 <Link to={`/run/${entry.id}`} className="block group/link">
                   <div className="flex items-center gap-1 sm:gap-2">
                     {entry.rank === 1 ? (
-                      <div className="relative">
-                        <LegoStudIcon size={28} className="sm:w-9 sm:h-9 group-hover/link:scale-110 transition-transform duration-300" color="#0055BF" />
-                        <div className="absolute inset-0 blur-md opacity-50 group-hover/link:opacity-75 transition-opacity duration-300" style={{ filter: 'drop-shadow(0 0 8px #0055BF)' }} />
-                      </div>
+                      <LegoStudIcon size={28} className="sm:w-9 sm:h-9" color="#0055BF" />
                     ) : entry.rank === 2 ? (
-                      <div className="relative">
-                        <LegoStudIcon size={28} className="sm:w-9 sm:h-9 group-hover/link:scale-110 transition-transform duration-300" color="#FFD700" />
-                        <div className="absolute inset-0 blur-md opacity-50 group-hover/link:opacity-75 transition-opacity duration-300" style={{ filter: 'drop-shadow(0 0 8px #FFD700)' }} />
-                      </div>
+                      <LegoStudIcon size={28} className="sm:w-9 sm:h-9" color="#FFD700" />
                     ) : entry.rank === 3 ? (
-                      <div className="relative">
-                        <LegoStudIcon size={28} className="sm:w-9 sm:h-9 group-hover/link:scale-110 transition-transform duration-300" color="#C0C0C0" />
-                        <div className="absolute inset-0 blur-md opacity-50 group-hover/link:opacity-75 transition-opacity duration-300" style={{ filter: 'drop-shadow(0 0 8px #C0C0C0)' }} />
-                      </div>
+                      <LegoStudIcon size={28} className="sm:w-9 sm:h-9" color="#C0C0C0" />
                     ) : (
                       <span className="font-bold text-sm sm:text-base text-ctp-text w-7 h-7 sm:w-9 sm:h-9 flex items-center justify-center group-hover/link:scale-110 transition-transform duration-300">
                         #{entry.rank}
@@ -115,7 +106,7 @@ export function LeaderboardTable({ data, platforms = [], categories = [] }: Lead
                       <>
                         <Link 
                           to={`/player/${entry.playerId}`} 
-                          className="hover:opacity-80 transition-all group-hover:scale-105 inline-block link-glow"
+                          className="hover:opacity-80 transition-all group-hover:scale-105 inline-block"
                           style={{ color: entry.nameColor || '#cba6f7' }}
                           onClick={(e) => e.stopPropagation()}
                         >
@@ -126,7 +117,7 @@ export function LeaderboardTable({ data, platforms = [], categories = [] }: Lead
                             <span className="text-ctp-overlay0 text-xs sm:text-sm"> & </span>
                             <Link 
                               to={`/player/${entry.player2Id || entry.playerId}`} 
-                              className="hover:opacity-80 transition-all inline-block link-glow"
+                              className="hover:opacity-80 transition-all inline-block"
                               style={{ color: entry.player2Color || '#cba6f7' }}
                               onClick={(e) => e.stopPropagation()}
                             >
@@ -153,14 +144,14 @@ export function LeaderboardTable({ data, platforms = [], categories = [] }: Lead
                 </div>
               </TableCell>
               <TableCell className="py-2 sm:py-3 px-2 sm:px-4 hidden sm:table-cell relative z-10">
-                <Link to={`/run/${entry.id}`} className="hover:text-ctp-mauve transition-colors link-glow">
-                  <p className="text-sm sm:text-base font-semibold text-ctp-text font-mono">
+                <Link to={`/run/${entry.id}`} className="hover:text-[#cba6f7] transition-colors">
+                  <p className="text-sm sm:text-base font-semibold text-ctp-text">
                     {formatTime(entry.time)}
                   </p>
                 </Link>
               </TableCell>
               <TableCell className="py-2 sm:py-3 px-2 sm:px-4 hidden md:table-cell relative z-10">
-                <Link to={`/run/${entry.id}`} className="hover:text-ctp-mauve transition-colors flex items-center gap-1.5 link-glow">
+                <Link to={`/run/${entry.id}`} className="hover:text-[#cba6f7] transition-colors flex items-center gap-1.5">
                   <Clock className="h-3.5 w-3.5 text-ctp-overlay0" />
                   <span className="text-xs sm:text-sm text-ctp-subtext1">{entry.date}</span>
                 </Link>
@@ -186,11 +177,11 @@ export function LeaderboardTable({ data, platforms = [], categories = [] }: Lead
                     href={entry.videoUrl} 
                     target="_blank" 
                     rel="noopener noreferrer" 
-                    className="text-ctp-mauve hover:text-ctp-pink transition-colors flex items-center gap-1 sm:gap-1.5 group/link link-glow"
+                    className="text-[#cba6f7] hover:text-[#f5c2e7] transition-colors flex items-center gap-1 sm:gap-1.5 group/link"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <ExternalLink className="h-3.5 w-3.5 sm:h-4 sm:w-4 group-hover/link:scale-110 transition-transform" />
-                    <span className="text-xs sm:text-sm font-medium">Watch</span>
+                    <span className="text-xs sm:text-sm">Watch</span>
                   </a>
                 )}
               </TableCell>

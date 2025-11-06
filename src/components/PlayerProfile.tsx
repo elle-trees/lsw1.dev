@@ -26,7 +26,7 @@ export function PlayerProfile({ playerName, joinDate, stats, nameColor, profileP
   const autoclaimEnabled = isSRCLinked; // Autoclaiming is enabled when SRC username is set
   
   return (
-    <Card className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]">
+    <Card className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] rounded-none">
       <CardHeader>
         <CardTitle className="flex items-start gap-3">
           <Avatar className="h-12 w-12 flex-shrink-0">

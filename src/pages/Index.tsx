@@ -80,11 +80,11 @@ const Index = () => {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-8 mb-6 lg:mb-8">
             {/* Left Side - Verified Runs Card */}
             <div className="lg:col-span-3 lg:order-1 min-w-0">
-              <Card className="glass shadow-colored-green card-hover rounded-xl border-ctp-surface1/50 w-full group overflow-hidden relative">
+              <Card className="glass shadow-colored-green card-hover border-ctp-surface1/50 w-full group overflow-hidden relative rounded-none">
                 <div className="absolute inset-0 bg-gradient-to-br from-ctp-green/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                 <CardHeader className="pb-2 pt-4 px-4 relative z-10">
                   <CardTitle className="flex items-center gap-2 text-card-foreground text-base sm:text-lg lg:text-xl whitespace-nowrap">
-                    <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-ctp-green transition-transform duration-300 group-hover:scale-125 group-hover:rotate-12 flex-shrink-0 animate-pulse-glow" />
+                    <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-ctp-green transition-transform duration-300 group-hover:scale-125 group-hover:rotate-12 flex-shrink-0" />
                     <span className="truncate font-semibold">Verified Runs</span>
                   </CardTitle>
                 </CardHeader>
@@ -92,7 +92,7 @@ const Index = () => {
                   {statsLoading ? (
                     <Skeleton className="h-10 w-28 mb-1 bg-ctp-surface0/50" />
                   ) : (
-                    <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-ctp-green transition-all duration-300 truncate text-glow">
+                    <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-ctp-green transition-all duration-300 truncate">
                       {totalVerifiedRuns.toLocaleString()}
                     </div>
                   )}
@@ -114,10 +114,10 @@ const Index = () => {
                 The official site for the LEGO Star Wars: The Video Game speedrunning community. Track your progress and try to earn a stud on the leaderboards!
               </p>
               <div className="flex flex-col sm:flex-row justify-center gap-4 lg:gap-6 animate-fade-in-delay-2 px-2">
-                <Button size="lg" className="bg-gradient-to-r from-ctp-mauve via-ctp-pink to-ctp-mauve hover:from-ctp-pink hover:via-ctp-mauve hover:to-ctp-pink text-ctp-crust font-bold transition-all duration-300 hover:scale-110 hover:shadow-xl hover:shadow-ctp-mauve/50 animate-gradient bg-[length:200%_auto] whitespace-nowrap text-base sm:text-lg lg:text-xl px-6 sm:px-8 lg:px-10 py-6 sm:py-7 lg:py-8 rounded-xl border-0 shadow-colored" asChild>
+                <Button size="lg" className="bg-gradient-to-r from-ctp-mauve via-ctp-pink to-ctp-mauve hover:from-ctp-pink hover:via-ctp-mauve hover:to-ctp-pink text-ctp-crust font-bold transition-all duration-300 hover:scale-110 hover:shadow-xl hover:shadow-ctp-mauve/50 animate-gradient bg-[length:200%_auto] whitespace-nowrap text-base sm:text-lg lg:text-xl px-6 sm:px-8 lg:px-10 py-6 sm:py-7 lg:py-8 rounded-none border-0 shadow-colored" asChild>
                   <Link to="/submit">Submit Run</Link>
                 </Button>
-                <Button size="lg" variant="outline" className="text-ctp-text hover:text-ctp-text border-ctp-surface1/50 bg-glass hover:bg-ctp-blue/10 hover:border-ctp-blue/50 transition-all duration-300 hover:scale-110 hover:shadow-xl hover:shadow-ctp-blue/30 whitespace-nowrap text-base sm:text-lg lg:text-xl px-6 sm:px-8 lg:px-10 py-6 sm:py-7 lg:py-8 rounded-xl backdrop-blur-sm" asChild>
+                <Button size="lg" variant="outline" className="text-ctp-text hover:text-ctp-text border-ctp-surface1/50 bg-glass hover:bg-ctp-blue/10 hover:border-ctp-blue/50 transition-all duration-300 hover:scale-110 hover:shadow-xl hover:shadow-ctp-blue/30 whitespace-nowrap text-base sm:text-lg lg:text-xl px-6 sm:px-8 lg:px-10 py-6 sm:py-7 lg:py-8 rounded-none backdrop-blur-sm" asChild>
                   <Link to="/leaderboards">View All Leaderboards</Link>
                 </Button>
               </div>
@@ -125,11 +125,11 @@ const Index = () => {
 
             {/* Right Side - Total Time Card */}
             <div className="lg:col-span-3 lg:order-3 min-w-0">
-              <Card className="glass shadow-colored card-hover rounded-xl border-ctp-surface1/50 w-full group overflow-hidden relative">
+              <Card className="glass shadow-colored card-hover border-ctp-surface1/50 w-full group overflow-hidden relative rounded-none">
                 <div className="absolute inset-0 bg-gradient-to-br from-ctp-mauve/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                 <CardHeader className="pb-2 pt-4 px-4 relative z-10">
                   <CardTitle className="flex items-center gap-2 text-card-foreground text-base sm:text-lg lg:text-xl whitespace-nowrap">
-                    <Clock className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-ctp-mauve transition-transform duration-300 group-hover:scale-125 group-hover:rotate-12 flex-shrink-0 animate-pulse-glow" />
+                    <Clock className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-ctp-mauve transition-transform duration-300 group-hover:scale-125 group-hover:rotate-12 flex-shrink-0" />
                     <span className="truncate font-semibold">Total Time</span>
                   </CardTitle>
                 </CardHeader>
@@ -196,7 +196,7 @@ const Index = () => {
               </div>
 
               <div className="mt-4 text-center flex-shrink-0">
-                <Button variant="outline" size="sm" className="text-sm lg:text-base text-ctp-text border-ctp-surface1/50 bg-glass hover:bg-ctp-blue/10 hover:border-ctp-blue/50 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-ctp-blue/20 whitespace-nowrap px-4 lg:px-6 py-2 lg:py-3 rounded-lg backdrop-blur-sm" asChild>
+                <Button variant="outline" size="sm" className="text-sm lg:text-base text-ctp-text border-ctp-surface1/50 bg-glass hover:bg-ctp-blue/10 hover:border-ctp-blue/50 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-ctp-blue/20 whitespace-nowrap px-4 lg:px-6 py-2 lg:py-3 rounded-none backdrop-blur-sm" asChild>
                   <Link to="/leaderboards">View Full Leaderboards</Link>
                 </Button>
               </div>
