@@ -3084,21 +3084,52 @@ export const claimRunFirestore = async (runId: string, userId: string): Promise<
       updateData.playerId = userId;
     }
     
+    // Update player assignment first
     await updateDoc(runDocRef, updateData);
+    
+    // If run is not verified, verify it now (claiming verifies the run)
+    if (!runData.verified) {
+      // Get the user's display name for verifiedBy
+      const verifiedBy = player.displayName || player.email || userId;
+      
+      // Verify the run (this will calculate points and rank)
+      const verificationSuccess = await updateRunVerificationStatusFirestore(runId, true, verifiedBy);
+      if (!verificationSuccess) {
+        console.error("Failed to verify run when claiming");
+        // Continue anyway - the run is still assigned to the user
+      }
+      
+      // Refresh runData after verification to get updated points/rank
+      const updatedRunDoc = await getDoc(runDocRef);
+      if (updatedRunDoc.exists()) {
+        Object.assign(runData, updatedRunDoc.data());
+      }
+    }
     
     // Recalculate points for affected players
     const playerIds: string[] = [];
     
-    // Add new player (the one claiming the run) if run is verified
-    if (runData.verified && userId && userId !== "imported" && !userId.startsWith("unlinked_") && !userId.startsWith("unclaimed_")) {
+    // Always add the claiming user (run is now verified and assigned)
+    if (userId && userId !== "imported" && !userId.startsWith("unlinked_") && !userId.startsWith("unclaimed_")) {
       playerIds.push(userId);
     }
     
-    // Add old player(s) if they had accounts
+    // For co-op runs, also add player2 if they're different
+    if (isCoOp && updateData.player2Id && updateData.player2Id !== userId && 
+        updateData.player2Id !== "imported" && 
+        !updateData.player2Id.startsWith("unlinked_") && 
+        !updateData.player2Id.startsWith("unclaimed_")) {
+      playerIds.push(updateData.player2Id);
+    }
+    
+    // Add old player(s) if they had accounts (for points recalculation)
     if (oldPlayerId && oldPlayerId !== userId && oldPlayerId !== "imported" && !oldPlayerId.startsWith("unlinked_") && !oldPlayerId.startsWith("unclaimed_")) {
       playerIds.push(oldPlayerId);
     }
-    if (oldPlayer2Id && oldPlayer2Id !== userId && oldPlayer2Id !== "imported" && !oldPlayer2Id.startsWith("unlinked_") && !oldPlayer2Id.startsWith("unclaimed_")) {
+    if (oldPlayer2Id && oldPlayer2Id !== userId && oldPlayer2Id !== updateData.player2Id && 
+        oldPlayer2Id !== "imported" && 
+        !oldPlayer2Id.startsWith("unlinked_") && 
+        !oldPlayer2Id.startsWith("unclaimed_")) {
       playerIds.push(oldPlayer2Id);
     }
     
