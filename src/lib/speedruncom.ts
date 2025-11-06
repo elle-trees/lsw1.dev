@@ -270,14 +270,21 @@ export async function fetchPlatforms(): Promise<SRCPlatform[]> {
 function getPlayerName(player: SRCRun['players'][0]): string {
   if (!player) return "Unknown";
   
-  // First check embedded data (most reliable)
-  if (player.data?.names?.international) {
-    return player.data.names.international.trim();
-  }
-  
-  // Check for direct name field (guest runs)
+  // Check for direct name field first (guest runs - these are anonymous/unregistered players)
   if (player.name) {
     return String(player.name).trim();
+  }
+  
+  // Check embedded data (registered users)
+  if (player.data?.names?.international) {
+    return String(player.data.names.international).trim();
+  }
+  
+  // Check if player has an ID but no name (registered user without embedded data)
+  // This shouldn't happen with proper embedding, but handle it gracefully
+  if (player.id) {
+    // Could try to fetch name, but for now return a placeholder
+    return `Player ${player.id}`;
   }
   
   // Last resort
@@ -384,8 +391,8 @@ export function mapSRCRunToLeaderboardEntry(
   if (!ourCategoryId && srcCategoryName && categoryNameMapping) {
     ourCategoryId = categoryNameMapping.get(srcCategoryName.toLowerCase());
   }
-  // Store SRC category name as fallback if mapping fails
-  const finalCategoryName = srcCategoryName || (ourCategoryId ? undefined : srcCategoryId);
+  // Always store SRC category name if available (for display fallback)
+  const finalCategoryName = srcCategoryName || undefined;
   
   // Map platform - handle both string ID and embedded object
   const srcPlatformId = extractId(run.system?.platform);
@@ -395,15 +402,15 @@ export function mapSRCRunToLeaderboardEntry(
   if (!ourPlatformId && srcPlatformName && platformNameMapping) {
     ourPlatformId = platformNameMapping.get(srcPlatformName.toLowerCase());
   }
-  // Store SRC platform name as fallback if mapping fails
-  const finalPlatformName = srcPlatformName || (ourPlatformId ? undefined : srcPlatformId);
+  // Always store SRC platform name if available (for display fallback)
+  const finalPlatformName = srcPlatformName || undefined;
   
   // Map level - handle both string ID and embedded object
   const srcLevelId = extractId(run.level);
   const srcLevelName = extractName(run.level);
   let ourLevelId = srcLevelId ? levelMapping.get(srcLevelId) : undefined;
-  // Store SRC level name as fallback if mapping fails
-  const finalLevelName = srcLevelName || (ourLevelId ? undefined : srcLevelId);
+  // Always store SRC level name if available (for display fallback)
+  const finalLevelName = srcLevelName || undefined;
   
   // Use mapped IDs or fallback to SRC IDs
   if (!ourCategoryId) {

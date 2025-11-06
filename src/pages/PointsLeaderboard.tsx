@@ -123,7 +123,7 @@ const PointsLeaderboard = () => {
               </div>
             ) : (
               <>
-                <div className="space-y-4">
+              <div className="space-y-4">
                   {players.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((player, index) => {
                   const rank = (currentPage - 1) * itemsPerPage + index + 1;
                   const points = player.totalPoints || 0;
@@ -213,8 +213,8 @@ const PointsLeaderboard = () => {
                       </div>
                     </Link>
                   );
-                  })}
-                </div>
+                })}
+              </div>
                 {players.length > itemsPerPage && (
                   <Pagination
                     currentPage={currentPage}

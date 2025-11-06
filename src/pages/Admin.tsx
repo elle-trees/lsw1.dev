@@ -639,6 +639,33 @@ const Admin = () => {
             ourPlatformId = srcPlatformId; // Fallback to SRC ID if no mapping found
           }
 
+          // Extract level info for mapping
+          let srcLevelId = '';
+          let srcLevelName = '';
+          if (srcRun.level) {
+            if (typeof srcRun.level === 'string') {
+              srcLevelId = srcRun.level;
+            } else {
+              srcLevelId = srcRun.level.data?.id || '';
+              srcLevelName = srcRun.level.data?.name || '';
+            }
+          }
+          
+          // Try to find our level ID - first by SRC ID, then by name
+          let ourLevelId = levelMapping.get(srcLevelId);
+          if (!ourLevelId && srcLevelName) {
+            // Try to find level by name
+            const ourLevel = ourLevels.find(l => 
+              l.name.toLowerCase() === srcLevelName.toLowerCase()
+            );
+            if (ourLevel) {
+              ourLevelId = ourLevel.id;
+            }
+          }
+          if (srcLevelId && !ourLevelId) {
+            ourLevelId = srcLevelId; // Fallback to SRC ID if no mapping found
+          }
+
           // Map the run with corrected IDs and name mappings
           const mappedRun = mapSRCRunToLeaderboardEntry(
             srcRun,
@@ -651,9 +678,21 @@ const Admin = () => {
             platformNameMapping
           );
 
-          // Override with correctly mapped category and platform (in case mapping function didn't use name mappings)
+          // Override with correctly mapped IDs (preserve SRC names from mapping function)
           mappedRun.category = ourCategoryId;
           mappedRun.platform = ourPlatformId;
+          mappedRun.level = ourLevelId;
+          
+          // Ensure SRC names are preserved (they should already be set by mapSRCRunToLeaderboardEntry)
+          if (srcCategoryName && !mappedRun.srcCategoryName) {
+            mappedRun.srcCategoryName = srcCategoryName;
+          }
+          if (srcPlatformName && !mappedRun.srcPlatformName) {
+            mappedRun.srcPlatformName = srcPlatformName;
+          }
+          if (srcLevelName && !mappedRun.srcLevelName) {
+            mappedRun.srcLevelName = srcLevelName;
+          }
 
           // Check if we have a valid category and platform
           if (!mappedRun.category || !mappedRun.platform || mappedRun.category === '' || mappedRun.platform === '') {
@@ -663,12 +702,26 @@ const Admin = () => {
             continue;
           }
           
-          // Ensure player names are strings
-          if (typeof mappedRun.playerName !== 'string') {
-            mappedRun.playerName = String(mappedRun.playerName || 'Unknown');
+          // Debug: Log player extraction for first few runs
+          if (imported < 3) {
+            console.log(`Run ${srcRun.id} players:`, JSON.stringify(srcRun.players, null, 2));
+            console.log(`Extracted player1: "${mappedRun.playerName}", player2: "${mappedRun.player2Name}"`);
           }
-          if (mappedRun.player2Name && typeof mappedRun.player2Name !== 'string') {
-            mappedRun.player2Name = String(mappedRun.player2Name);
+          
+          // Ensure player names are strings and not empty
+          if (typeof mappedRun.playerName !== 'string' || !mappedRun.playerName || mappedRun.playerName.trim() === '') {
+            console.warn(`Run ${srcRun.id} has invalid player1 name:`, mappedRun.playerName);
+            mappedRun.playerName = String(mappedRun.playerName || 'Unknown').trim() || 'Unknown';
+          } else {
+            mappedRun.playerName = mappedRun.playerName.trim();
+          }
+          if (mappedRun.player2Name) {
+            if (typeof mappedRun.player2Name !== 'string' || mappedRun.player2Name.trim() === '') {
+              console.warn(`Run ${srcRun.id} has invalid player2 name:`, mappedRun.player2Name);
+              mappedRun.player2Name = undefined; // Remove invalid player2
+            } else {
+              mappedRun.player2Name = mappedRun.player2Name.trim();
+            }
           }
 
           // Check if a similar run already exists on the site
@@ -2309,20 +2362,20 @@ const Admin = () => {
               <p className="text-[hsl(222,15%,60%)] text-center py-8">No runs awaiting verification.</p>
             ) : (
               <>
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="border-b border-[hsl(235,13%,30%)] hover:bg-transparent">
-                        <TableHead className="py-3 px-4 text-left">Player(s)</TableHead>
-                        <TableHead className="py-3 px-4 text-left">Category</TableHead>
-                        <TableHead className="py-3 px-4 text-left">Time</TableHead>
-                        <TableHead className="py-3 px-4 text-left">Platform</TableHead>
-                        <TableHead className="py-3 px-4 text-left">Type</TableHead>
-                        <TableHead className="py-3 px-4 text-left">Video</TableHead>
-                        <TableHead className="py-3 px-4 text-center">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-b border-[hsl(235,13%,30%)] hover:bg-transparent">
+                      <TableHead className="py-3 px-4 text-left">Player(s)</TableHead>
+                      <TableHead className="py-3 px-4 text-left">Category</TableHead>
+                      <TableHead className="py-3 px-4 text-left">Time</TableHead>
+                      <TableHead className="py-3 px-4 text-left">Platform</TableHead>
+                      <TableHead className="py-3 px-4 text-left">Type</TableHead>
+                      <TableHead className="py-3 px-4 text-left">Video</TableHead>
+                      <TableHead className="py-3 px-4 text-center">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                       {unverifiedRuns.slice((unverifiedPage - 1) * itemsPerPage, unverifiedPage * itemsPerPage).map((run) => (
                       <TableRow key={run.id} className="border-b border-[hsl(235,13%,30%)] hover:bg-[hsl(235,19%,13%)] transition-all duration-200 hover:shadow-md">
                         <TableCell className="py-3 px-4 font-medium">
@@ -2371,7 +2424,7 @@ const Admin = () => {
                     ))}
                   </TableBody>
                 </Table>
-                </div>
+              </div>
                 {unverifiedRuns.length > itemsPerPage && (
                   <Pagination
                     currentPage={unverifiedPage}
@@ -2695,8 +2748,8 @@ const Admin = () => {
                     </>
                   );
                 })()}
-              </CardContent>
-            </Card>
+          </CardContent>
+        </Card>
 
           </TabsContent>
 
