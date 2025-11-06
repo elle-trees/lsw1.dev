@@ -19,6 +19,8 @@ export interface LeaderboardEntry {
   nameColor?: string; // Player's name color
   player2Color?: string; // Player 2's name color (for co-op)
   points?: number; // Points awarded for this run
+  importedFromSRC?: boolean; // Whether this run was imported from speedrun.com
+  srcRunId?: string; // Speedrun.com run ID for reference
 }
 
 export interface Player {

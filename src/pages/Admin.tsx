@@ -9,8 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, XCircle, ShieldAlert, ExternalLink, Download, PlusCircle, Trash2, Wrench, Edit2, FolderTree, Play, ArrowUp, ArrowDown, Gamepad2, UserPlus, UserMinus, Trophy, Upload, Star, Gem } from "lucide-react";
+import { CheckCircle, XCircle, ShieldAlert, ExternalLink, Download, PlusCircle, Trash2, Wrench, Edit2, FolderTree, Play, ArrowUp, ArrowDown, Gamepad2, UserPlus, UserMinus, Trophy, Upload, Star, Gem, RefreshCw } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -18,6 +19,7 @@ import {
   updateRunVerificationStatus, 
   deleteLeaderboardEntry,
   addLeaderboardEntry,
+  updateLeaderboardEntry,
   getPlayerByDisplayName,
   getPlayerByUid,
   setPlayerAdminStatus,
@@ -46,7 +48,19 @@ import {
   moveLevelDown,
   backfillPointsForAllRuns,
   getDownloadCategories,
+  getImportedSRCRuns,
+  checkSRCRunExists,
+  getAllRunsForDuplicateCheck,
 } from "@/lib/db";
+import { 
+  getLSWGameId, 
+  fetchRunsNotOnLeaderboards, 
+  mapSRCRunToLeaderboardEntry,
+  fetchCategories as fetchSRCCategories,
+  fetchLevels as fetchSRCLevels,
+  fetchPlatforms as fetchSRCPlatforms,
+  type SRCRun,
+} from "@/lib/speedruncom";
 import { useUploadThing } from "@/lib/uploadthing";
 import { LeaderboardEntry, DownloadEntry } from "@/types/database";
 import { useNavigate } from "react-router-dom";
@@ -59,6 +73,12 @@ const Admin = () => {
   const navigate = useNavigate();
 
   const [unverifiedRuns, setUnverifiedRuns] = useState<LeaderboardEntry[]>([]);
+  const [importedSRCRuns, setImportedSRCRuns] = useState<LeaderboardEntry[]>([]);
+  const [importingRuns, setImportingRuns] = useState(false);
+  const [importProgress, setImportProgress] = useState({ total: 0, imported: 0, skipped: 0 });
+  const [editingImportedRun, setEditingImportedRun] = useState<LeaderboardEntry | null>(null);
+  const [editingImportedRunForm, setEditingImportedRunForm] = useState<Partial<LeaderboardEntry>>({});
+  const [savingImportedRun, setSavingImportedRun] = useState(false);
   const [downloadEntries, setDownloadEntries] = useState<DownloadEntry[]>([]);
   const [pageLoading, setLoading] = useState(true);
   const [newDownload, setNewDownload] = useState({
@@ -172,6 +192,24 @@ const Admin = () => {
   }, [firestorePlatforms]);
 
   useEffect(() => {
+    if (editingImportedRun) {
+      setEditingImportedRunForm({
+        playerName: editingImportedRun.playerName,
+        player2Name: editingImportedRun.player2Name,
+        category: editingImportedRun.category,
+        platform: editingImportedRun.platform,
+        runType: editingImportedRun.runType,
+        leaderboardType: editingImportedRun.leaderboardType,
+        level: editingImportedRun.level,
+        time: editingImportedRun.time,
+        date: editingImportedRun.date,
+        videoUrl: editingImportedRun.videoUrl,
+        comment: editingImportedRun.comment,
+      });
+    }
+  }, [editingImportedRun]);
+
+  useEffect(() => {
     // Fetch categories when leaderboard type changes for manual run
     const categoryType = manualRunLeaderboardType === 'community-golds' ? 'regular' : manualRunLeaderboardType;
     fetchCategories(categoryType);
@@ -182,12 +220,14 @@ const Admin = () => {
     if (hasFetchedData) return;
     setLoading(true);
     try {
-      const [unverifiedData, downloadData, categoriesData] = await Promise.all([
+      const [unverifiedData, importedData, downloadData, categoriesData] = await Promise.all([
         getUnverifiedLeaderboardEntries(),
+        getImportedSRCRuns(),
         getDownloadEntries(),
         getCategoriesFromFirestore('regular')
       ]);
-      setUnverifiedRuns(unverifiedData);
+      setUnverifiedRuns(unverifiedData.filter(run => !run.importedFromSRC));
+      setImportedSRCRuns(importedData);
       setDownloadEntries(downloadData);
       setFirestoreCategories(categoriesData);
       setHasFetchedData(true);
@@ -232,7 +272,9 @@ const Admin = () => {
   const fetchUnverifiedRuns = async () => {
     try {
       const data = await getUnverifiedLeaderboardEntries();
-      setUnverifiedRuns(data);
+      setUnverifiedRuns(data.filter(run => !run.importedFromSRC));
+      const importedData = await getImportedSRCRuns();
+      setImportedSRCRuns(importedData);
     } catch (error) {
       toast({
         title: "Error",
@@ -325,6 +367,230 @@ const Admin = () => {
         description: error.message || "Failed to reject and remove run.",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleImportFromSRC = async () => {
+    if (importingRuns) return;
+    
+    setImportingRuns(true);
+    setImportProgress({ total: 0, imported: 0, skipped: 0 });
+    
+    try {
+      // Get game ID
+      const gameId = await getLSWGameId();
+      if (!gameId) {
+        throw new Error("Could not find LEGO Star Wars game on speedrun.com");
+      }
+
+      // Fetch runs from speedrun.com
+      toast({
+        title: "Fetching Runs",
+        description: "Fetching runs from speedrun.com...",
+      });
+      
+      const srcRuns = await fetchRunsNotOnLeaderboards(gameId);
+      setImportProgress(prev => ({ ...prev, total: srcRuns.length }));
+
+      if (srcRuns.length === 0) {
+        toast({
+          title: "No Runs Found",
+          description: "No runs found to import from speedrun.com.",
+        });
+        setImportingRuns(false);
+        return;
+      }
+
+      // Get existing runs to check for duplicates
+      const existingRuns = await getAllRunsForDuplicateCheck();
+      const existingSRCRunIds = new Set(
+        existingRuns.filter(r => r.srcRunId).map(r => r.srcRunId!)
+      );
+
+      // Create a set of existing runs for duplicate checking by run data
+      // Normalize player names for comparison
+      const normalizeName = (name: string) => name.trim().toLowerCase();
+      const existingRunKeys = new Set<string>();
+      for (const run of existingRuns) {
+        const key = `${normalizeName(run.playerName)}|${run.category}|${run.platform}|${run.runType}|${run.time}|${run.leaderboardType || 'regular'}|${run.level || ''}`;
+        existingRunKeys.add(key);
+      }
+
+      // Get mappings for categories, platforms, and levels
+      const [ourCategories, ourPlatforms, ourLevels, srcCategories, srcPlatforms, srcLevels] = await Promise.all([
+        getCategoriesFromFirestore(),
+        getPlatformsFromFirestore(),
+        getLevels(),
+        fetchSRCCategories(gameId),
+        fetchSRCPlatforms(),
+        fetchSRCLevels(gameId),
+      ]);
+
+      // Create mapping maps (by name, since IDs differ)
+      const categoryMapping = new Map<string, string>();
+      const platformMapping = new Map<string, string>();
+      const levelMapping = new Map<string, string>();
+
+      // Map SRC categories to our categories by name
+      for (const srcCat of srcCategories) {
+        const ourCat = ourCategories.find(c => 
+          c.name.toLowerCase() === srcCat.name.toLowerCase()
+        );
+        if (ourCat) {
+          categoryMapping.set(srcCat.id, ourCat.id);
+        }
+      }
+
+      // Map SRC platforms to our platforms by name
+      for (const srcPlatform of srcPlatforms) {
+        const ourPlatform = ourPlatforms.find(p => 
+          p.name.toLowerCase() === srcPlatform.name.toLowerCase()
+        );
+        if (ourPlatform) {
+          platformMapping.set(srcPlatform.id, ourPlatform.id);
+        }
+      }
+
+      // Map SRC levels to our levels by name
+      for (const srcLevel of srcLevels) {
+        const ourLevel = ourLevels.find(l => 
+          l.name.toLowerCase() === srcLevel.name.toLowerCase()
+        );
+        if (ourLevel) {
+          levelMapping.set(srcLevel.id, ourLevel.id);
+        }
+      }
+
+      let imported = 0;
+      let skipped = 0;
+
+      // Import runs
+      for (const srcRun of srcRuns) {
+        // Skip if already imported by srcRunId
+        if (existingSRCRunIds.has(srcRun.id)) {
+          skipped++;
+          setImportProgress(prev => ({ ...prev, skipped: prev.skipped + 1 }));
+          continue;
+        }
+
+        try {
+          // Map the run
+          const mappedRun = mapSRCRunToLeaderboardEntry(
+            srcRun,
+            undefined, // We'll handle embedded data differently
+            categoryMapping,
+            platformMapping,
+            levelMapping,
+            "imported"
+          );
+
+          // Check if we have a valid category and platform
+          if (!mappedRun.category || !mappedRun.platform) {
+            skipped++;
+            setImportProgress(prev => ({ ...prev, skipped: prev.skipped + 1 }));
+            continue;
+          }
+
+          // Check if a similar run already exists on the site
+          const player1Name = normalizeName(mappedRun.playerName || '');
+          const player2Name = mappedRun.player2Name ? normalizeName(mappedRun.player2Name) : '';
+          const runKey = `${player1Name}|${mappedRun.category}|${mappedRun.platform}|${mappedRun.runType}|${mappedRun.time}|${mappedRun.leaderboardType || 'regular'}|${mappedRun.level || ''}`;
+          
+          // Check for exact duplicate
+          if (existingRunKeys.has(runKey)) {
+            skipped++;
+            setImportProgress(prev => ({ ...prev, skipped: prev.skipped + 1 }));
+            continue;
+          }
+
+          // Also check for co-op runs with swapped players
+          if (mappedRun.runType === 'co-op' && player2Name) {
+            const swappedKey = `${player2Name}|${mappedRun.category}|${mappedRun.platform}|${mappedRun.runType}|${mappedRun.time}|${mappedRun.leaderboardType || 'regular'}|${mappedRun.level || ''}`;
+            if (existingRunKeys.has(swappedKey)) {
+              skipped++;
+              setImportProgress(prev => ({ ...prev, skipped: prev.skipped + 1 }));
+              continue;
+            }
+          }
+
+          // Add the run
+          await addLeaderboardEntry(mappedRun as any);
+          imported++;
+          setImportProgress(prev => ({ ...prev, imported: prev.imported + 1 }));
+          
+          // Add to existing keys to prevent duplicates within the same import batch
+          existingRunKeys.add(runKey);
+        } catch (error) {
+          console.error(`Error importing run ${srcRun.id}:`, error);
+          skipped++;
+          setImportProgress(prev => ({ ...prev, skipped: prev.skipped + 1 }));
+        }
+      }
+
+      toast({
+        title: "Import Complete",
+        description: `Imported ${imported} runs, skipped ${skipped} duplicates or invalid runs.`,
+      });
+
+      // Refresh the runs list
+      await fetchUnverifiedRuns();
+    } catch (error: any) {
+      toast({
+        title: "Import Error",
+        description: error.message || "Failed to import runs from speedrun.com.",
+        variant: "destructive",
+      });
+    } finally {
+      setImportingRuns(false);
+    }
+  };
+
+  const handleSaveImportedRun = async () => {
+    if (!editingImportedRun) return;
+    
+    setSavingImportedRun(true);
+    try {
+      const updateData: Partial<LeaderboardEntry> = {
+        playerName: editingImportedRunForm.playerName,
+        player2Name: editingImportedRunForm.player2Name,
+        category: editingImportedRunForm.category,
+        platform: editingImportedRunForm.platform,
+        runType: editingImportedRunForm.runType,
+        leaderboardType: editingImportedRunForm.leaderboardType,
+        level: editingImportedRunForm.level,
+        time: editingImportedRunForm.time,
+        date: editingImportedRunForm.date,
+        videoUrl: editingImportedRunForm.videoUrl,
+        comment: editingImportedRunForm.comment,
+      };
+
+      // Remove undefined values
+      Object.keys(updateData).forEach(key => {
+        if (updateData[key as keyof LeaderboardEntry] === undefined) {
+          delete updateData[key as keyof LeaderboardEntry];
+        }
+      });
+
+      const success = await updateLeaderboardEntry(editingImportedRun.id, updateData);
+      if (success) {
+        toast({
+          title: "Run Updated",
+          description: "The imported run has been updated successfully.",
+        });
+        setEditingImportedRun(null);
+        setEditingImportedRunForm({});
+        await fetchUnverifiedRuns();
+      } else {
+        throw new Error("Failed to update run");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update imported run.",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingImportedRun(false);
     }
   };
 
@@ -1646,6 +1912,58 @@ const Admin = () => {
 
         {/* Unverified Runs Section */}
           <TabsContent value="runs" className="space-y-4 animate-fade-in">
+            {/* Import from Speedrun.com Card */}
+            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
+              <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
+                <CardTitle className="flex items-center gap-2 text-xl text-[#f2cdcd]">
+                  <Upload className="h-5 w-5" />
+                  <span>Import from Speedrun.com</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <div className="space-y-4">
+                  <p className="text-[hsl(222,15%,60%)]">
+                    Import runs from speedrun.com that aren't on the leaderboards. 
+                    Runs will be added as unverified and can be edited, verified, or rejected.
+                  </p>
+                  <Button
+                    onClick={handleImportFromSRC}
+                    disabled={importingRuns}
+                    className="bg-gradient-to-r from-[#cba6f7] to-[#b4a0e2] hover:from-[#b4a0e2] hover:to-[#cba6f7] text-[hsl(240,21%,15%)] font-bold transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                  >
+                    {importingRuns ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Importing...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Import Runs
+                      </>
+                    )}
+                  </Button>
+                  {importingRuns && importProgress.total > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm text-[hsl(222,15%,60%)]">
+                        <span>Progress: {importProgress.imported + importProgress.skipped} / {importProgress.total}</span>
+                        <span>Imported: {importProgress.imported} | Skipped: {importProgress.skipped}</span>
+                      </div>
+                      <div className="w-full bg-[hsl(235,19%,13%)] rounded-full h-2">
+                        <div
+                          className="bg-gradient-to-r from-[#cba6f7] to-[#b4a0e2] h-2 rounded-full transition-all duration-300"
+                          style={{
+                            width: `${((importProgress.imported + importProgress.skipped) / importProgress.total) * 100}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Regular Unverified Runs */}
             <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
               <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
                 <CardTitle className="flex items-center gap-2 text-xl text-[#f2cdcd]">
@@ -1721,7 +2039,272 @@ const Admin = () => {
           </CardContent>
         </Card>
 
+            {/* Imported Runs from Speedrun.com */}
+            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
+              <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
+                <CardTitle className="flex items-center gap-2 text-xl text-[#f2cdcd]">
+                  <Star className="h-5 w-5" />
+                  <span>Imported Runs from Speedrun.com</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {importedSRCRuns.filter(r => !r.verified).length === 0 ? (
+                  <p className="text-[hsl(222,15%,60%)] text-center py-8">No imported runs awaiting verification.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-b border-[hsl(235,13%,30%)] hover:bg-transparent">
+                          <TableHead className="py-3 px-4 text-left">Player(s)</TableHead>
+                          <TableHead className="py-3 px-4 text-left">Category</TableHead>
+                          <TableHead className="py-3 px-4 text-left">Time</TableHead>
+                          <TableHead className="py-3 px-4 text-left">Platform</TableHead>
+                          <TableHead className="py-3 px-4 text-left">Type</TableHead>
+                          <TableHead className="py-3 px-4 text-left">Video</TableHead>
+                          <TableHead className="py-3 px-4 text-center">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {importedSRCRuns.filter(r => !r.verified).map((run) => (
+                          <TableRow key={run.id} className="border-b border-[hsl(235,13%,30%)] hover:bg-[hsl(235,19%,13%)] transition-all duration-200 hover:shadow-md">
+                            <TableCell className="py-3 px-4 font-medium">
+                              <span style={{ color: run.nameColor || 'inherit' }}>{run.playerName}</span>
+                              {run.player2Name && (
+                                <>
+                                  <span className="text-muted-foreground"> & </span>
+                                  <span style={{ color: run.player2Color || 'inherit' }}>{run.player2Name}</span>
+                                </>
+                              )}
+                            </TableCell>
+                            <TableCell className="py-3 px-4">{firestoreCategories.find(c => c.id === run.category)?.name || run.category}</TableCell>
+                            <TableCell className="py-3 px-4 font-mono">{formatTime(run.time)}</TableCell>
+                            <TableCell className="py-3 px-4">{firestorePlatforms.find(p => p.id === run.platform)?.name || run.platform}</TableCell>
+                            <TableCell className="py-3 px-4">{run.runType.charAt(0).toUpperCase() + run.runType.slice(1)}</TableCell>
+                            <TableCell className="py-3 px-4">
+                              {run.videoUrl && (
+                                <a href={run.videoUrl} target="_blank" rel="noopener noreferrer" className="text-[#cba6f7] hover:underline flex items-center gap-1">
+                                  Watch <ExternalLink className="h-4 w-4" />
+                                </a>
+                              )}
+                              {run.srcRunId && (
+                                <a 
+                                  href={`https://www.speedrun.com/lsw/run/${run.srcRunId}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="ml-2 text-[#94e2d5] hover:underline flex items-center gap-1 text-xs"
+                                >
+                                  SRC <ExternalLink className="h-3 w-3" />
+                                </a>
+                              )}
+                            </TableCell>
+                            <TableCell className="py-3 px-4 text-center space-x-2">
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => setEditingImportedRun(run)}
+                                className="text-blue-500 hover:bg-blue-900/20 transition-all duration-300 hover:scale-110 hover:shadow-md"
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => handleVerify(run.id)}
+                                className="text-green-500 hover:bg-green-900/20 transition-all duration-300 hover:scale-110 hover:shadow-md"
+                              >
+                                <CheckCircle className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => handleReject(run.id)}
+                                className="text-red-500 hover:bg-red-900/20 transition-all duration-300 hover:scale-110 hover:shadow-md"
+                              >
+                                <XCircle className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
           </TabsContent>
+
+        {/* Edit Imported Run Dialog */}
+        <Dialog open={!!editingImportedRun} onOpenChange={(open) => {
+          if (!open) {
+            setEditingImportedRun(null);
+            setEditingImportedRunForm({});
+          }
+        }}>
+          <DialogContent className="bg-[hsl(240,21%,16%)] border-[hsl(235,13%,30%)] max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-[#f2cdcd]">Edit Imported Run</DialogTitle>
+            </DialogHeader>
+            {editingImportedRun && (
+              <div className="space-y-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="edit-playerName">Player Name</Label>
+                    <Input
+                      id="edit-playerName"
+                      value={editingImportedRunForm.playerName ?? editingImportedRun.playerName}
+                      onChange={(e) => setEditingImportedRunForm({ ...editingImportedRunForm, playerName: e.target.value })}
+                      className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-player2Name">Player 2 Name (Co-op)</Label>
+                    <Input
+                      id="edit-player2Name"
+                      value={editingImportedRunForm.player2Name ?? editingImportedRun.player2Name ?? ""}
+                      onChange={(e) => setEditingImportedRunForm({ ...editingImportedRunForm, player2Name: e.target.value || undefined })}
+                      className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="edit-category">Category</Label>
+                    <Select
+                      value={editingImportedRunForm.category ?? editingImportedRun.category}
+                      onValueChange={(value) => setEditingImportedRunForm({ ...editingImportedRunForm, category: value })}
+                    >
+                      <SelectTrigger className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {firestoreCategories.map((cat) => (
+                          <SelectItem key={cat.id} value={cat.id}>
+                            {cat.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-platform">Platform</Label>
+                    <Select
+                      value={editingImportedRunForm.platform ?? editingImportedRun.platform}
+                      onValueChange={(value) => setEditingImportedRunForm({ ...editingImportedRunForm, platform: value })}
+                    >
+                      <SelectTrigger className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {firestorePlatforms.map((platform) => (
+                          <SelectItem key={platform.id} value={platform.id}>
+                            {platform.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="edit-runType">Run Type</Label>
+                    <Select
+                      value={editingImportedRunForm.runType ?? editingImportedRun.runType}
+                      onValueChange={(value) => setEditingImportedRunForm({ ...editingImportedRunForm, runType: value as 'solo' | 'co-op' })}
+                    >
+                      <SelectTrigger className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="solo">Solo</SelectItem>
+                        <SelectItem value="co-op">Co-op</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-time">Time (HH:MM:SS)</Label>
+                    <Input
+                      id="edit-time"
+                      value={editingImportedRunForm.time ?? editingImportedRun.time}
+                      onChange={(e) => setEditingImportedRunForm({ ...editingImportedRunForm, time: e.target.value })}
+                      className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                      placeholder="00:00:00"
+                    />
+                  </div>
+                </div>
+                {(editingImportedRun.leaderboardType === 'individual-level' || editingImportedRun.leaderboardType === 'community-golds') && (
+                  <div>
+                    <Label htmlFor="edit-level">Level</Label>
+                    <Select
+                      value={editingImportedRunForm.level ?? editingImportedRun.level ?? ""}
+                      onValueChange={(value) => setEditingImportedRunForm({ ...editingImportedRunForm, level: value })}
+                    >
+                      <SelectTrigger className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableLevels.map((level) => (
+                          <SelectItem key={level.id} value={level.id}>
+                            {level.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                <div>
+                  <Label htmlFor="edit-date">Date</Label>
+                  <Input
+                    id="edit-date"
+                    type="date"
+                    value={editingImportedRunForm.date ?? editingImportedRun.date}
+                    onChange={(e) => setEditingImportedRunForm({ ...editingImportedRunForm, date: e.target.value })}
+                    className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-videoUrl">Video URL</Label>
+                  <Input
+                    id="edit-videoUrl"
+                    value={editingImportedRunForm.videoUrl ?? editingImportedRun.videoUrl ?? ""}
+                    onChange={(e) => setEditingImportedRunForm({ ...editingImportedRunForm, videoUrl: e.target.value || undefined })}
+                    className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                    placeholder="https://..."
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-comment">Comment</Label>
+                  <Textarea
+                    id="edit-comment"
+                    value={editingImportedRunForm.comment ?? editingImportedRun.comment ?? ""}
+                    onChange={(e) => setEditingImportedRunForm({ ...editingImportedRunForm, comment: e.target.value || undefined })}
+                    className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                    placeholder="Optional comment..."
+                  />
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setEditingImportedRun(null);
+                  setEditingImportedRunForm({});
+                }}
+                className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSaveImportedRun}
+                disabled={savingImportedRun}
+                className="bg-gradient-to-r from-[#cba6f7] to-[#b4a0e2] hover:from-[#b4a0e2] hover:to-[#cba6f7] text-[hsl(240,21%,15%)] font-bold"
+              >
+                {savingImportedRun ? "Saving..." : "Save Changes"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Category Management Section */}
           <TabsContent value="categories" className="space-y-4 animate-fade-in">

@@ -49,6 +49,9 @@ import {
   addDownloadCategoryFirestore,
   updateDownloadCategoryFirestore,
   deleteDownloadCategoryFirestore,
+  checkSRCRunExistsFirestore,
+  getImportedSRCRunsFirestore,
+  getAllRunsForDuplicateCheckFirestore,
 } from "./data/firestore";
 
 const defaultCategories = [
@@ -208,6 +211,10 @@ export const getDownloadCategories = getDownloadCategoriesFirestore;
 export const addDownloadCategory = addDownloadCategoryFirestore;
 export const updateDownloadCategory = updateDownloadCategoryFirestore;
 export const deleteDownloadCategory = deleteDownloadCategoryFirestore;
+
+export const checkSRCRunExists = checkSRCRunExistsFirestore;
+export const getImportedSRCRuns = getImportedSRCRunsFirestore;
+export const getAllRunsForDuplicateCheck = getAllRunsForDuplicateCheckFirestore;
 
 export const backfillPointsForAllRuns = async () => {
   const { backfillPointsForAllRunsFirestore } = await import("./data/firestore");

@@ -1,0 +1,353 @@
+/**
+ * Speedrun.com API integration utilities
+ * https://github.com/speedruncomorg/api
+ */
+
+const SPEEDRUNCOM_API_BASE = "https://www.speedrun.com/api/v1";
+
+export interface SRCGame {
+  id: string;
+  names: {
+    international: string;
+  };
+  abbreviation: string;
+}
+
+export interface SRCPlayer {
+  id: string;
+  names: {
+    international: string;
+  };
+  weblink: string;
+}
+
+export interface SRCCategory {
+  id: string;
+  name: string;
+  type: "per-game" | "per-level";
+  weblink: string;
+  variables?: {
+    data: Array<{
+      id: string;
+      name: string;
+      values: {
+        values: Record<string, { label: string }>;
+      };
+    }>;
+  };
+}
+
+export interface SRCLevel {
+  id: string;
+  name: string;
+  weblink: string;
+}
+
+export interface SRCPlatform {
+  id: string;
+  name: string;
+}
+
+export interface SRCRun {
+  id: string;
+  weblink: string;
+  game: string;
+  category: string;
+  level?: string;
+  players: Array<{
+    rel: string;
+    id?: string;
+    name?: string;
+  }>;
+  date?: string;
+  submitted?: string;
+  times: {
+    primary: string; // ISO 8601 duration (e.g., "PT1H23M45.678S")
+    primary_t: number; // seconds
+    realtime?: string;
+    realtime_t?: number;
+    realtime_noloads?: string;
+    realtime_noloads_t?: number;
+  };
+  videos?: {
+    links?: Array<{
+      uri: string;
+    }>;
+  };
+  system: {
+    platform?: string;
+    emulated?: boolean;
+    region?: string;
+  };
+  status: {
+    status: "new" | "verified" | "rejected";
+    examiner?: string;
+    "verify-date"?: string;
+  };
+  comment?: string;
+  values?: Record<string, string>;
+}
+
+export interface SRCRunData {
+  data: SRCRun[];
+  pagination?: {
+    offset: number;
+    max: number;
+    size: number;
+  };
+}
+
+/**
+ * Convert ISO 8601 duration to HH:MM:SS format
+ */
+function isoDurationToTime(duration: string): string {
+  const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?/);
+  if (!match) return "00:00:00";
+  
+  const hours = parseInt(match[1] || "0", 10);
+  const minutes = parseInt(match[2] || "0", 10);
+  const seconds = parseFloat(match[3] || "0");
+  
+  const secondsInt = Math.floor(seconds);
+  const milliseconds = Math.floor((seconds - secondsInt) * 1000);
+  
+  const hoursStr = hours.toString().padStart(2, "0");
+  const minutesStr = minutes.toString().padStart(2, "0");
+  const secondsStr = secondsInt.toString().padStart(2, "0");
+  
+  return `${hoursStr}:${minutesStr}:${secondsStr}`;
+}
+
+/**
+ * Convert seconds to HH:MM:SS format
+ */
+function secondsToTime(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+  
+  return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+}
+
+/**
+ * Get game ID for LEGO Star Wars: The Video Game
+ */
+export async function getLSWGameId(): Promise<string | null> {
+  try {
+    const response = await fetch(`${SPEEDRUNCOM_API_BASE}/games?name=LEGO%20Star%20Wars&abbreviation=lsw`);
+    const data = await response.json();
+    
+    if (data.data && data.data.length > 0) {
+      // Find the game with abbreviation "lsw"
+      const lswGame = data.data.find((game: SRCGame) => game.abbreviation === "lsw");
+      return lswGame?.id || null;
+    }
+    return null;
+  } catch (error) {
+    console.error("Error fetching LSW game ID:", error);
+    return null;
+  }
+}
+
+/**
+ * Fetch all runs for a game
+ * This fetches runs with status "verified" that can be imported
+ */
+export async function fetchRunsNotOnLeaderboards(gameId: string): Promise<SRCRun[]> {
+  const allRuns: SRCRun[] = [];
+  let offset = 0;
+  const max = 200;
+  let hasMore = true;
+  
+  try {
+    while (hasMore) {
+      // Fetch runs that are verified
+      // We'll filter out ones that are already on our leaderboards later
+      const response = await fetch(
+        `${SPEEDRUNCOM_API_BASE}/runs?game=${gameId}&status=verified&orderby=submitted&direction=desc&max=${max}&offset=${offset}&embed=players,category,level,platform`
+      );
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch runs: ${response.statusText}`);
+      }
+      
+      const data: SRCRunData = await response.json();
+      
+      if (data.data && data.data.length > 0) {
+        allRuns.push(...data.data);
+        offset += data.data.length;
+        
+        if (data.data.length < max || !data.pagination) {
+          hasMore = false;
+        } else if (data.pagination && offset >= data.pagination.max) {
+          hasMore = false;
+        }
+      } else {
+        hasMore = false;
+      }
+      
+      // Limit to prevent too many requests - we can adjust this
+      if (offset >= 500) {
+        break;
+      }
+    }
+    
+    return allRuns;
+  } catch (error) {
+    console.error("Error fetching runs:", error);
+    throw error;
+  }
+}
+
+/**
+ * Fetch runs for a specific category
+ */
+export async function fetchRunsByCategory(gameId: string, categoryId: string): Promise<SRCRun[]> {
+  try {
+    const response = await fetch(
+      `${SPEEDRUNCOM_API_BASE}/runs?game=${gameId}&category=${categoryId}&status=verified&orderby=submitted&direction=desc&max=200&embed=players,category,level,platform`
+    );
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch runs: ${response.statusText}`);
+    }
+    
+    const data: SRCRunData = await response.json();
+    return data.data || [];
+  } catch (error) {
+    console.error("Error fetching runs by category:", error);
+    throw error;
+  }
+}
+
+/**
+ * Fetch all categories for a game
+ */
+export async function fetchCategories(gameId: string): Promise<SRCCategory[]> {
+  try {
+    const response = await fetch(`${SPEEDRUNCOM_API_BASE}/games/${gameId}/categories`);
+    const data = await response.json();
+    return data.data || [];
+  } catch (error) {
+    console.error("Error fetching categories:", error);
+    return [];
+  }
+}
+
+/**
+ * Fetch all levels for a game
+ */
+export async function fetchLevels(gameId: string): Promise<SRCLevel[]> {
+  try {
+    const response = await fetch(`${SPEEDRUNCOM_API_BASE}/games/${gameId}/levels`);
+    const data = await response.json();
+    return data.data || [];
+  } catch (error) {
+    console.error("Error fetching levels:", error);
+    return [];
+  }
+}
+
+/**
+ * Fetch all platforms
+ */
+export async function fetchPlatforms(): Promise<SRCPlatform[]> {
+  try {
+    const response = await fetch(`${SPEEDRUNCOM_API_BASE}/platforms`);
+    const data = await response.json();
+    return data.data || [];
+  } catch (error) {
+    console.error("Error fetching platforms:", error);
+    return [];
+  }
+}
+
+/**
+ * Get player name from embedded player data
+ */
+function getPlayerName(player: SRCRun['players'][0], embeddedPlayers?: any[]): string {
+  if (player.id && embeddedPlayers) {
+    const embeddedPlayer = embeddedPlayers.find((p: any) => p.id === player.id);
+    if (embeddedPlayer) {
+      return embeddedPlayer.names?.international || player.name || "Unknown";
+    }
+  }
+  return player.name || "Unknown";
+}
+
+/**
+ * Map speedrun.com run to our LeaderboardEntry format
+ */
+export function mapSRCRunToLeaderboardEntry(
+  run: SRCRun,
+  embeddedData?: {
+    players?: SRCPlayer[];
+    category?: SRCCategory;
+    level?: SRCLevel;
+    platform?: SRCPlatform;
+  },
+  categoryMapping: Map<string, string>, // SRC category ID -> our category ID
+  platformMapping: Map<string, string>, // SRC platform ID -> our platform ID
+  levelMapping: Map<string, string>, // SRC level ID -> our level ID
+  defaultPlayerId: string = "imported" // Default player ID for imported runs
+): Partial<import("@/types/database").LeaderboardEntry> & {
+  srcRunId: string;
+  importedFromSRC: boolean;
+} {
+  // Extract player names
+  const players = run.players || [];
+  const player1Name = players[0] ? getPlayerName(players[0], embeddedData?.players) : "Unknown";
+  const player2Name = players.length > 1 ? getPlayerName(players[1], embeddedData?.players) : undefined;
+  
+  // Determine run type
+  const runType: 'solo' | 'co-op' = players.length > 1 ? 'co-op' : 'solo';
+  
+  // Map category
+  const srcCategoryId = run.category;
+  const ourCategoryId = categoryMapping.get(srcCategoryId) || srcCategoryId;
+  
+  // Map platform
+  const srcPlatformId = run.system?.platform || "";
+  const ourPlatformId = platformMapping.get(srcPlatformId) || srcPlatformId;
+  
+  // Map level (if present)
+  const srcLevelId = run.level;
+  const ourLevelId = srcLevelId ? (levelMapping.get(srcLevelId) || srcLevelId) : undefined;
+  
+  // Determine leaderboard type
+  let leaderboardType: 'regular' | 'individual-level' | 'community-golds' = 'regular';
+  if (run.level) {
+    // Check if it's a community golds run (typically marked differently in SRC)
+    // For now, we'll assume level runs are Individual Level
+    leaderboardType = 'individual-level';
+  }
+  
+  // Convert time
+  const time = run.times.primary ? isoDurationToTime(run.times.primary) : 
+               run.times.primary_t ? secondsToTime(run.times.primary_t) : "00:00:00";
+  
+  // Get video URL
+  const videoUrl = run.videos?.links?.[0]?.uri || undefined;
+  
+  // Convert date
+  const date = run.date ? run.date.split('T')[0] : new Date().toISOString().split('T')[0];
+  
+  return {
+    playerId: defaultPlayerId,
+    playerName: player1Name,
+    player2Name,
+    category: ourCategoryId,
+    platform: ourPlatformId,
+    runType,
+    leaderboardType,
+    level: ourLevelId,
+    time,
+    date,
+    videoUrl,
+    comment: run.comment || undefined,
+    verified: false, // Imported runs start as unverified
+    importedFromSRC: true,
+    srcRunId: run.id,
+  };
+}
+

@@ -274,6 +274,12 @@ export const addLeaderboardEntryFirestore = async (entry: Omit<LeaderboardEntry,
     if (entry.comment) {
       newEntry.comment = entry.comment;
     }
+    if (entry.importedFromSRC) {
+      newEntry.importedFromSRC = entry.importedFromSRC;
+    }
+    if (entry.srcRunId) {
+      newEntry.srcRunId = entry.srcRunId;
+    }
     
     await setDoc(newDocRef, newEntry);
     return newDocRef.id;
@@ -2891,5 +2897,97 @@ export const deleteDownloadCategoryFirestore = async (categoryId: string): Promi
   } catch (error) {
     console.error("Error deleting download category:", error);
     return false;
+  }
+};
+
+/**
+ * Check if a run with the same srcRunId already exists
+ */
+export const checkSRCRunExistsFirestore = async (srcRunId: string): Promise<boolean> => {
+  if (!db) return false;
+  try {
+    const q = query(
+      collection(db, "leaderboardEntries"),
+      where("srcRunId", "==", srcRunId),
+      firestoreLimit(1)
+    );
+    const querySnapshot = await getDocs(q);
+    return !querySnapshot.empty;
+  } catch (error) {
+    console.error("Error checking SRC run existence:", error);
+    return false;
+  }
+};
+
+/**
+ * Get all runs that were imported from speedrun.com
+ */
+export const getImportedSRCRunsFirestore = async (): Promise<LeaderboardEntry[]> => {
+  if (!db) return [];
+  try {
+    const q = query(
+      collection(db, "leaderboardEntries"),
+      where("importedFromSRC", "==", true),
+      firestoreLimit(500)
+    );
+    const querySnapshot = await getDocs(q);
+    const entries = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LeaderboardEntry));
+    
+    // Enrich entries with player display names and colors
+    const enrichedEntries = await Promise.all(entries.map(async (entry) => {
+      try {
+        // Try to find player by display name if playerId is not a real UID
+        if (entry.playerId === "imported" || !entry.playerId) {
+          // Keep as is for imported runs
+        } else {
+          const player = await getPlayerByUidFirestore(entry.playerId);
+          if (player) {
+            if (player.displayName) {
+              entry.playerName = player.displayName;
+            }
+            if (player.nameColor) {
+              entry.nameColor = player.nameColor;
+            }
+          }
+        }
+        // For co-op runs, also fetch player2 display name and color
+        if (entry.player2Name && entry.runType === 'co-op') {
+          const player2 = await getPlayerByDisplayNameFirestore(entry.player2Name);
+          if (player2) {
+            entry.player2Name = player2.displayName;
+            if (player2.nameColor) {
+              entry.player2Color = player2.nameColor;
+            }
+          }
+        }
+      } catch (error) {
+        // Silent fail - continue without enrichment
+      }
+      return entry;
+    }));
+
+    return enrichedEntries;
+  } catch (error) {
+    console.error("Error fetching imported SRC runs:", error);
+    return [];
+  }
+};
+
+/**
+ * Get all verified runs to check for duplicates when importing
+ */
+export const getAllRunsForDuplicateCheckFirestore = async (): Promise<LeaderboardEntry[]> => {
+  if (!db) return [];
+  try {
+    // Get all runs (verified and unverified) to check for duplicates
+    const q = query(
+      collection(db, "leaderboardEntries"),
+      firestoreLimit(5000)
+    );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LeaderboardEntry));
+  } catch (error) {
+    console.error("Error fetching runs for duplicate check:", error);
+    return [];
   }
 };
