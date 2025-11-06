@@ -221,7 +221,7 @@ const PlayerDetails = () => {
               <TabsList className="grid w-full grid-cols-3 mb-4 p-0.5 gap-1 rounded-none">
                 <TabsTrigger 
                   value="regular" 
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-ctp-yellow data-[state=active]:to-ctp-peach data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-ctp-yellow/50 data-[state=active]:shadow-colored-yellow text-xs sm:text-sm py-1.5 sm:py-2 px-2 sm:px-3 whitespace-nowrap rounded-none"
+                  className="data-[state=active]:bg-[#f9e2af] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#f9e2af]/50 text-xs sm:text-sm py-1.5 sm:py-2 px-2 sm:px-3 whitespace-nowrap rounded-none"
                 >
                   <Trophy className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1 sm:mr-1.5" />
                   <span className="hidden min-[375px]:inline">Full Game</span>
@@ -229,7 +229,7 @@ const PlayerDetails = () => {
                 </TabsTrigger>
                 <TabsTrigger 
                   value="individual-level" 
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-ctp-yellow data-[state=active]:to-ctp-peach data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-ctp-yellow/50 data-[state=active]:shadow-colored-yellow text-xs sm:text-sm py-1.5 sm:py-2 px-2 sm:px-3 whitespace-nowrap rounded-none"
+                  className="data-[state=active]:bg-[#f9e2af] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#f9e2af]/50 text-xs sm:text-sm py-1.5 sm:py-2 px-2 sm:px-3 whitespace-nowrap rounded-none"
                 >
                   <Star className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1 sm:mr-1.5" />
                   <span className="hidden sm:inline">Individual Levels</span>
@@ -237,7 +237,7 @@ const PlayerDetails = () => {
                 </TabsTrigger>
                 <TabsTrigger 
                   value="community-golds" 
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-ctp-yellow data-[state=active]:to-ctp-peach data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-ctp-yellow/50 data-[state=active]:shadow-colored-yellow text-xs sm:text-sm py-1.5 sm:py-2 px-2 sm:px-3 whitespace-nowrap rounded-none"
+                  className="data-[state=active]:bg-[#f9e2af] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#f9e2af]/50 text-xs sm:text-sm py-1.5 sm:py-2 px-2 sm:px-3 whitespace-nowrap rounded-none"
                 >
                   <Gem className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1 sm:mr-1.5" />
                   <span className="hidden sm:inline">Community Golds</span>
