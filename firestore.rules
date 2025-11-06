@@ -41,6 +41,8 @@ service cloud.firestore {
       allow update: if isOwner(playerId) && 
                        request.resource.data.isAdmin == true &&
                        (!resource.data.hasAny(['isAdmin']) || resource.data.isAdmin == false);
+      // Only admins can delete player documents
+      allow delete: if isAdmin();
     }
     
     // Leaderboard entries
