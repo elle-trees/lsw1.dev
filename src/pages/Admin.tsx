@@ -135,8 +135,9 @@ const Admin = () => {
   const [categoryLeaderboardType, setCategoryLeaderboardType] = useState<'regular' | 'individual-level' | 'community-golds'>('regular');
   const [levelLeaderboardType, setLevelLeaderboardType] = useState<'individual-level' | 'community-golds'>('individual-level');
   const [newCategoryName, setNewCategoryName] = useState("");
-  const [editingCategory, setEditingCategory] = useState<{ id: string; name: string } | null>(null);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editingCategoryName, setEditingCategoryName] = useState("");
+  const [editingCategorySrcId, setEditingCategorySrcId] = useState("");
   const [addingCategory, setAddingCategory] = useState(false);
   const [updatingCategory, setUpdatingCategory] = useState(false);
   const [reorderingCategory, setReorderingCategory] = useState<string | null>(null);
@@ -1506,14 +1507,16 @@ const Admin = () => {
     }
   };
   
-  const handleStartEditCategory = (category: { id: string; name: string }) => {
+  const handleStartEditCategory = (category: Category) => {
     setEditingCategory(category);
     setEditingCategoryName(category.name);
+    setEditingCategorySrcId(category.srcCategoryId || "");
   };
   
   const handleCancelEditCategory = () => {
     setEditingCategory(null);
     setEditingCategoryName("");
+    setEditingCategorySrcId("");
   };
   
   const handleSaveEditCategory = async () => {
@@ -1526,15 +1529,24 @@ const Admin = () => {
       // Get current category to preserve subcategories
       const currentCategory = firestoreCategories.find(c => c.id === editingCategory.id) as Category | undefined;
       const subcategories = currentCategory?.subcategories || [];
+      const srcCategoryId = editingCategorySrcId.trim() || null;
       
-      const success = await updateCategory(editingCategory.id, editingCategoryName.trim(), subcategories);
+      const success = await updateCategory(editingCategory.id, editingCategoryName.trim(), subcategories, srcCategoryId);
       if (success) {
         toast({
           title: "Category Updated",
           description: "Category has been updated.",
         });
+        
+        // If srcCategoryId was set and we're in subcategory management with this category selected, check for variables
+        if (srcCategoryId && selectedCategoryForSubcategories?.id === editingCategory.id) {
+          const updatedCategory = { ...editingCategory, srcCategoryId };
+          await fetchSRCVariablesForCategory(updatedCategory);
+        }
+        
         setEditingCategory(null);
         setEditingCategoryName("");
+        setEditingCategorySrcId("");
         fetchCategories(categoryLeaderboardType);
       } else {
         throw new Error("Another category with this name already exists.");
@@ -1650,14 +1662,24 @@ const Admin = () => {
     }
   };
 
-  // Fetch SRC variables when category is selected (only for regular categories)
+  // Fetch SRC variables when category is selected or categories are refreshed (only for regular categories)
   useEffect(() => {
     if (selectedCategoryForSubcategories && categoryLeaderboardType === 'regular') {
-      fetchSRCVariablesForCategory(selectedCategoryForSubcategories);
+      // Get the latest category data from firestoreCategories to ensure we have the most up-to-date srcCategoryId
+      const latestCategory = firestoreCategories.find(c => c.id === selectedCategoryForSubcategories.id) as Category | undefined;
+      if (latestCategory) {
+        // Only update if srcCategoryId changed to avoid unnecessary re-renders
+        if (latestCategory.srcCategoryId !== selectedCategoryForSubcategories.srcCategoryId) {
+          setSelectedCategoryForSubcategories(latestCategory);
+        }
+        fetchSRCVariablesForCategory(latestCategory);
+      } else {
+        fetchSRCVariablesForCategory(selectedCategoryForSubcategories);
+      }
     } else {
       setSrcVariables([]);
     }
-  }, [selectedCategoryForSubcategories, categoryLeaderboardType]);
+  }, [selectedCategoryForSubcategories, categoryLeaderboardType, firestoreCategories]);
 
   const handleAddSubcategory = async () => {
     if (!selectedCategoryForSubcategories || !newSubcategoryName.trim()) {
@@ -5107,6 +5129,7 @@ const Admin = () => {
                   <TableHeader>
                     <TableRow className="border-b border-[hsl(235,13%,30%)] hover:bg-transparent">
                               <TableHead className="py-2 px-3 text-left text-xs">Name</TableHead>
+                              <TableHead className="py-2 px-3 text-left text-xs">SRC Category ID</TableHead>
                               <TableHead className="py-2 px-3 text-center text-xs">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -5123,6 +5146,20 @@ const Admin = () => {
                             />
                           ) : (
                             category.name
+                          )}
+                        </TableCell>
+                                <TableCell className="py-2 px-3 text-sm">
+                          {editingCategory?.id === category.id ? (
+                            <Input
+                              value={editingCategorySrcId}
+                              onChange={(e) => setEditingCategorySrcId(e.target.value)}
+                              placeholder="e.g., 9kj3k0x8"
+                                      className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] h-8 text-sm"
+                            />
+                          ) : (
+                            <span className="text-[hsl(222,15%,60%)]">
+                              {(category as Category).srcCategoryId || "—"}
+                            </span>
                           )}
                         </TableCell>
                                 <TableCell className="py-2 px-3 text-center space-x-1">
@@ -5223,7 +5260,7 @@ const Admin = () => {
                           </Select>
                           {selectedCategoryForSubcategories && !selectedCategoryForSubcategories.srcCategoryId && (
                             <p className="text-xs text-yellow-400 mt-2">
-                              Note: This category doesn't have a linked SRC category ID. SRC variable import will not be available.
+                              Note: This category doesn't have a linked SRC category ID. SRC variable import will not be available. You can set the SRC Category ID in the Categories tab by editing this category.
                             </p>
                           )}
                         </div>

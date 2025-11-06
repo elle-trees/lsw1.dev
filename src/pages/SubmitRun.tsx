@@ -10,7 +10,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
-import { addLeaderboardEntry, getCategories, getPlatforms, runTypes, getPlayerByDisplayName, getLevels } from "@/lib/db";
+import { addLeaderboardEntry, getCategories, getCategoriesFromFirestore, getPlatforms, runTypes, getPlayerByDisplayName, getLevels } from "@/lib/db";
 import { useNavigate } from "react-router-dom";
 
 const SubmitRun = () => {
@@ -80,7 +80,7 @@ const SubmitRun = () => {
     const fetchSubcategories = async () => {
       if (leaderboardType === 'regular' && formData.category) {
         try {
-          const categories = await getCategories('regular');
+          const categories = await getCategoriesFromFirestore('regular');
           const category = categories.find(c => c.id === formData.category);
           if (category && category.subcategories && category.subcategories.length > 0) {
             // Sort subcategories by order
@@ -90,6 +90,8 @@ const SubmitRun = () => {
               return orderA - orderB;
             });
             setAvailableSubcategories(sorted);
+            // Clear subcategory when category changes to ensure user selects a new one
+            setFormData(prev => ({ ...prev, subcategory: "" }));
           } else {
             setAvailableSubcategories([]);
             setFormData(prev => ({ ...prev, subcategory: "" }));
@@ -154,6 +156,16 @@ const SubmitRun = () => {
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // For regular runs, subcategory is required if the category has subcategories
+    if (leaderboardType === 'regular' && availableSubcategories.length > 0 && !formData.subcategory) {
+      toast({
+        title: "Missing Information",
+        description: "Please select a subcategory for this category.",
         variant: "destructive",
       });
       return;
@@ -490,25 +502,19 @@ const SubmitRun = () => {
                   <div>
                     <Label className="text-sm font-semibold mb-2 block flex items-center gap-2">
                       <Trophy className="h-3.5 w-3.5 text-[#cba6f7]" />
-                      Subcategory (Optional)
+                      Subcategory *
                     </Label>
                     <Tabs 
-                      value={formData.subcategory || "none"} 
-                      onValueChange={(value) => handleSelectChange("subcategory", value === "none" ? "" : value)}
+                      value={formData.subcategory || ""} 
+                      onValueChange={(value) => handleSelectChange("subcategory", value)}
                     >
                       <TabsList className="flex w-full p-0.5 gap-1 overflow-x-auto overflow-y-hidden scrollbar-hide" style={{ minWidth: 'max-content' }}>
-                        <TabsTrigger 
-                          value="none" 
-                          className="data-[state=active]:bg-[#cba6f7] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#cba6f7]/50 py-1.5 sm:py-2 px-2 sm:px-3 text-xs sm:text-sm whitespace-nowrap"
-                        >
-                          None
-                        </TabsTrigger>
                         {availableSubcategories.map((subcategory, index) => (
                           <TabsTrigger 
                             key={subcategory.id} 
                             value={subcategory.id} 
                             className="data-[state=active]:bg-[#cba6f7] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#cba6f7]/50 py-1.5 sm:py-2 px-2 sm:px-3 text-xs sm:text-sm whitespace-nowrap"
-                            style={{ animationDelay: `${(index + 1) * 50}ms` }}
+                            style={{ animationDelay: `${index * 50}ms` }}
                           >
                             {subcategory.name}
                           </TabsTrigger>
@@ -516,7 +522,7 @@ const SubmitRun = () => {
                       </TabsList>
                     </Tabs>
                     <p className="text-xs text-[hsl(222,15%,60%)] mt-1">
-                      Optional: Select a subcategory for this run (e.g., Glitchless, No Major Glitches)
+                      Select a subcategory for this run (e.g., Glitchless, No Major Glitches)
                     </p>
                   </div>
                 )}

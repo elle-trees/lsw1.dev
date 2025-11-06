@@ -7,9 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, User, Users, Calendar, CheckCircle, UserCircle, Trophy, Edit2, Save, X, Trash2, Plus } from "lucide-react";
 import LegoStudIcon from "@/components/icons/LegoStudIcon";
-import { getLeaderboardEntryById, getPlayerByUid, getPlayerByDisplayName, getCategories, getPlatforms, runTypes, updateLeaderboardEntry, deleteLeaderboardEntry } from "@/lib/db";
+import { getLeaderboardEntryById, getPlayerByUid, getPlayerByDisplayName, getCategories, getCategoriesFromFirestore, getPlatforms, runTypes, updateLeaderboardEntry, deleteLeaderboardEntry } from "@/lib/db";
 import { LeaderboardEntry, Player } from "@/types/database";
 import { VideoEmbed } from "@/components/VideoEmbed";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
@@ -29,6 +30,7 @@ const RunDetails = () => {
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [platforms, setPlatforms] = useState<{ id: string; name: string }[]>([]);
+  const [availableSubcategories, setAvailableSubcategories] = useState<Array<{ id: string; name: string; order?: number }>>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [isOwnerEdit, setIsOwnerEdit] = useState(false); // Separate state for owner-only edit mode
   const [editFormData, setEditFormData] = useState({
@@ -41,6 +43,7 @@ const RunDetails = () => {
     date: "",
     videoUrl: "",
     comment: "",
+    subcategory: "",
   });
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -94,6 +97,7 @@ const RunDetails = () => {
           date: runData.date || "",
           videoUrl: runData.videoUrl || "",
           comment: runData.comment || "",
+          subcategory: runData.subcategory || "",
         });
 
         // Fetch player data
@@ -142,6 +146,36 @@ const RunDetails = () => {
 
     fetchRunData();
   }, [runId, navigate, toast]);
+
+  // Fetch subcategories when category changes (only for regular leaderboard type)
+  useEffect(() => {
+    const fetchSubcategories = async () => {
+      if (run && run.leaderboardType === 'regular' && editFormData.category) {
+        try {
+          const fetchedCategories = await getCategoriesFromFirestore('regular');
+          const category = fetchedCategories.find(c => c.id === editFormData.category);
+          if (category && category.subcategories && category.subcategories.length > 0) {
+            // Sort subcategories by order
+            const sorted = [...category.subcategories].sort((a, b) => {
+              const orderA = a.order ?? Infinity;
+              const orderB = b.order ?? Infinity;
+              return orderA - orderB;
+            });
+            setAvailableSubcategories(sorted);
+          } else {
+            setAvailableSubcategories([]);
+            // Don't clear subcategory if category doesn't have subcategories - preserve existing value
+          }
+        } catch (error) {
+          setAvailableSubcategories([]);
+        }
+      } else {
+        setAvailableSubcategories([]);
+      }
+    };
+    
+    fetchSubcategories();
+  }, [editFormData.category, run]);
   
   // Refresh run data only when page becomes visible (not on every interval)
   useEffect(() => {
@@ -312,7 +346,17 @@ const RunDetails = () => {
       } else {
         // Set to null to remove the field
         updateData.comment = null;
+      }
+
+      // Add subcategory for regular runs
+      if (run.leaderboardType === 'regular') {
+        if (editFormData.subcategory && editFormData.subcategory.trim()) {
+          updateData.subcategory = editFormData.subcategory.trim();
+        } else {
+          // Clear subcategory if none selected
+          updateData.subcategory = undefined;
         }
+      }
       }
 
       const success = await updateLeaderboardEntry(runId, updateData);
@@ -639,7 +683,7 @@ const RunDetails = () => {
                       <Label htmlFor="edit-category">Category</Label>
                       <Select
                         value={editFormData.category}
-                        onValueChange={(value) => setEditFormData({ ...editFormData, category: value })}
+                        onValueChange={(value) => setEditFormData({ ...editFormData, category: value, subcategory: "" })}
                       >
                         <SelectTrigger className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]">
                           <SelectValue />
@@ -653,6 +697,35 @@ const RunDetails = () => {
                         </SelectContent>
                       </Select>
                     </div>
+
+                    {/* Subcategory Selection (only for regular leaderboard type) */}
+                    {run.leaderboardType === 'regular' && availableSubcategories.length > 0 && (
+                      <div>
+                        <Label className="text-sm font-semibold mb-2 block">Subcategory (Optional)</Label>
+                        <Tabs 
+                          value={editFormData.subcategory || "none"} 
+                          onValueChange={(value) => setEditFormData({ ...editFormData, subcategory: value === "none" ? "" : value })}
+                        >
+                          <TabsList className="flex w-full p-0.5 gap-1 overflow-x-auto overflow-y-hidden scrollbar-hide" style={{ minWidth: 'max-content' }}>
+                            <TabsTrigger 
+                              value="none" 
+                              className="data-[state=active]:bg-[#cba6f7] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#cba6f7]/50 py-1.5 sm:py-2 px-2 sm:px-3 text-xs sm:text-sm whitespace-nowrap"
+                            >
+                              None
+                            </TabsTrigger>
+                            {availableSubcategories.map((subcategory) => (
+                              <TabsTrigger 
+                                key={subcategory.id} 
+                                value={subcategory.id} 
+                                className="data-[state=active]:bg-[#cba6f7] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#cba6f7]/50 py-1.5 sm:py-2 px-2 sm:px-3 text-xs sm:text-sm whitespace-nowrap"
+                              >
+                                {subcategory.name}
+                              </TabsTrigger>
+                            ))}
+                          </TabsList>
+                        </Tabs>
+                      </div>
+                    )}
 
                     <div>
                       <Label htmlFor="edit-platform">Platform</Label>

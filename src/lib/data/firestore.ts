@@ -2547,7 +2547,7 @@ export const addCategoryFirestore = async (name: string, leaderboardType?: 'regu
   }
 };
 
-export const updateCategoryFirestore = async (id: string, name: string, subcategories?: Array<{ id: string; name: string; order?: number; srcVariableId?: string; srcValueId?: string }>): Promise<boolean> => {
+export const updateCategoryFirestore = async (id: string, name: string, subcategories?: Array<{ id: string; name: string; order?: number; srcVariableId?: string; srcValueId?: string }>, srcCategoryId?: string | null): Promise<boolean> => {
   if (!db) return false;
   try {
     const trimmedName = name.trim();
@@ -2591,6 +2591,16 @@ export const updateCategoryFirestore = async (id: string, name: string, subcateg
     if (subcategories !== undefined) {
       updateData.subcategories = subcategories;
       needsUpdate = true;
+    }
+    
+    // Update srcCategoryId if provided
+    if (srcCategoryId !== undefined) {
+      const currentSrcCategoryId = currentData?.srcCategoryId || null;
+      const trimmedSrcCategoryId = srcCategoryId?.trim() || null;
+      if (currentSrcCategoryId !== trimmedSrcCategoryId) {
+        updateData.srcCategoryId = trimmedSrcCategoryId;
+        needsUpdate = true;
+      }
     }
     
     if (needsUpdate) {
