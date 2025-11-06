@@ -6,17 +6,22 @@ import { getCategories, getPlatforms } from "@/lib/db";
 import { formatDate, formatTime } from "@/lib/utils";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { Link } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useLayoutEffect } from "react";
 
 interface RecentRunsProps {
   runs: LeaderboardEntry[];
   loading?: boolean;
   showRankBadge?: boolean;
+  maxRuns?: number; // Optional max runs to display
 }
 
-export function RecentRuns({ runs, loading, showRankBadge = true }: RecentRunsProps) {
+export function RecentRuns({ runs, loading, showRankBadge = true, maxRuns }: RecentRunsProps) {
   const [platforms, setPlatforms] = useState<{ id: string; name: string }[]>([]);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [visibleRuns, setVisibleRuns] = useState<LeaderboardEntry[]>(runs);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -33,6 +38,104 @@ export function RecentRuns({ runs, loading, showRankBadge = true }: RecentRunsPr
     };
     fetchData();
   }, []);
+
+  // Update visibleRuns when runs prop changes
+  useEffect(() => {
+    if (maxRuns) {
+      setVisibleRuns(runs.slice(0, maxRuns));
+    } else {
+      setVisibleRuns(runs);
+    }
+  }, [runs, maxRuns]);
+
+  // Calculate how many runs can fit in the available space
+  useLayoutEffect(() => {
+    if (runs.length === 0 || loading) {
+      setVisibleRuns(maxRuns ? runs.slice(0, maxRuns) : runs);
+      return;
+    }
+
+    // If we have a maxRuns limit, use that
+    if (maxRuns) {
+      setVisibleRuns(runs.slice(0, maxRuns));
+      return;
+    }
+
+    const calculateVisibleRuns = () => {
+      const container = containerRef.current;
+      const content = contentRef.current;
+      if (!container) {
+        // Fallback: show all runs if container not available yet
+        setVisibleRuns(runs);
+        return;
+      }
+
+      // Get available height
+      const containerRect = container.getBoundingClientRect();
+      const availableHeight = containerRect.height;
+      
+      // If container has no height yet, show all runs initially
+      if (availableHeight <= 0) {
+        setVisibleRuns(runs);
+        return;
+      }
+
+      // Try to measure actual item height if content is rendered
+      let itemHeight = 100; // Default estimate for compact mode
+      if (content) {
+        const runItems = content.querySelectorAll('a[href^="/run/"]');
+        if (runItems.length > 0) {
+          const firstItem = runItems[0] as HTMLElement;
+          const itemRect = firstItem.getBoundingClientRect();
+          if (itemRect.height > 0) {
+            itemHeight = itemRect.height;
+          }
+        }
+      }
+
+      // Get spacing from CSS (space-y-5 = 1.25rem = 20px normally, but homepage uses space-y-2 = 0.5rem = 8px)
+      const spacing = 8; // space-y-2 = 0.5rem = 8px (from homepage CSS override)
+      const padding = 12; // CardContent padding (0.75rem = 12px from homepage CSS override)
+      
+      // Calculate how many items can fit
+      const usableHeight = availableHeight - padding * 2;
+      const maxItems = Math.floor((usableHeight + spacing) / (itemHeight + spacing));
+      
+      // Show at least 1, but not more than available runs
+      // Cap at reasonable max to prevent too many items
+      const itemsToShow = Math.max(1, Math.min(maxItems, runs.length, 15));
+      setVisibleRuns(runs.slice(0, itemsToShow));
+    };
+
+    // Initial calculation will happen after first render
+    
+    // Use requestAnimationFrame to ensure DOM is ready, then calculate
+    const rafId = requestAnimationFrame(() => {
+      // Use a small delay to allow first render to complete
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      timeoutRef.current = setTimeout(() => {
+        calculateVisibleRuns();
+      }, 50);
+    });
+    
+    const resizeObserver = new ResizeObserver(() => {
+      calculateVisibleRuns();
+    });
+    
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+    
+    return () => {
+      cancelAnimationFrame(rafId);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      resizeObserver.disconnect();
+    };
+  }, [runs, loading, maxRuns]);
 
   // Function to get full category name
   const getCategoryName = (categoryId: string) => {
@@ -55,7 +158,7 @@ export function RecentRuns({ runs, loading, showRankBadge = true }: RecentRunsPr
           </span>
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-6 sm:p-8 flex-1 overflow-y-auto">
+      <CardContent ref={containerRef} className="p-6 sm:p-8 flex-1 overflow-y-auto">
         {loading ? (
           <LoadingSpinner size="sm" className="py-12" />
         ) : runs.length === 0 ? (
@@ -64,8 +167,8 @@ export function RecentRuns({ runs, loading, showRankBadge = true }: RecentRunsPr
             <p className="text-lg text-[hsl(222,15%,60%)]">No recent runs yet</p>
           </div>
         ) : (
-          <div className="space-y-5">
-            {runs.map((run, index) => (
+          <div ref={contentRef} className="space-y-5">
+            {visibleRuns.map((run, index) => (
               <Link
                 key={run.id}
                 to={`/run/${run.id}`}

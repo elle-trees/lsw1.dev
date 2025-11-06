@@ -21,7 +21,8 @@ const Index = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const recentEntries = await getRecentRuns(3);
+        // Fetch more runs to allow dynamic display based on available space
+        const recentEntries = await getRecentRuns(20);
         setRecentRunsData(recentEntries);
       } catch (error) {
         // Silent fail

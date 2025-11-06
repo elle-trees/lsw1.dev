@@ -31,7 +31,10 @@ async function calculateRanksForGroup(
     constraints.push(where("level", "==", levelId));
   }
   
-  constraints.push(firestoreLimit(200));
+  // Note: Firestore doesn't support ordering by time string directly
+  // We'll fetch more runs and sort them in memory to ensure we get the fastest ones
+  // For now, fetch up to 500 runs to ensure we capture all runs for accurate ranking
+  constraints.push(firestoreLimit(500));
   
   const rankQuery = query(collection(db, "leaderboardEntries"), ...constraints);
   const rankSnapshot = await getDocs(rankQuery);
@@ -898,7 +901,18 @@ export const updateLeaderboardEntryFirestore = async (runId: string, data: Parti
       // Find the rank of this run
       let rank: number | undefined = undefined;
       if (!isObsolete) {
-        rank = rankMap.get(runId);
+        const calculatedRank = rankMap.get(runId);
+        if (calculatedRank !== undefined) {
+          // Ensure rank is a valid number
+          if (typeof calculatedRank === 'number' && !isNaN(calculatedRank) && calculatedRank > 0) {
+            rank = calculatedRank;
+          } else {
+            const parsed = Number(calculatedRank);
+            if (!isNaN(parsed) && parsed > 0) {
+              rank = parsed;
+            }
+          }
+        }
       }
       
       // Store rank in update data
@@ -1222,18 +1236,27 @@ export const recalculatePlayerPointsFirestore = async (playerId: string): Promis
       for (const playerRun of runs) {
         let rank: number | undefined = undefined;
         if (!playerRun.isObsolete) {
-          // Try to get rank from the calculated rankMap first
+          // Try to get rank from the calculated rankMap first (most accurate)
           const calculatedRank = rankMap.get(playerRun.id);
           if (calculatedRank !== undefined) {
-            rank = calculatedRank;
-          } else {
-            // If not in rankMap (e.g., beyond top 200), check if run already has a stored rank
-            // Only use stored rank if it's 1, 2, or 3 (for bonus points)
-            if (playerRun.rank !== undefined && playerRun.rank !== null) {
-              const storedRank = typeof playerRun.rank === 'number' ? playerRun.rank : Number(playerRun.rank);
-              if (!isNaN(storedRank) && storedRank >= 1 && storedRank <= 3) {
-                rank = storedRank;
+            // Ensure it's a valid number
+            if (typeof calculatedRank === 'number' && !isNaN(calculatedRank) && calculatedRank > 0) {
+              rank = calculatedRank;
+            } else {
+              const parsed = Number(calculatedRank);
+              if (!isNaN(parsed) && parsed > 0) {
+                rank = parsed;
               }
+            }
+          }
+          
+          // If not in rankMap (e.g., beyond fetched limit or not yet in database), 
+          // check if run already has a stored rank
+          // Only use stored rank if it's 1, 2, or 3 (for bonus points) to ensure accuracy
+          if (rank === undefined && playerRun.rank !== undefined && playerRun.rank !== null) {
+            const storedRank = typeof playerRun.rank === 'number' ? playerRun.rank : Number(playerRun.rank);
+            if (!isNaN(storedRank) && storedRank >= 1 && storedRank <= 3) {
+              rank = storedRank;
             }
           }
         }
