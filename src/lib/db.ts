@@ -63,6 +63,9 @@ import {
   removeDuplicateRunsFirestore,
   autoClaimRunsBySRCUsernameFirestore,
   isDisplayNameAvailableFirestore,
+  getAllPlayersFirestore,
+  updatePlayerFirestore,
+  deletePlayerFirestore,
 } from "./data/firestore";
 
 const defaultCategories = [
@@ -237,6 +240,9 @@ export const findDuplicateRuns = findDuplicateRunsFirestore;
 export const removeDuplicateRuns = removeDuplicateRunsFirestore;
 export const autoClaimRunsBySRCUsername = autoClaimRunsBySRCUsernameFirestore;
 export const isDisplayNameAvailable = isDisplayNameAvailableFirestore;
+export const getAllPlayers = getAllPlayersFirestore;
+export const updatePlayer = updatePlayerFirestore;
+export const deletePlayer = deletePlayerFirestore;
 
 export const backfillPointsForAllRuns = async () => {
   const { backfillPointsForAllRunsFirestore } = await import("./data/firestore");

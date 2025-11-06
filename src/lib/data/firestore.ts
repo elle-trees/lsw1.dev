@@ -3309,6 +3309,170 @@ export const claimRunFirestore = async (runId: string, userId: string): Promise<
  * Falls back gracefully if index is not yet deployed
  * Also includes temporary profiles for players with unclaimed imported SRC runs
  */
+/**
+ * Get all players from Firestore
+ * Returns all players sorted by joinDate (newest first) or by a specified field
+ */
+export const getAllPlayersFirestore = async (
+  sortBy: 'joinDate' | 'displayName' | 'totalPoints' | 'totalRuns' = 'joinDate',
+  sortOrder: 'asc' | 'desc' = 'desc',
+  limit?: number
+): Promise<Player[]> => {
+  if (!db) return [];
+  try {
+    let playersQuery;
+    const queryConstraints: any[] = [];
+    
+    if (sortBy === 'totalPoints' || sortBy === 'totalRuns') {
+      // Use orderBy for numeric fields
+      queryConstraints.push(orderBy(sortBy, sortOrder));
+      if (limit) queryConstraints.push(firestoreLimit(limit));
+      playersQuery = query(collection(db, "players"), ...queryConstraints);
+    } else if (sortBy === 'displayName') {
+      // Use orderBy for string fields
+      queryConstraints.push(orderBy(sortBy, sortOrder));
+      if (limit) queryConstraints.push(firestoreLimit(limit));
+      playersQuery = query(collection(db, "players"), ...queryConstraints);
+    } else {
+      // For joinDate or default, use orderBy
+      queryConstraints.push(orderBy("joinDate", sortOrder));
+      if (limit) queryConstraints.push(firestoreLimit(limit));
+      playersQuery = query(collection(db, "players"), ...queryConstraints);
+    }
+    
+    const playersSnapshot = await getDocs(playersQuery);
+    let players = playersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Player));
+    
+    return players;
+  } catch (error: any) {
+    // If index doesn't exist, fall back to fetching all and sorting in memory
+    if (error?.code === 'failed-precondition' || error?.code === 9) {
+      try {
+        const allPlayersQuery = query(
+          collection(db, "players"),
+          limit ? firestoreLimit(limit || 1000) : undefined
+        );
+        const allPlayersSnapshot = await getDocs(allPlayersQuery);
+        let players = allPlayersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Player));
+        
+        // Sort in memory
+        players.sort((a, b) => {
+          let aVal: any = a[sortBy] || 0;
+          let bVal: any = b[sortBy] || 0;
+          
+          if (sortBy === 'displayName' || sortBy === 'joinDate') {
+            aVal = String(aVal || '');
+            bVal = String(bVal || '');
+            return sortOrder === 'desc' ? bVal.localeCompare(aVal) : aVal.localeCompare(bVal);
+          } else {
+            aVal = Number(aVal) || 0;
+            bVal = Number(bVal) || 0;
+            return sortOrder === 'desc' ? bVal - aVal : aVal - bVal;
+          }
+        });
+        
+        return limit ? players.slice(0, limit) : players;
+      } catch (fallbackError) {
+        console.error("Error fetching all players (fallback):", fallbackError);
+        return [];
+      }
+    }
+    
+    console.error("Error getting all players:", error);
+    return [];
+  }
+};
+
+/**
+ * Update a player's profile data
+ */
+export const updatePlayerFirestore = async (
+  playerId: string,
+  updates: Partial<Omit<Player, 'id' | 'uid'>>
+): Promise<boolean> => {
+  if (!db) return false;
+  try {
+    const playerDocRef = doc(db, "players", playerId);
+    await updateDoc(playerDocRef, updates);
+    return true;
+  } catch (error) {
+    console.error("Error updating player:", error);
+    return false;
+  }
+};
+
+/**
+ * Delete a player and optionally their runs
+ * WARNING: This is a destructive operation
+ */
+export const deletePlayerFirestore = async (
+  playerId: string,
+  deleteRuns: boolean = false
+): Promise<{ success: boolean; deletedRuns?: number; error?: string }> => {
+  if (!db) return { success: false, error: "Database not initialized" };
+  
+  try {
+    // Get player data first
+    const playerDocRef = doc(db, "players", playerId);
+    const playerDoc = await getDoc(playerDocRef);
+    
+    if (!playerDoc.exists()) {
+      return { success: false, error: "Player not found" };
+    }
+    
+    const playerData = playerDoc.data() as Player;
+    const playerUid = playerData.uid;
+    
+    let deletedRunsCount = 0;
+    
+    // If deleteRuns is true, delete all runs associated with this player
+    if (deleteRuns && playerUid) {
+      const runsQuery = query(
+        collection(db, "leaderboardEntries"),
+        where("playerId", "==", playerUid)
+      );
+      const runsSnapshot = await getDocs(runsQuery);
+      
+      // Also check for player2Id in co-op runs
+      const coOpRunsQuery = query(
+        collection(db, "leaderboardEntries"),
+        where("player2Id", "==", playerUid)
+      );
+      const coOpRunsSnapshot = await getDocs(coOpRunsQuery);
+      
+      const allRuns = [...runsSnapshot.docs, ...coOpRunsSnapshot.docs];
+      deletedRunsCount = allRuns.length;
+      
+      // Delete runs in batches
+      const batch = writeBatch(db);
+      let batchCount = 0;
+      const MAX_BATCH_SIZE = 500;
+      
+      for (const runDoc of allRuns) {
+        batch.delete(runDoc.ref);
+        batchCount++;
+        
+        if (batchCount >= MAX_BATCH_SIZE) {
+          await batch.commit();
+          batchCount = 0;
+        }
+      }
+      
+      if (batchCount > 0) {
+        await batch.commit();
+      }
+    }
+    
+    // Delete the player document
+    await deleteDoc(playerDocRef);
+    
+    return { success: true, deletedRuns: deletedRunsCount };
+  } catch (error: any) {
+    console.error("Error deleting player:", error);
+    return { success: false, error: error.message || "Failed to delete player" };
+  }
+};
+
 export const getPlayersByPointsFirestore = async (limit: number = 100): Promise<Player[]> => {
   if (!db) return [];
   try {

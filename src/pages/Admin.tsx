@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, XCircle, ShieldAlert, ExternalLink, Download, PlusCircle, Trash2, Wrench, Edit2, FolderTree, Play, ArrowUp, ArrowDown, Gamepad2, UserPlus, UserMinus, Trophy, Upload, Star, Gem, RefreshCw, X, AlertTriangle } from "lucide-react";
+import { CheckCircle, XCircle, ShieldAlert, ExternalLink, Download, PlusCircle, Trash2, Wrench, Edit2, FolderTree, Play, ArrowUp, ArrowDown, Gamepad2, UserPlus, UserMinus, Trophy, Upload, Star, Gem, RefreshCw, X, AlertTriangle, Users, Search, Save } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Pagination } from "@/components/Pagination";
@@ -61,6 +61,9 @@ import {
   removeDuplicateRuns,
   claimRun,
   getRecentRuns,
+  getAllPlayers,
+  updatePlayer,
+  deletePlayer,
 } from "@/lib/db";
 import { importSRCRuns, type ImportResult } from "@/lib/speedruncom/importService";
 import { useUploadThing } from "@/lib/uploadthing";
@@ -180,6 +183,21 @@ const Admin = () => {
   const [loadingDuplicates, setLoadingDuplicates] = useState(false);
   const [removingDuplicates, setRemovingDuplicates] = useState(false);
   const [activeTab, setActiveTab] = useState("runs");
+  
+  // User management state
+  const [allPlayers, setAllPlayers] = useState<Player[]>([]);
+  const [loadingPlayers, setLoadingPlayers] = useState(false);
+  const [playersPage, setPlayersPage] = useState(1);
+  const [playersSearchQuery, setPlayersSearchQuery] = useState("");
+  const [playersSortBy, setPlayersSortBy] = useState<'joinDate' | 'displayName' | 'totalPoints' | 'totalRuns'>('joinDate');
+  const [playersSortOrder, setPlayersSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
+  const [editingPlayerForm, setEditingPlayerForm] = useState<Partial<Player>>({});
+  const [savingPlayer, setSavingPlayer] = useState(false);
+  const [deletingPlayerId, setDeletingPlayerId] = useState<string | null>(null);
+  const [showDeletePlayerDialog, setShowDeletePlayerDialog] = useState(false);
+  const [playerToDelete, setPlayerToDelete] = useState<{ id: string; displayName: string } | null>(null);
+  const [deletePlayerRuns, setDeletePlayerRuns] = useState(false);
 
   useEffect(() => {
     fetchPlatforms();
@@ -1839,6 +1857,10 @@ const Admin = () => {
         if (foundPlayer && foundPlayer.uid === uid) {
           setFoundPlayer({ ...foundPlayer, isAdmin });
         }
+        // Refresh players list if on users tab
+        if (activeTab === "users") {
+          fetchPlayers();
+        }
       } else {
         throw new Error("Failed to update admin status.");
       }
@@ -1852,6 +1874,124 @@ const Admin = () => {
       setSettingAdmin(false);
     }
   };
+
+  // User management functions
+  const fetchPlayers = async () => {
+    setLoadingPlayers(true);
+    try {
+      const players = await getAllPlayers(playersSortBy, playersSortOrder);
+      setAllPlayers(players);
+    } catch (error) {
+      console.error("Error fetching players:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load users.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingPlayers(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "users") {
+      fetchPlayers();
+    }
+  }, [activeTab, playersSortBy, playersSortOrder]);
+
+  const handleEditPlayer = (player: Player) => {
+    setEditingPlayer(player);
+    setEditingPlayerForm({
+      displayName: player.displayName || "",
+      email: player.email || "",
+      isAdmin: player.isAdmin || false,
+      nameColor: player.nameColor || "#cba6f7",
+      bio: player.bio || "",
+      pronouns: player.pronouns || "",
+      twitchUsername: player.twitchUsername || "",
+      srcUsername: player.srcUsername || "",
+    });
+  };
+
+  const handleSavePlayer = async () => {
+    if (!editingPlayer) return;
+    
+    setSavingPlayer(true);
+    try {
+      const success = await updatePlayer(editingPlayer.id, editingPlayerForm);
+      if (success) {
+        toast({
+          title: "Success",
+          description: "User updated successfully.",
+        });
+        setEditingPlayer(null);
+        setEditingPlayerForm({});
+        fetchPlayers();
+      } else {
+        throw new Error("Failed to update user.");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update user.",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingPlayer(false);
+    }
+  };
+
+  const handleDeletePlayerClick = (player: Player) => {
+    setPlayerToDelete({ id: player.id, displayName: player.displayName || "Unknown" });
+    setShowDeletePlayerDialog(true);
+  };
+
+  const handleDeletePlayer = async () => {
+    if (!playerToDelete) return;
+    
+    setDeletingPlayerId(playerToDelete.id);
+    try {
+      const result = await deletePlayer(playerToDelete.id, deletePlayerRuns);
+      if (result.success) {
+        toast({
+          title: "User Deleted",
+          description: `User deleted successfully.${result.deletedRuns ? ` ${result.deletedRuns} runs were also deleted.` : ""}`,
+        });
+        setShowDeletePlayerDialog(false);
+        setPlayerToDelete(null);
+        setDeletePlayerRuns(false);
+        fetchPlayers();
+      } else {
+        throw new Error(result.error || "Failed to delete user.");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete user.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingPlayerId(null);
+    }
+  };
+
+  // Filter and paginate players
+  const filteredPlayers = allPlayers.filter(player => {
+    if (!playersSearchQuery.trim()) return true;
+    const query = playersSearchQuery.toLowerCase();
+    return (
+      player.displayName?.toLowerCase().includes(query) ||
+      player.email?.toLowerCase().includes(query) ||
+      player.uid?.toLowerCase().includes(query) ||
+      player.twitchUsername?.toLowerCase().includes(query) ||
+      player.srcUsername?.toLowerCase().includes(query)
+    );
+  });
+
+  const paginatedPlayers = filteredPlayers.slice(
+    (playersPage - 1) * itemsPerPage,
+    playersPage * itemsPerPage
+  );
 
   const handleAddManualRun = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -2054,6 +2194,12 @@ const Admin = () => {
               className="data-[state=active]:bg-[#f9e2af] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#f9e2af]/50 text-xs sm:text-sm py-1.5 sm:py-2 px-2 sm:px-3 whitespace-nowrap"
             >
               Downloads
+            </TabsTrigger>
+            <TabsTrigger 
+              value="users" 
+              className="data-[state=active]:bg-[#f9e2af] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#f9e2af]/50 text-xs sm:text-sm py-1.5 sm:py-2 px-2 sm:px-3 whitespace-nowrap"
+            >
+              Users
             </TabsTrigger>
             <TabsTrigger 
               value="tools" 
@@ -4754,6 +4900,349 @@ const Admin = () => {
           </CardContent>
         </Card>
 
+          </TabsContent>
+
+          {/* Users Section */}
+          <TabsContent value="users" className="space-y-4 animate-fade-in">
+            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
+              <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2 text-xl text-[#f2cdcd]">
+                    <Users className="h-5 w-5" />
+                    <span>User Management</span>
+                  </CardTitle>
+                  <Button
+                    onClick={fetchPlayers}
+                    disabled={loadingPlayers}
+                    variant="outline"
+                    size="sm"
+                    className="border-[hsl(235,13%,30%)] bg-gradient-to-r from-transparent via-[hsl(237,16%,24%)]/50 to-transparent hover:from-[hsl(237,16%,24%)] hover:via-[hsl(237,16%,28%)] hover:to-[hsl(237,16%,24%)] hover:border-[#cba6f7]/50"
+                  >
+                    <RefreshCw className={`h-4 w-4 mr-2 ${loadingPlayers ? 'animate-spin' : ''}`} />
+                    Refresh
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-6">
+                {/* Search and Filters */}
+                <div className="mb-6 space-y-4">
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="flex-1 relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-ctp-overlay0" />
+                      <Input
+                        placeholder="Search by name, email, UID, Twitch, or SRC username..."
+                        value={playersSearchQuery}
+                        onChange={(e) => {
+                          setPlayersSearchQuery(e.target.value);
+                          setPlayersPage(1);
+                        }}
+                        className="pl-10 bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] text-ctp-text"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Select
+                        value={playersSortBy}
+                        onValueChange={(value: 'joinDate' | 'displayName' | 'totalPoints' | 'totalRuns') => {
+                          setPlayersSortBy(value);
+                          setPlayersPage(1);
+                        }}
+                      >
+                        <SelectTrigger className="w-[180px] bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] text-ctp-text">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="joinDate">Join Date</SelectItem>
+                          <SelectItem value="displayName">Display Name</SelectItem>
+                          <SelectItem value="totalPoints">Total Points</SelectItem>
+                          <SelectItem value="totalRuns">Total Runs</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setPlayersSortOrder(playersSortOrder === 'asc' ? 'desc' : 'asc');
+                          setPlayersPage(1);
+                        }}
+                        className="border-[hsl(235,13%,30%)] bg-[hsl(240,21%,15%)] text-ctp-text"
+                      >
+                        {playersSortOrder === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Players Table */}
+                {loadingPlayers ? (
+                  <div className="flex items-center justify-center py-8">
+                    <LoadingSpinner size="md" />
+                  </div>
+                ) : filteredPlayers.length === 0 ? (
+                  <p className="text-sm text-ctp-subtext1 text-center py-8">
+                    {playersSearchQuery ? "No users found matching your search." : "No users found."}
+                  </p>
+                ) : (
+                  <>
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="border-[hsl(235,13%,30%)]">
+                            <TableHead className="text-ctp-text">Display Name</TableHead>
+                            <TableHead className="text-ctp-text">Email</TableHead>
+                            <TableHead className="text-ctp-text">Join Date</TableHead>
+                            <TableHead className="text-ctp-text">Stats</TableHead>
+                            <TableHead className="text-ctp-text">Admin</TableHead>
+                            <TableHead className="text-ctp-text">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {paginatedPlayers.map((player) => (
+                            <TableRow key={player.id} className="border-[hsl(235,13%,30%)]">
+                              <TableCell className="text-ctp-text">
+                                <div className="flex items-center gap-2">
+                                  <span style={{ color: player.nameColor || '#cba6f7' }}>
+                                    {player.displayName || "Unknown"}
+                                  </span>
+                                  {player.isAdmin && (
+                                    <Badge variant="outline" className="border-yellow-600/50 bg-yellow-600/10 text-yellow-400 text-xs">
+                                      Admin
+                                    </Badge>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-ctp-text">{player.email || "—"}</TableCell>
+                              <TableCell className="text-ctp-text">{player.joinDate || "—"}</TableCell>
+                              <TableCell className="text-ctp-text">
+                                <div className="flex flex-col gap-1 text-xs">
+                                  <span>Points: {player.totalPoints || 0}</span>
+                                  <span>Runs: {player.totalRuns || 0}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-ctp-text">
+                                {player.isAdmin ? (
+                                  <Badge variant="outline" className="border-green-600/50 bg-green-600/10 text-green-400">
+                                    Yes
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="border-[hsl(235,13%,30%)]">
+                                    No
+                                  </Badge>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    onClick={() => handleEditPlayer(player)}
+                                    variant="outline"
+                                    size="sm"
+                                    className="border-[hsl(235,13%,30%)] bg-[hsl(240,21%,15%)] text-ctp-text hover:bg-[hsl(240,21%,18%)]"
+                                  >
+                                    <Edit2 className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    onClick={() => handleDeletePlayerClick(player)}
+                                    variant="destructive"
+                                    size="sm"
+                                    className="bg-red-600/20 hover:bg-red-600/30 text-red-400 border-red-600/50"
+                                    disabled={player.uid === currentUser?.uid}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    {filteredPlayers.length > itemsPerPage && (
+                      <div className="mt-4">
+                        <Pagination
+                          currentPage={playersPage}
+                          totalPages={Math.ceil(filteredPlayers.length / itemsPerPage)}
+                          onPageChange={setPlayersPage}
+                          itemsPerPage={itemsPerPage}
+                          totalItems={filteredPlayers.length}
+                        />
+                      </div>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Edit Player Dialog */}
+            {editingPlayer && (
+              <Dialog open={!!editingPlayer} onOpenChange={(open) => !open && setEditingPlayer(null)}>
+                <DialogContent className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] text-ctp-text max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle className="text-[#f2cdcd]">Edit User: {editingPlayer.displayName || "Unknown"}</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="edit-displayName">Display Name</Label>
+                      <Input
+                        id="edit-displayName"
+                        value={editingPlayerForm.displayName || ""}
+                        onChange={(e) => setEditingPlayerForm({ ...editingPlayerForm, displayName: e.target.value })}
+                        className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] text-ctp-text"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-email">Email</Label>
+                      <Input
+                        id="edit-email"
+                        type="email"
+                        value={editingPlayerForm.email || ""}
+                        onChange={(e) => setEditingPlayerForm({ ...editingPlayerForm, email: e.target.value })}
+                        className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] text-ctp-text"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-nameColor">Name Color</Label>
+                      <Input
+                        id="edit-nameColor"
+                        type="color"
+                        value={editingPlayerForm.nameColor || "#cba6f7"}
+                        onChange={(e) => setEditingPlayerForm({ ...editingPlayerForm, nameColor: e.target.value })}
+                        className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] text-ctp-text h-10"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-bio">Bio</Label>
+                      <Textarea
+                        id="edit-bio"
+                        value={editingPlayerForm.bio || ""}
+                        onChange={(e) => setEditingPlayerForm({ ...editingPlayerForm, bio: e.target.value })}
+                        className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] text-ctp-text"
+                        rows={3}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-pronouns">Pronouns</Label>
+                      <Input
+                        id="edit-pronouns"
+                        value={editingPlayerForm.pronouns || ""}
+                        onChange={(e) => setEditingPlayerForm({ ...editingPlayerForm, pronouns: e.target.value })}
+                        className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] text-ctp-text"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-twitchUsername">Twitch Username</Label>
+                      <Input
+                        id="edit-twitchUsername"
+                        value={editingPlayerForm.twitchUsername || ""}
+                        onChange={(e) => setEditingPlayerForm({ ...editingPlayerForm, twitchUsername: e.target.value })}
+                        className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] text-ctp-text"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-srcUsername">Speedrun.com Username</Label>
+                      <Input
+                        id="edit-srcUsername"
+                        value={editingPlayerForm.srcUsername || ""}
+                        onChange={(e) => setEditingPlayerForm({ ...editingPlayerForm, srcUsername: e.target.value })}
+                        className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] text-ctp-text"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="edit-isAdmin"
+                        checked={editingPlayerForm.isAdmin || false}
+                        onChange={(e) => setEditingPlayerForm({ ...editingPlayerForm, isAdmin: e.target.checked })}
+                        className="w-4 h-4"
+                      />
+                      <Label htmlFor="edit-isAdmin">Admin Status</Label>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setEditingPlayer(null);
+                        setEditingPlayerForm({});
+                      }}
+                      className="border-[hsl(235,13%,30%)] bg-[hsl(240,21%,15%)] text-ctp-text"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleSavePlayer}
+                      disabled={savingPlayer}
+                      className="bg-[#cba6f7] hover:bg-[#b4a0e2] text-[hsl(240,21%,15%)] font-bold"
+                    >
+                      {savingPlayer ? (
+                        <>
+                          <LoadingSpinner size="sm" className="mr-2" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="h-4 w-4 mr-2" />
+                          Save
+                        </>
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
+
+            {/* Delete Player Dialog */}
+            <Dialog open={showDeletePlayerDialog} onOpenChange={setShowDeletePlayerDialog}>
+              <DialogContent className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] text-ctp-text">
+                <DialogHeader>
+                  <DialogTitle className="text-[#f2cdcd]">Delete User</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <p className="text-ctp-text">
+                    Are you sure you want to delete <strong>{playerToDelete?.displayName}</strong>? This action cannot be undone.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="delete-runs"
+                      checked={deletePlayerRuns}
+                      onChange={(e) => setDeletePlayerRuns(e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    <Label htmlFor="delete-runs">Also delete all runs associated with this user</Label>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowDeletePlayerDialog(false);
+                      setPlayerToDelete(null);
+                      setDeletePlayerRuns(false);
+                    }}
+                    className="border-[hsl(235,13%,30%)] bg-[hsl(240,21%,15%)] text-ctp-text"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleDeletePlayer}
+                    disabled={deletingPlayerId === playerToDelete?.id}
+                    variant="destructive"
+                    className="bg-red-600/20 hover:bg-red-600/30 text-red-400 border-red-600/50"
+                  >
+                    {deletingPlayerId === playerToDelete?.id ? (
+                      <>
+                        <LoadingSpinner size="sm" className="mr-2" />
+                        Deleting...
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </>
+                    )}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
         {/* Manage Downloads Section */}
