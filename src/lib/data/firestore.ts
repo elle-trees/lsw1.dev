@@ -2785,6 +2785,40 @@ export const updateLevelFirestore = async (id: string, name: string): Promise<bo
   }
 };
 
+/**
+ * Update the disabled state of a level for a specific category
+ */
+export const updateLevelCategoryDisabledFirestore = async (
+  levelId: string,
+  categoryId: string,
+  disabled: boolean
+): Promise<boolean> => {
+  if (!db) return false;
+  try {
+    const levelDocRef = doc(db, "levels", levelId);
+    const levelDoc = await getDoc(levelDocRef);
+    
+    if (!levelDoc.exists()) {
+      return false;
+    }
+    
+    const currentData = levelDoc.data();
+    const disabledCategories = currentData.disabledCategories || {};
+    
+    if (disabled) {
+      disabledCategories[categoryId] = true;
+    } else {
+      delete disabledCategories[categoryId];
+    }
+    
+    await updateDoc(levelDocRef, { disabledCategories });
+    return true;
+  } catch (error) {
+    console.error("Error updating level category disabled state:", error);
+    return false;
+  }
+};
+
 export const deleteLevelFirestore = async (id: string): Promise<boolean> => {
   if (!db) return false;
   try {
