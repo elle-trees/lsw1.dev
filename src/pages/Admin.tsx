@@ -62,7 +62,7 @@ import {
 } from "@/lib/db";
 import { importSRCRuns, type ImportResult } from "@/lib/speedruncom/importService";
 import { useUploadThing } from "@/lib/uploadthing";
-import { LeaderboardEntry, DownloadEntry } from "@/types/database";
+import { LeaderboardEntry, DownloadEntry, Category, Level } from "@/types/database";
 import { useNavigate } from "react-router-dom";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { formatTime } from "@/lib/utils";
@@ -314,7 +314,7 @@ const Admin = () => {
       if ((!initialCategory || initialCategory.trim() === '') && editingImportedRun.srcCategoryName && firestoreCategories.length > 0) {
         const categoryType = editingImportedRun.leaderboardType || 'regular';
         const categoriesForType = firestoreCategories.filter(c => {
-          const catType = c.leaderboardType || 'regular';
+          const catType = (c as Category).leaderboardType || 'regular';
           return catType === categoryType;
         });
         const matchingCategory = categoriesForType.find(c => 
@@ -371,7 +371,7 @@ const Admin = () => {
       if (!initialCategory && verifyingRun.srcCategoryName) {
         const matchingCategory = firestoreCategories.find(cat => {
           const runLeaderboardType = verifyingRun.leaderboardType || 'regular';
-          const catType = cat.leaderboardType || 'regular';
+          const catType = (cat as Category).leaderboardType || 'regular';
           return catType === runLeaderboardType && 
                  cat.name.toLowerCase().trim() === verifyingRun.srcCategoryName!.toLowerCase().trim();
         });
@@ -591,8 +591,12 @@ const Admin = () => {
       return;
     }
 
-    // For imported runs, show dialog to select category/platform/level
-    if (runToVerify.importedFromSRC) {
+    // For imported runs or runs missing category/platform, show dialog to select them
+    // For complete manual runs, verify directly
+    const needsCategory = !runToVerify.category || !runToVerify.platform;
+    const isImported = runToVerify.importedFromSRC === true;
+    
+    if (needsCategory || isImported) {
       setVerifyingRun(runToVerify);
       setVerifyingRunCategory(runToVerify.category || "");
       setVerifyingRunPlatform(runToVerify.platform || "");
@@ -602,7 +606,7 @@ const Admin = () => {
       const categoryType = runToVerify.leaderboardType || 'regular';
       fetchCategories(categoryType);
     } else {
-      // For regular unverified runs, verify directly
+      // For complete runs, verify directly
       await verifyRunDirectly(runId, runToVerify);
     }
   };
@@ -616,26 +620,31 @@ const Admin = () => {
     try {
       const verifiedBy = currentUser.displayName || currentUser.email || currentUser.uid;
       
-      // If category/platform/level were changed in the verify dialog, update them first
+      // Collect all updates needed (category/platform/level from dialog or existing values)
       const updateData: Partial<LeaderboardEntry> = {};
-      if (verifyingRunCategory && verifyingRunCategory !== runToVerify.category) {
-        updateData.category = verifyingRunCategory;
+      
+      // Use dialog values if set, otherwise use existing run values
+      const newCategory = verifyingRunCategory || runToVerify.category;
+      const newPlatform = verifyingRunPlatform || runToVerify.platform;
+      const newLevel = verifyingRunLevel || runToVerify.level;
+      
+      // Only update if values changed
+      if (newCategory && newCategory !== runToVerify.category) {
+        updateData.category = newCategory;
       }
-      if (verifyingRunPlatform && verifyingRunPlatform !== runToVerify.platform) {
-        updateData.platform = verifyingRunPlatform;
+      if (newPlatform && newPlatform !== runToVerify.platform) {
+        updateData.platform = newPlatform;
       }
-      if (runToVerify.leaderboardType === 'individual-level' || runToVerify.leaderboardType === 'community-golds') {
-        if (verifyingRunLevel && verifyingRunLevel !== runToVerify.level) {
-          updateData.level = verifyingRunLevel;
-        }
+      if ((runToVerify.leaderboardType === 'individual-level' || runToVerify.leaderboardType === 'community-golds') && newLevel && newLevel !== runToVerify.level) {
+        updateData.level = newLevel;
       }
 
-      // Update run data if needed
+      // Update run data if needed, then verify
       if (Object.keys(updateData).length > 0) {
         await updateLeaderboardEntry(runId, updateData);
       }
 
-      // Then verify
+      // Verify the run
       const success = await updateRunVerificationStatus(runId, true, verifiedBy);
       if (success) {
         toast({
@@ -696,9 +705,6 @@ const Admin = () => {
       const result: ImportResult = await importSRCRuns((progress) => {
         setImportProgress(progress);
       });
-
-      // Update unmatched players state
-      setUnmatchedPlayers(result.unmatchedPlayers);
       
       // Show summary with unmatched player warnings
       const unmatchedCount = result.unmatchedPlayers.size;
@@ -3404,7 +3410,7 @@ const Admin = () => {
                           .filter(cat => {
                             // Filter categories by leaderboard type
                             const runLeaderboardType = editingImportedRunForm.leaderboardType ?? editingImportedRun.leaderboardType ?? 'regular';
-                            const catType = cat.leaderboardType || 'regular';
+                            const catType = (cat as Category).leaderboardType || 'regular';
                             return catType === runLeaderboardType;
                           })
                           .map((cat) => (
@@ -3724,7 +3730,7 @@ const Admin = () => {
                         {firestoreCategories
                           .filter(cat => {
                             const runLeaderboardType = verifyingRun.leaderboardType || 'regular';
-                            const catType = cat.leaderboardType || 'regular';
+                            const catType = (cat as Category).leaderboardType || 'regular';
                             return catType === runLeaderboardType;
                           })
                           .map((cat) => (
@@ -4204,7 +4210,7 @@ const Admin = () => {
                           }
                           
                           const isDisabled = (categoryId: string) => {
-                            return level.disabledCategories?.[categoryId] === true;
+                            return (level as Level).disabledCategories?.[categoryId] === true;
                           };
                           
                           return (
@@ -4232,7 +4238,8 @@ const Admin = () => {
                                             setAvailableLevels(prev => 
                                               prev.map(l => {
                                                 if (l.id === level.id) {
-                                                  const disabledCategories = l.disabledCategories || {};
+                                                  const levelData = l as Level;
+                                                  const disabledCategories = levelData.disabledCategories || {};
                                                   if (disabled) {
                                                     disabledCategories[category.id] = true;
                                                   } else {

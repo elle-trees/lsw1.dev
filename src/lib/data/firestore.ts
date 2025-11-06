@@ -102,16 +102,9 @@ export const getLeaderboardEntriesFirestore = async (
     const normalizedLevelId = levelId && levelId !== "all" ? normalizeLevelId(levelId) : undefined;
     
     // Build query constraints dynamically based on filters
-    // Include both verified runs AND imported unverified runs
-    // Order matters: verified first, then leaderboardType, then other filters
+    // IMPORTANT: Only fetch verified runs - imported runs must be verified before appearing on leaderboards
     const constraints: any[] = [
       where("verified", "==", true),
-    ];
-    
-    // Also fetch imported runs (unverified but imported from SRC)
-    const importedConstraints: any[] = [
-      where("verified", "==", false),
-      where("importedFromSRC", "==", true),
     ];
 
     // Helper function to add shared filters to a constraint list
@@ -142,25 +135,15 @@ export const getLeaderboardEntriesFirestore = async (
       }
     };
 
-    // Add shared filters to both query sets
+    // Add shared filters to query
     addSharedFilters(constraints);
-    addSharedFilters(importedConstraints);
 
     // Fetch more entries to account for filtering obsolete runs client-side
     const fetchLimit = 500;
     constraints.push(firestoreLimit(fetchLimit));
-    importedConstraints.push(firestoreLimit(fetchLimit));
     
-    // Execute both queries in parallel (verified runs and imported runs)
-    const [verifiedSnapshot, importedSnapshot] = await Promise.all([
-      getDocs(query(collection(db, "leaderboardEntries"), ...constraints)),
-      getDocs(query(collection(db, "leaderboardEntries"), ...importedConstraints))
-    ]);
-    
-    // Combine results into a single snapshot-like object
-    const querySnapshot = {
-      docs: [...verifiedSnapshot.docs, ...importedSnapshot.docs]
-    };
+    // Execute query for verified runs only
+    const querySnapshot = await getDocs(query(collection(db, "leaderboardEntries"), ...constraints));
     
     // Normalize and validate entries
     let entries: LeaderboardEntry[] = querySnapshot.docs
@@ -184,10 +167,13 @@ export const getLeaderboardEntriesFirestore = async (
           return false;
         }
         
-        // Filter obsolete entries if not including them
-        if (!includeObsolete && entry.isObsolete === true) {
+        // Ensure entry is verified (double-check, though query already filters this)
+        if (entry.verified !== true) {
           return false;
         }
+        
+        // Filter obsolete entries if not including them (will be filtered later for best time per player)
+        // Don't filter here - we'll handle obsolete filtering and best-time-per-player logic together
         
         // Filter out non-regular entries when querying for regular leaderboard type
         if (!leaderboardType || leaderboardType === 'regular') {
@@ -198,20 +184,12 @@ export const getLeaderboardEntriesFirestore = async (
         }
         
         // Additional validation: ensure required fields exist
-        // For imported runs, category/platform can be empty if SRC names exist
-        const isImported = entry.importedFromSRC === true;
+        // All verified runs should have category and platform (verified runs must be complete)
         if (!entry.time || !entry.runType) {
           return false;
         }
-        // For imported runs, allow empty category/platform if SRC names exist
-        if (!isImported && (!entry.category || !entry.platform)) {
+        if (!entry.category || !entry.platform) {
           return false;
-        }
-        if (isImported && !entry.category && !entry.srcCategoryName) {
-          return false; // Must have either category ID or SRC category name
-        }
-        if (isImported && !entry.platform && !entry.srcPlatformName) {
-          return false; // Must have either platform ID or SRC platform name
         }
         
         // Check if category is disabled for this level (for ILs and Community Golds)
@@ -237,9 +215,44 @@ export const getLeaderboardEntriesFirestore = async (
         .map(item => item.entry);
     };
     
-    // Separate obsolete and non-obsolete runs for proper ranking
-    const nonObsoleteEntries = entries.filter(e => !e.isObsolete);
-    const obsoleteEntries = entries.filter(e => e.isObsolete === true);
+    // Filter obsolete runs: if not including obsolete, only show best time per player
+    // If including obsolete, show all runs but separate them
+    let nonObsoleteEntries: LeaderboardEntry[] = [];
+    let obsoleteEntries: LeaderboardEntry[] = [];
+    
+    if (!includeObsolete) {
+      // Only show best (non-obsolete) time per player
+      // Group by player(s) and keep only the fastest run per player combination
+      const playerBestRuns = new Map<string, LeaderboardEntry>();
+      
+      for (const entry of entries) {
+        if (entry.isObsolete) continue; // Skip obsolete runs when not including them
+        
+        // Create a key for grouping (player(s), category, platform, runType, leaderboardType, level)
+        // For co-op runs, include both players in the key
+        const playerId = entry.playerId || entry.playerName || "";
+        const player2Id = entry.runType === 'co-op' ? (entry.player2Name || "") : "";
+        const groupKey = `${playerId}_${player2Id}_${entry.category}_${entry.platform}_${entry.runType || 'solo'}_${entry.leaderboardType || 'regular'}_${entry.level || ''}`;
+        
+        const existing = playerBestRuns.get(groupKey);
+        if (!existing) {
+          playerBestRuns.set(groupKey, entry);
+        } else {
+          // Compare times - keep the faster one
+          const existingTime = parseTimeToSeconds(existing.time) || Infinity;
+          const currentTime = parseTimeToSeconds(entry.time) || Infinity;
+          if (currentTime < existingTime) {
+            playerBestRuns.set(groupKey, entry);
+          }
+        }
+      }
+      
+      nonObsoleteEntries = Array.from(playerBestRuns.values());
+    } else {
+      // Include obsolete runs - separate them but show all
+      nonObsoleteEntries = entries.filter(e => !e.isObsolete);
+      obsoleteEntries = entries.filter(e => e.isObsolete === true);
+    }
     
     const sortedNonObsolete = sortByTime(nonObsoleteEntries);
     const sortedObsolete = sortByTime(obsoleteEntries);
@@ -254,8 +267,10 @@ export const getLeaderboardEntriesFirestore = async (
       entry.rank = sortedNonObsolete.length + index + 1;
     });
     
-    // Combine: non-obsolete first, then obsolete, limit to 200 for display
-    entries = [...sortedNonObsolete, ...sortedObsolete].slice(0, 200);
+    // Combine: non-obsolete first, then obsolete (if including), limit to 200 for display
+    entries = includeObsolete 
+      ? [...sortedNonObsolete, ...sortedObsolete].slice(0, 200)
+      : sortedNonObsolete.slice(0, 200);
 
     // Batch fetch all unique player IDs to avoid N+1 queries
     // Only fetch players for claimed runs (not imported/unclaimed)
@@ -2818,25 +2833,20 @@ export const getUnassignedRunsFirestore = async (limit: number = 500): Promise<L
 
 /**
  * Get unclaimed runs by SRC username (for claiming imported runs)
+ * Only returns verified imported runs - unverified runs must be verified first
  */
 export const getUnclaimedRunsBySRCUsernameFirestore = async (srcUsername: string, currentUserId?: string): Promise<LeaderboardEntry[]> => {
   if (!db || !srcUsername || !srcUsername.trim()) return [];
   try {
-    // Get all runs (verified and unverified)
-    const queries = [
-      query(collection(db, "leaderboardEntries"), where("verified", "==", true), firestoreLimit(500)),
-      query(collection(db, "leaderboardEntries"), where("verified", "==", false), firestoreLimit(500))
-    ];
+    // Only get verified runs - unverified imported runs must be verified first
+    const q = query(
+      collection(db, "leaderboardEntries"),
+      where("verified", "==", true),
+      firestoreLimit(500)
+    );
     
-    const [verifiedSnapshot, unverifiedSnapshot] = await Promise.all([
-      getDocs(queries[0]),
-      getDocs(queries[1])
-    ]);
-    
-    const allRuns = [
-      ...verifiedSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LeaderboardEntry)),
-      ...unverifiedSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LeaderboardEntry))
-    ];
+    const verifiedSnapshot = await getDocs(q);
+    const allRuns = verifiedSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LeaderboardEntry));
     
     // First, try to find the SRC player ID from the username
     // We'll need to fetch from SRC API to get the player ID
