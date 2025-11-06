@@ -915,11 +915,11 @@ export const updateLeaderboardEntryFirestore = async (runId: string, data: Parti
         }
       }
       
-      // Store rank in update data
-      if (rank !== undefined) {
+      // Store rank in update data (only if rank is 1, 2, or 3 for bonus points)
+      if (rank !== undefined && rank !== null && rank >= 1 && rank <= 3) {
         updateData.rank = rank;
       } else {
-        updateData.rank = deleteField(); // Remove rank if obsolete or not in top rankings
+        updateData.rank = deleteField(); // Remove rank if obsolete, not ranked, or rank > 3
       }
       
       // Calculate points with rank
@@ -1030,13 +1030,13 @@ export const updateRunVerificationStatusFirestore = async (runId: string, verifi
       );
       
       // Update the document with calculated points and rank
-      const updateFields: { points: number; rank?: number } = { points };
-      if (rank !== undefined) {
+      // Only store rank if it's 1, 2, or 3 (for bonus points)
+      const updateFields: { points: number; rank?: number | ReturnType<typeof deleteField> } = { points };
+      if (rank !== undefined && rank !== null && rank >= 1 && rank <= 3) {
         updateFields.rank = rank;
       } else {
-        // Remove rank field if obsolete or not ranked
-        await updateDoc(runDocRef, { points, rank: deleteField() });
-        return true;
+        // Remove rank field if obsolete, not ranked, or rank > 3
+        updateFields.rank = deleteField();
       }
       await updateDoc(runDocRef, updateFields);
       
@@ -1250,9 +1250,27 @@ export const recalculatePlayerPointsFirestore = async (playerId: string): Promis
             }
           }
           
-          // If not in rankMap (e.g., beyond fetched limit or not yet in database), 
-          // check if run already has a stored rank
-          // Only use stored rank if it's 1, 2, or 3 (for bonus points) to ensure accuracy
+          // If not in rankMap, calculate rank from the group runs
+          // This ensures all runs in the group get ranked correctly
+          if (rank === undefined) {
+            // Sort all non-obsolete runs in this group by time
+            const nonObsoleteGroupRuns = runs
+              .filter(r => !r.isObsolete)
+              .sort((a, b) => {
+                const timeA = parseTimeToSeconds(a.time);
+                const timeB = parseTimeToSeconds(b.time);
+                return timeA - timeB;
+              });
+            
+            // Find the index (rank) of this run
+            const runIndex = nonObsoleteGroupRuns.findIndex(r => r.id === playerRun.id);
+            if (runIndex >= 0) {
+              rank = runIndex + 1; // 1-based rank
+            }
+          }
+          
+          // Last resort: check if run already has a stored rank (only if it's 1, 2, or 3)
+          // This is a fallback for cases where the run might not be in the current group
           if (rank === undefined && playerRun.rank !== undefined && playerRun.rank !== null) {
             const storedRank = typeof playerRun.rank === 'number' ? playerRun.rank : Number(playerRun.rank);
             if (!isNaN(storedRank) && storedRank >= 1 && storedRank <= 3) {
@@ -1308,8 +1326,11 @@ export const recalculatePlayerPointsFirestore = async (playerId: string): Promis
     
     for (const run of runsToUpdate) {
       const runDocRef = doc(db, "leaderboardEntries", run.id);
-      const updateData: { points: number; rank?: number } = { points: run.points };
-      if (run.rank !== undefined) {
+      const updateData: { points: number; rank?: number | ReturnType<typeof deleteField> } = { 
+        points: run.points 
+      };
+      // Store rank if it's 1, 2, or 3 (for bonus points), otherwise remove it
+      if (run.rank !== undefined && run.rank !== null && run.rank >= 1 && run.rank <= 3) {
         updateData.rank = run.rank;
       } else {
         updateData.rank = deleteField();
@@ -2063,24 +2084,57 @@ export const getPlayersByPointsFirestore = async (limit: number = 100): Promise<
         .map(doc => ({ id: doc.id, ...doc.data() } as Player))
         .filter(p => (p.totalPoints || 0) > 0); // Only include players with points
       
-      // Deduplicate by UID - keep the player with the highest totalPoints
+      // Deduplicate by UID and displayName - keep the player with the highest totalPoints
       // If points are equal, keep the first one encountered
       const playerMap = new Map<string, Player>();
+      const seenUIDs = new Set<string>();
+      const seenNames = new Map<string, string>(); // name -> uid
+      
       for (const player of allPlayers) {
         if (!player.uid) continue; // Skip players without UID
         
-        const existing = playerMap.get(player.uid);
-        if (!existing) {
-          playerMap.set(player.uid, player);
-        } else {
-          // If we find a duplicate, keep the one with higher points
-          // If points are equal, keep the existing one (first encountered)
-          const existingPoints = existing.totalPoints || 0;
-          const currentPoints = player.totalPoints || 0;
-          if (currentPoints > existingPoints) {
-            playerMap.set(player.uid, player);
+        // Check if we've seen this UID before
+        if (seenUIDs.has(player.uid)) {
+          const existing = playerMap.get(player.uid);
+          if (existing) {
+            // If we find a duplicate UID, keep the one with higher points
+            const existingPoints = existing.totalPoints || 0;
+            const currentPoints = player.totalPoints || 0;
+            if (currentPoints > existingPoints) {
+              playerMap.set(player.uid, player);
+            }
+          }
+          continue;
+        }
+        
+        // Check if we've seen this displayName before (case-insensitive)
+        const nameLower = player.displayName?.toLowerCase().trim();
+        if (nameLower) {
+          const existingUIDForName = seenNames.get(nameLower);
+          if (existingUIDForName && existingUIDForName !== player.uid) {
+            // Same name but different UID - treat as duplicate
+            // Keep the one with higher points
+            const existingPlayer = playerMap.get(existingUIDForName);
+            if (existingPlayer) {
+              const existingPoints = existingPlayer.totalPoints || 0;
+              const currentPoints = player.totalPoints || 0;
+              if (currentPoints > existingPoints) {
+                // Replace with the new player
+                playerMap.delete(existingUIDForName);
+                playerMap.set(player.uid, player);
+                seenNames.set(nameLower, player.uid);
+              }
+            }
+            continue;
           }
         }
+        
+        // New unique player
+        seenUIDs.add(player.uid);
+        if (nameLower) {
+          seenNames.set(nameLower, player.uid);
+        }
+        playerMap.set(player.uid, player);
       }
       
       // Convert map to array and sort by points (descending) again after deduplication
@@ -2196,6 +2250,8 @@ export const backfillPointsForAllRunsFirestore = async (): Promise<{
         }
         
         // Calculate ranks using helper function
+        // Note: calculateRanksForGroup fetches and ranks runs, but we need to ensure
+        // all runs in this group are included in the ranking calculation
         const rankMap = await calculateRanksForGroup(
           leaderboardType,
           categoryId,
@@ -2209,6 +2265,7 @@ export const backfillPointsForAllRunsFirestore = async (): Promise<{
           try {
             let rank: number | undefined = undefined;
             if (!runData.isObsolete) {
+              // First try to get rank from the calculated rankMap
               const calculatedRank = rankMap.get(runData.id);
               if (calculatedRank !== undefined) {
                 // Ensure rank is a valid number
@@ -2219,6 +2276,24 @@ export const backfillPointsForAllRunsFirestore = async (): Promise<{
                   if (!isNaN(parsed) && parsed > 0) {
                     rank = parsed;
                   }
+                }
+              } else {
+                // If run is not in rankMap, it might be beyond the fetch limit
+                // However, if it's in our group, it should be ranked
+                // Recalculate rank by comparing with other runs in the group
+                // Sort all non-obsolete runs in this group by time
+                const nonObsoleteGroupRuns = runs
+                  .filter(r => !r.isObsolete)
+                  .sort((a, b) => {
+                    const timeA = parseTimeToSeconds(a.time);
+                    const timeB = parseTimeToSeconds(b.time);
+                    return timeA - timeB;
+                  });
+                
+                // Find the index (rank) of this run
+                const runIndex = nonObsoleteGroupRuns.findIndex(r => r.id === runData.id);
+                if (runIndex >= 0) {
+                  rank = runIndex + 1; // 1-based rank
                 }
               }
             }
@@ -2258,8 +2333,11 @@ export const backfillPointsForAllRunsFirestore = async (): Promise<{
     for (const run of runsToUpdate) {
       try {
         const runDocRef = doc(db, "leaderboardEntries", run.id);
-        const updateData: { points: number; rank?: number } = { points: run.points };
-        if (run.rank !== undefined) {
+        const updateData: { points: number; rank?: number | ReturnType<typeof deleteField> } = { 
+          points: run.points 
+        };
+        // Store rank if it's 1, 2, or 3 (for bonus points), otherwise remove it
+        if (run.rank !== undefined && run.rank !== null && run.rank >= 1 && run.rank <= 3) {
           updateData.rank = run.rank;
         } else {
           updateData.rank = deleteField();

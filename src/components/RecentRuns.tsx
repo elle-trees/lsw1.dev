@@ -65,18 +65,19 @@ export function RecentRuns({ runs, loading, showRankBadge = true, maxRuns }: Rec
       const container = containerRef.current;
       const content = contentRef.current;
       if (!container) {
-        // Fallback: show all runs if container not available yet
-        setVisibleRuns(runs);
+        // Fallback: show minimal runs if container not available yet
+        setVisibleRuns(runs.slice(0, 3));
         return;
       }
 
-      // Get available height
+      // Get available height from the container
       const containerRect = container.getBoundingClientRect();
-      const availableHeight = containerRect.height;
+      let availableHeight = containerRect.height;
       
-      // If container has no height yet, show all runs initially
+      // If container has no height yet, start with a conservative estimate
       if (availableHeight <= 0) {
-        setVisibleRuns(runs);
+        // Use a conservative default to prevent overflow
+        setVisibleRuns(runs.slice(0, 3));
         return;
       }
 
@@ -98,12 +99,14 @@ export function RecentRuns({ runs, loading, showRankBadge = true, maxRuns }: Rec
       const padding = 12; // CardContent padding (0.75rem = 12px from homepage CSS override)
       
       // Calculate how many items can fit
-      const usableHeight = availableHeight - padding * 2;
+      // Account for padding on both top and bottom
+      const usableHeight = availableHeight - (padding * 2);
       const maxItems = Math.floor((usableHeight + spacing) / (itemHeight + spacing));
       
       // Show at least 1, but not more than available runs
-      // Cap at reasonable max to prevent too many items
-      const itemsToShow = Math.max(1, Math.min(maxItems, runs.length, 15));
+      // Cap at a reasonable max to prevent overflow and maintain layout consistency
+      // Use a conservative limit to ensure it doesn't exceed the Twitch player height
+      const itemsToShow = Math.max(1, Math.min(maxItems, runs.length, 5));
       setVisibleRuns(runs.slice(0, itemsToShow));
     };
 
@@ -158,7 +161,7 @@ export function RecentRuns({ runs, loading, showRankBadge = true, maxRuns }: Rec
           </span>
         </CardTitle>
       </CardHeader>
-      <CardContent ref={containerRef} className="p-6 sm:p-8 flex-1 overflow-y-auto">
+      <CardContent ref={containerRef} className="p-6 sm:p-8 flex-1 overflow-hidden">
         {loading ? (
           <LoadingSpinner size="sm" className="py-12" />
         ) : runs.length === 0 ? (
@@ -167,7 +170,7 @@ export function RecentRuns({ runs, loading, showRankBadge = true, maxRuns }: Rec
             <p className="text-lg text-[hsl(222,15%,60%)]">No recent runs yet</p>
           </div>
         ) : (
-          <div ref={contentRef} className="space-y-5">
+          <div ref={contentRef} className="space-y-5 overflow-hidden">
             {visibleRuns.map((run, index) => (
               <Link
                 key={run.id}

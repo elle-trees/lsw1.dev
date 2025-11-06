@@ -144,7 +144,7 @@ const Index = () => {
                 </p>
               </div>
 
-              <div className="flex-1 min-h-0 overflow-hidden">
+              <div className="flex-1 min-h-0 flex flex-col">
                 <style>{`
                   .homepage-recent-runs [class*="CardContent"] { padding: 0.75rem !important; }
                   .homepage-recent-runs [class*="space-y-5"] > * + * { margin-top: 0.5rem !important; }
@@ -166,7 +166,7 @@ const Index = () => {
                   .homepage-recent-runs p[class*="text-xl"] { font-size: 1.125rem !important; }
                   .homepage-recent-runs p[class*="text-2xl"] { font-size: 1.375rem !important; }
                 `}</style>
-                <div className="homepage-recent-runs [&_header]:hidden h-full">
+                <div className="homepage-recent-runs [&_header]:hidden h-full flex-1 min-h-0">
                   <RecentRuns runs={recentRunsData} loading={loading} showRankBadge={false} />
                 </div>
               </div>

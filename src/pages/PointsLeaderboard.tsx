@@ -17,21 +17,53 @@ const PointsLeaderboard = () => {
       try {
         const playersData = await getPlayersByPoints(100);
         
-        // Additional deduplication by UID as a safety measure
+        // Additional deduplication by UID and displayName as a safety measure
         const uniquePlayers = new Map<string, Player>();
+        const seenUIDs = new Set<string>();
+        const seenNames = new Map<string, string>(); // name -> uid
+        
         for (const player of playersData) {
           if (!player.uid) continue;
-          const existing = uniquePlayers.get(player.uid);
-          if (!existing) {
-            uniquePlayers.set(player.uid, player);
-          } else {
-            // Keep the one with higher points if duplicate found
-            const existingPoints = existing.totalPoints || 0;
-            const currentPoints = player.totalPoints || 0;
-            if (currentPoints > existingPoints) {
-              uniquePlayers.set(player.uid, player);
+          
+          // Check by UID first
+          if (seenUIDs.has(player.uid)) {
+            const existing = uniquePlayers.get(player.uid);
+            if (existing) {
+              const existingPoints = existing.totalPoints || 0;
+              const currentPoints = player.totalPoints || 0;
+              if (currentPoints > existingPoints) {
+                uniquePlayers.set(player.uid, player);
+              }
+            }
+            continue;
+          }
+          
+          // Check by displayName (case-insensitive)
+          const nameLower = player.displayName?.toLowerCase().trim();
+          if (nameLower) {
+            const existingUIDForName = seenNames.get(nameLower);
+            if (existingUIDForName && existingUIDForName !== player.uid) {
+              // Same name but different UID - treat as duplicate
+              const existingPlayer = uniquePlayers.get(existingUIDForName);
+              if (existingPlayer) {
+                const existingPoints = existingPlayer.totalPoints || 0;
+                const currentPoints = player.totalPoints || 0;
+                if (currentPoints > existingPoints) {
+                  uniquePlayers.delete(existingUIDForName);
+                  uniquePlayers.set(player.uid, player);
+                  seenNames.set(nameLower, player.uid);
+                }
+              }
+              continue;
             }
           }
+          
+          // New unique player
+          seenUIDs.add(player.uid);
+          if (nameLower) {
+            seenNames.set(nameLower, player.uid);
+          }
+          uniquePlayers.set(player.uid, player);
         }
         
         // Convert back to array and sort by points

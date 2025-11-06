@@ -348,11 +348,14 @@ const RunDetails = () => {
         return;
       }
 
+      // Obsolete runs still get base points (10), but not bonus points
       // Only calculate if points not stored and run is verified
-      if (!run.verified || run.isObsolete) {
+      if (!run.verified) {
         setDisplayPoints(0);
         return;
       }
+      
+      // Obsolete runs get base points (10) but no rank bonus
 
       // Calculate points using stored rank
       const category = categories.find((c) => c.id === run.category);
