@@ -243,6 +243,21 @@ export async function importSRCRuns(
           mappings.platformNameMapping
         );
 
+        // Log first few runs for debugging
+        if (result.imported + result.skipped < 3) {
+          console.log(`[Import Debug] Run ${srcRun.id}:`, {
+            category: mappedRun.category,
+            platform: mappedRun.platform,
+            srcCategoryName: mappedRun.srcCategoryName,
+            srcPlatformName: mappedRun.srcPlatformName,
+            playerName: mappedRun.playerName,
+            time: mappedRun.time,
+            date: mappedRun.date,
+            leaderboardType: mappedRun.leaderboardType,
+            level: mappedRun.level,
+          });
+        }
+
         // Basic validation - must have category and platform (either mapped ID or SRC name)
         // mappedRun already has srcCategoryName, srcPlatformName, srcLevelName set
         const hasCategory = (mappedRun.category && mappedRun.category.trim() !== '') || !!mappedRun.srcCategoryName;
@@ -262,6 +277,7 @@ export async function importSRCRuns(
         }
         
         // If mapping failed, ensure we have at least empty strings (not undefined) for required fields
+        // Empty strings are allowed for imported runs with SRC names (validation handles this)
         if (!mappedRun.category || mappedRun.category.trim() === '') {
           mappedRun.category = '';
         }
@@ -290,13 +306,31 @@ export async function importSRCRuns(
         if (!player1Matched) unmatched.player1 = mappedRun.playerName;
         if (mappedRun.player2Name && !player2Matched) unmatched.player2 = mappedRun.player2Name;
 
-        // Set import flags
+        // Set import flags BEFORE adding (required for validation)
         mappedRun.importedFromSRC = true;
         mappedRun.srcRunId = srcRun.id;
         mappedRun.verified = false;
+        
+        // Ensure all required fields are present for the entry
+        // Time and date should already be set by mapSRCRunToLeaderboardEntry
+        if (!mappedRun.time || !mappedRun.date) {
+          result.skipped++;
+          result.errors.push(`Run ${srcRun.id}: missing time or date`);
+          onProgress?.({ total: srcRuns.length, imported: result.imported, skipped: result.skipped });
+          continue;
+        }
 
         // Add the run
-        const addedRunId = await addLeaderboardEntry(mappedRun as LeaderboardEntry);
+        let addedRunId: string | null = null;
+        try {
+          addedRunId = await addLeaderboardEntry(mappedRun as LeaderboardEntry);
+        } catch (error) {
+          result.skipped++;
+          result.errors.push(`Run ${srcRun.id}: ${error instanceof Error ? error.message : String(error)}`);
+          console.error(`Failed to add run ${srcRun.id}:`, error, mappedRun);
+          onProgress?.({ total: srcRuns.length, imported: result.imported, skipped: result.skipped });
+          continue;
+        }
 
         if (!addedRunId) {
           result.skipped++;

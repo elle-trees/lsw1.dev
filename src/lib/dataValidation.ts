@@ -185,6 +185,7 @@ export function getLevelName(
 
 /**
  * Validate that a leaderboard entry has required fields
+ * For imported runs, allows empty category/platform if SRC names are provided
  */
 export function validateLeaderboardEntry(entry: Partial<LeaderboardEntry>): {
   valid: boolean;
@@ -196,11 +197,17 @@ export function validateLeaderboardEntry(entry: Partial<LeaderboardEntry>): {
     errors.push("Player name is required");
   }
   
-  if (!entry.category || entry.category.trim() === "") {
+  // Category validation: required unless this is an imported run with SRC category name
+  const hasCategory = entry.category && entry.category.trim() !== "";
+  const hasSRCCategoryName = entry.importedFromSRC && entry.srcCategoryName && entry.srcCategoryName.trim() !== "";
+  if (!hasCategory && !hasSRCCategoryName) {
     errors.push("Category is required");
   }
   
-  if (!entry.platform || entry.platform.trim() === "") {
+  // Platform validation: required unless this is an imported run with SRC platform name
+  const hasPlatform = entry.platform && entry.platform.trim() !== "";
+  const hasSRCPlatformName = entry.importedFromSRC && entry.srcPlatformName && entry.srcPlatformName.trim() !== "";
+  if (!hasPlatform && !hasSRCPlatformName) {
     errors.push("Platform is required");
   }
   
