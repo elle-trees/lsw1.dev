@@ -269,41 +269,47 @@ function getPlayerName(player: SRCRun['players'][0]): string {
  * Extract ID and name from embedded resource or string
  * Handles various SRC API response structures
  * Returns both ID and name in one pass for efficiency
+ * 
+ * SRC API with embed returns: { data: { id: "...", name: "..." } }
+ * SRC API without embed returns: string (just the ID)
  */
 export function extractIdAndName(
   value: string | { data: { id?: string; name?: string; names?: { international?: string } } } | { data: Array<{ id?: string; name?: string; names?: { international?: string } }> } | undefined
 ): { id: string; name: string } {
   if (!value) return { id: "", name: "" };
   
-  // Handle string (ID only)
+  // Handle string (ID only - no embed)
   if (typeof value === "string") {
     return { id: value.trim(), name: "" };
   }
   
-  // Handle single embedded object
+  // Handle single embedded object: { data: { id: "...", name: "..." } }
   if (value.data && !Array.isArray(value.data)) {
     const data = value.data;
     const id = data.id ? String(data.id).trim() : "";
     let name = "";
     
-    if (data.name) {
+    // Try name first (direct field)
+    if (data.name && typeof data.name === 'string') {
       name = String(data.name).trim();
-    } else if (data.names?.international) {
+    } 
+    // Fall back to names.international (for platforms/categories)
+    else if (data.names?.international && typeof data.names.international === 'string') {
       name = String(data.names.international).trim();
     }
     
     return { id, name };
   }
   
-  // Handle array of embedded objects
+  // Handle array of embedded objects: { data: [{ id: "...", name: "..." }] }
   if (Array.isArray(value.data) && value.data.length > 0) {
     const first = value.data[0];
     const id = first.id ? String(first.id).trim() : "";
     let name = "";
     
-    if (first.name) {
+    if (first.name && typeof first.name === 'string') {
       name = String(first.name).trim();
-    } else if (first.names?.international) {
+    } else if (first.names?.international && typeof first.names.international === 'string') {
       name = String(first.names.international).trim();
     }
     

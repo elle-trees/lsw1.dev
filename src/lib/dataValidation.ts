@@ -194,8 +194,9 @@ export function validateLeaderboardEntry(entry: Partial<LeaderboardEntry>): {
 } {
   const errors: string[] = [];
   
-  // Check if this is an imported run - use multiple checks to be safe
-  const isImported = entry.importedFromSRC === true || entry.importedFromSRC === Boolean(true) || !!entry.importedFromSRC;
+  // Check if this is an imported run - check the actual value
+  // Normalization converts it to Boolean(true) which is still === true, but be explicit
+  const isImported = entry.importedFromSRC === true || entry.importedFromSRC === Boolean(true) || entry.importedFromSRC === 1 || !!entry.importedFromSRC;
   
   if (!entry.playerName || entry.playerName.trim() === "") {
     errors.push("Player name is required");

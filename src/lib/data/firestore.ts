@@ -331,25 +331,48 @@ export const addLeaderboardEntryFirestore = async (entry: Omit<LeaderboardEntry,
       });
     }
     
-    const validation = validateLeaderboardEntry(normalized);
+    // For imported runs, use more lenient validation
+    // If it's an imported run with SRC names but no IDs, that's acceptable
+    const isImportedRun = normalized.importedFromSRC === true || normalized.importedFromSRC === Boolean(true) || !!normalized.importedFromSRC;
+    const hasSRCFallback = (normalized.srcCategoryName || normalized.srcPlatformName);
     
-    if (!validation.valid) {
-      console.error("Validation failed for leaderboard entry:", validation.errors, {
-        entry: normalized,
-        importedFromSRC: normalized.importedFromSRC,
-        importedFromSRCType: typeof normalized.importedFromSRC,
-        importedFromSRCValue: normalized.importedFromSRC,
-        isImported: normalized.importedFromSRC === true || normalized.importedFromSRC === Boolean(true) || !!normalized.importedFromSRC,
-        hasCategory: normalized.category && normalized.category.trim() !== "",
-        hasPlatform: normalized.platform && normalized.platform.trim() !== "",
-        hasSRCCategory: normalized.srcCategoryName && normalized.srcCategoryName.trim() !== "",
-        hasSRCPlatform: normalized.srcPlatformName && normalized.srcPlatformName.trim() !== "",
-        category: normalized.category,
-        platform: normalized.platform,
-        srcCategoryName: normalized.srcCategoryName,
-        srcPlatformName: normalized.srcPlatformName,
-      });
-      throw new Error(`Invalid entry data: ${validation.errors.join(', ')}`);
+    // Skip strict validation for imported runs that have SRC fallback names
+    // They can be fixed by admins later
+    if (!isImportedRun || !hasSRCFallback) {
+      const validation = validateLeaderboardEntry(normalized);
+      
+      if (!validation.valid) {
+        console.error("Validation failed for leaderboard entry:", validation.errors, {
+          entry: normalized,
+          importedFromSRC: normalized.importedFromSRC,
+          importedFromSRCType: typeof normalized.importedFromSRC,
+          importedFromSRCValue: normalized.importedFromSRC,
+          isImported: isImportedRun,
+          hasSRCFallback,
+          hasCategory: normalized.category && normalized.category.trim() !== "",
+          hasPlatform: normalized.platform && normalized.platform.trim() !== "",
+          hasSRCCategory: normalized.srcCategoryName && normalized.srcCategoryName.trim() !== "",
+          hasSRCPlatform: normalized.srcPlatformName && normalized.srcPlatformName.trim() !== "",
+          category: normalized.category,
+          platform: normalized.platform,
+          srcCategoryName: normalized.srcCategoryName,
+          srcPlatformName: normalized.srcPlatformName,
+        });
+        throw new Error(`Invalid entry data: ${validation.errors.join(', ')}`);
+      }
+    } else {
+      // For imported runs with SRC fallback, only validate essential fields
+      if (!normalized.playerName || normalized.playerName.trim() === "") {
+        throw new Error("Player name is required");
+      }
+      if (!normalized.time || normalized.time.trim() === "") {
+        throw new Error("Time is required");
+      }
+      if (!normalized.date || normalized.date.trim() === "") {
+        throw new Error("Date is required");
+      }
+      // Category and platform can be empty if we have SRC names
+      console.log(`[addLeaderboardEntry] Imported run with SRC fallback - skipping strict validation for category/platform`);
     }
     
     const newDocRef = doc(collection(db, "leaderboardEntries"));
