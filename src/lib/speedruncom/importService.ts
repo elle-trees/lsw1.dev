@@ -17,6 +17,7 @@ import {
   getPlatformsFromFirestore,
   getLevels,
   getAllRunsForDuplicateCheck,
+  getImportedSRCRuns,
   addLeaderboardEntry,
   getPlayerByDisplayName,
 } from "../db";
@@ -335,10 +336,10 @@ export async function importSRCRuns(
       return result;
     }
 
-    // Step 2: Fetch runs from SRC
+    // Step 2: Fetch runs from SRC - get 200 most recent runs
     let srcRuns: SRCRun[];
     try {
-      srcRuns = await fetchRunsNotOnLeaderboards(gameId, 500);
+      srcRuns = await fetchRunsNotOnLeaderboards(gameId, 200);
     } catch (error) {
       result.errors.push(`Failed to fetch runs: ${error instanceof Error ? error.message : String(error)}`);
       return result;
@@ -358,7 +359,7 @@ export async function importSRCRuns(
       return result;
     }
 
-    // Step 4: Get existing runs to check if they're already verified
+    // Step 4: Get all existing runs (both verified and unverified) to check if they're already in the database
     let existingRuns: LeaderboardEntry[];
     try {
       existingRuns = await getAllRunsForDuplicateCheck();
@@ -367,11 +368,21 @@ export async function importSRCRuns(
       return result;
     }
 
-    // Build set of verified SRC run IDs to skip (only skip if already verified)
-    const verifiedSRCRunIds = new Set(
-      existingRuns
-        .filter(r => r.srcRunId && r.verified)
-        .map(r => r.srcRunId!)
+    // Also get unverified imported runs to check for duplicates
+    let unverifiedImportedRuns: LeaderboardEntry[] = [];
+    try {
+      unverifiedImportedRuns = await getImportedSRCRuns();
+    } catch (error) {
+      console.warn("Could not fetch unverified imported runs for duplicate check:", error);
+    }
+
+    // Build set of all SRC run IDs that already exist in the database (verified or unverified)
+    // Skip runs that are already linked on the boards with run pages
+    const existingSRCRunIds = new Set(
+      [
+        ...existingRuns.filter(r => r.srcRunId).map(r => r.srcRunId!),
+        ...unverifiedImportedRuns.filter(r => r.srcRunId).map(r => r.srcRunId!)
+      ]
     );
 
     onProgress?.({ total: srcRuns.length, imported: 0, skipped: 0 });
@@ -379,8 +390,8 @@ export async function importSRCRuns(
     // Step 5: Process each run
     for (const srcRun of srcRuns) {
       try {
-        // Skip if already verified (don't re-import verified runs)
-        if (verifiedSRCRunIds.has(srcRun.id)) {
+        // Skip if already exists in database (verified or unverified - already linked on boards)
+        if (existingSRCRunIds.has(srcRun.id)) {
           result.skipped++;
           onProgress?.({ total: srcRuns.length, imported: result.imported, skipped: result.skipped });
           continue;
