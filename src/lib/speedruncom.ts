@@ -5,6 +5,22 @@
 
 const SPEEDRUNCOM_API_BASE = "https://www.speedrun.com/api/v1";
 
+/**
+ * Generic API fetch helper with error handling
+ */
+async function fetchSRCAPI<T>(endpoint: string): Promise<T> {
+  try {
+    const response = await fetch(`${SPEEDRUNCOM_API_BASE}${endpoint}`);
+    if (!response.ok) {
+      throw new Error(`SRC API error: ${response.statusText}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error(`Error fetching ${endpoint}:`, error);
+    throw error;
+  }
+}
+
 export interface SRCGame {
   id: string;
   names: {
@@ -135,11 +151,8 @@ function secondsToTime(seconds: number): string {
  */
 export async function getLSWGameId(): Promise<string | null> {
   try {
-    const response = await fetch(`${SPEEDRUNCOM_API_BASE}/games?name=LEGO%20Star%20Wars&abbreviation=lsw`);
-    const data = await response.json();
-    
+    const data = await fetchSRCAPI<{ data: SRCGame[] }>("/games?name=LEGO%20Star%20Wars&abbreviation=lsw");
     if (data.data && data.data.length > 0) {
-      // Find the game with abbreviation "lsw"
       const lswGame = data.data.find((game: SRCGame) => game.abbreviation === "lsw");
       return lswGame?.id || null;
     }
@@ -163,39 +176,25 @@ export async function fetchRunsNotOnLeaderboards(
   let offset = 0;
   const max = 200; // SRC API max per request
   
-  try {
-    while (allRuns.length < limit) {
-      const response = await fetch(
-        `${SPEEDRUNCOM_API_BASE}/runs?game=${gameId}&status=verified&orderby=submitted&direction=desc&max=${max}&offset=${offset}&embed=players,category,level,platform`
-      );
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch runs: ${response.statusText}`);
-      }
-      
-      const data: SRCRunData = await response.json();
-      
-      if (!data.data || data.data.length === 0) {
-        break;
-      }
-      
-      allRuns.push(...data.data);
-      offset += data.data.length;
-      
-      // Check pagination limits
-      if (data.data.length < max) {
-        break;
-      }
-      if (data.pagination && offset >= data.pagination.max) {
-        break;
-      }
+  while (allRuns.length < limit) {
+    const data = await fetchSRCAPI<SRCRunData>(
+      `/runs?game=${gameId}&status=verified&orderby=submitted&direction=desc&max=${max}&offset=${offset}&embed=players,category,level,platform`
+    );
+    
+    if (!data.data || data.data.length === 0) {
+      break;
     }
     
-    return allRuns.slice(0, limit);
-  } catch (error) {
-    console.error("Error fetching runs from speedrun.com:", error);
-    throw error;
+    allRuns.push(...data.data);
+    offset += data.data.length;
+    
+    // Check pagination limits
+    if (data.data.length < max || (data.pagination && offset >= data.pagination.max)) {
+      break;
+    }
   }
+  
+  return allRuns.slice(0, limit);
 }
 
 
@@ -204,8 +203,7 @@ export async function fetchRunsNotOnLeaderboards(
  */
 export async function fetchCategories(gameId: string): Promise<SRCCategory[]> {
   try {
-    const response = await fetch(`${SPEEDRUNCOM_API_BASE}/games/${gameId}/categories`);
-    const data = await response.json();
+    const data = await fetchSRCAPI<{ data: SRCCategory[] }>(`/games/${gameId}/categories`);
     return data.data || [];
   } catch (error) {
     console.error("Error fetching categories:", error);
@@ -218,8 +216,7 @@ export async function fetchCategories(gameId: string): Promise<SRCCategory[]> {
  */
 export async function fetchLevels(gameId: string): Promise<SRCLevel[]> {
   try {
-    const response = await fetch(`${SPEEDRUNCOM_API_BASE}/games/${gameId}/levels`);
-    const data = await response.json();
+    const data = await fetchSRCAPI<{ data: SRCLevel[] }>(`/games/${gameId}/levels`);
     return data.data || [];
   } catch (error) {
     console.error("Error fetching levels:", error);
@@ -232,8 +229,7 @@ export async function fetchLevels(gameId: string): Promise<SRCLevel[]> {
  */
 export async function fetchPlatforms(): Promise<SRCPlatform[]> {
   try {
-    const response = await fetch(`${SPEEDRUNCOM_API_BASE}/platforms`);
-    const data = await response.json();
+    const data = await fetchSRCAPI<{ data: SRCPlatform[] }>("/platforms");
     return data.data || [];
   } catch (error) {
     console.error("Error fetching platforms:", error);
@@ -270,65 +266,65 @@ function getPlayerName(player: SRCRun['players'][0]): string {
 }
 
 /**
- * Extract ID from embedded resource or string
+ * Extract ID and name from embedded resource or string
  * Handles various SRC API response structures
+ * Returns both ID and name in one pass for efficiency
  */
-function extractId(value: string | { data: { id: string } } | { data: Array<{ id: string }> } | undefined): string {
-  if (!value) return "";
-  if (typeof value === "string") return value.trim();
+export function extractIdAndName(
+  value: string | { data: { id?: string; name?: string; names?: { international?: string } } } | { data: Array<{ id?: string; name?: string; names?: { international?: string } }> } | undefined
+): { id: string; name: string } {
+  if (!value) return { id: "", name: "" };
   
-  // Handle single embedded object
-  if (value.data && !Array.isArray(value.data) && value.data.id) {
-    return String(value.data.id).trim();
-  }
-  
-  // Handle array of embedded objects (unlikely but possible)
-  if (Array.isArray(value.data) && value.data.length > 0 && value.data[0]?.id) {
-    return String(value.data[0].id).trim();
-  }
-  
-  return "";
-}
-
-/**
- * Extract name from embedded resource (for category, platform, level, etc.)
- * Handles various SRC API response structures
- */
-function extractName(value: string | { data: { name?: string; names?: { international?: string } } } | { data: Array<{ name?: string; names?: { international?: string } }> } | undefined): string {
-  if (!value) return "";
+  // Handle string (ID only)
   if (typeof value === "string") {
-    // If it's a string, it's likely an ID, not a name
-    return "";
+    return { id: value.trim(), name: "" };
   }
   
   // Handle single embedded object
   if (value.data && !Array.isArray(value.data)) {
-    // Try name field first (most common for categories, platforms, levels)
-    if (value.data.name) {
-      const name = String(value.data.name).trim();
-      if (name) return name;
+    const data = value.data;
+    const id = data.id ? String(data.id).trim() : "";
+    let name = "";
+    
+    if (data.name) {
+      name = String(data.name).trim();
+    } else if (data.names?.international) {
+      name = String(data.names.international).trim();
     }
-    // Try names.international (for games, players)
-    if (value.data.names?.international) {
-      const name = String(value.data.names.international).trim();
-      if (name) return name;
-    }
+    
+    return { id, name };
   }
   
   // Handle array of embedded objects
   if (Array.isArray(value.data) && value.data.length > 0) {
     const first = value.data[0];
+    const id = first.id ? String(first.id).trim() : "";
+    let name = "";
+    
     if (first.name) {
-      const name = String(first.name).trim();
-      if (name) return name;
+      name = String(first.name).trim();
+    } else if (first.names?.international) {
+      name = String(first.names.international).trim();
     }
-    if (first.names?.international) {
-      const name = String(first.names.international).trim();
-      if (name) return name;
-    }
+    
+    return { id, name };
   }
   
-  return "";
+  return { id: "", name: "" };
+}
+
+/**
+ * Extract ID from embedded resource or string (legacy helper)
+ */
+function extractId(value: string | { data: { id: string } } | { data: Array<{ id: string }> } | undefined): string {
+  return extractIdAndName(value).id;
+}
+
+/**
+ * Extract name from embedded resource (legacy helper)
+ */
+function extractName(value: string | { data: { name?: string; names?: { international?: string } } } | { data: Array<{ name?: string; names?: { international?: string } }> } | undefined): string {
+  return extractIdAndName(value).name;
 }
 
 /**
@@ -357,58 +353,45 @@ export function mapSRCRunToLeaderboardEntry(
   let player1Name = players[0] ? getPlayerName(players[0]) : "Unknown";
   let player2Name = players.length > 1 ? getPlayerName(players[1]) : undefined;
   
-  // Ensure player names are strings
-  if (typeof player1Name !== 'string') {
-    player1Name = String(player1Name || 'Unknown');
+  // Ensure player names are strings and not empty
+  if (typeof player1Name !== 'string' || !player1Name || player1Name.trim() === '') {
+    player1Name = 'Unknown';
+  } else {
+    player1Name = player1Name.trim();
   }
-  if (player2Name && typeof player2Name !== 'string') {
-    player2Name = String(player2Name);
+  if (player2Name) {
+    if (typeof player2Name !== 'string' || !player2Name || player2Name.trim() === '') {
+      player2Name = undefined;
+    } else {
+      player2Name = player2Name.trim();
+    }
   }
   
   // Determine run type
   const runType: 'solo' | 'co-op' = players.length > 1 ? 'co-op' : 'solo';
   
-  // Map category - handle both string ID and embedded object
-  const srcCategoryId = extractId(run.category);
-  const srcCategoryName = extractName(run.category);
-  let ourCategoryId = categoryMapping.get(srcCategoryId);
-  // Try name mapping if ID mapping failed and we have name mapping available
-  if (!ourCategoryId && srcCategoryName && categoryNameMapping) {
-    ourCategoryId = categoryNameMapping.get(srcCategoryName.toLowerCase());
+  // Extract and map category - use unified extraction
+  const categoryData = extractIdAndName(run.category);
+  let ourCategoryId = categoryMapping.get(categoryData.id);
+  if (!ourCategoryId && categoryData.name && categoryNameMapping) {
+    ourCategoryId = categoryNameMapping.get(categoryData.name.toLowerCase().trim());
   }
-  // Always store SRC category name if available (for display fallback)
-  const finalCategoryName = srcCategoryName || undefined;
+  const finalCategoryName = categoryData.name || undefined;
   
-  // Map platform - handle both string ID and embedded object
-  const srcPlatformId = extractId(run.system?.platform);
-  const srcPlatformName = extractName(run.system?.platform);
-  let ourPlatformId = platformMapping.get(srcPlatformId);
-  // Try name mapping if ID mapping failed and we have name mapping available
-  if (!ourPlatformId && srcPlatformName && platformNameMapping) {
-    ourPlatformId = platformNameMapping.get(srcPlatformName.toLowerCase());
+  // Extract and map platform - use unified extraction
+  const platformData = extractIdAndName(run.system?.platform);
+  let ourPlatformId = platformMapping.get(platformData.id);
+  if (!ourPlatformId && platformData.name && platformNameMapping) {
+    ourPlatformId = platformNameMapping.get(platformData.name.toLowerCase().trim());
   }
-  // Always store SRC platform name if available (for display fallback)
-  const finalPlatformName = srcPlatformName || undefined;
+  const finalPlatformName = platformData.name || undefined;
   
-  // Map level - handle both string ID and embedded object
-  const srcLevelId = extractId(run.level);
-  const srcLevelName = extractName(run.level);
-  let ourLevelId = srcLevelId ? levelMapping.get(srcLevelId) : undefined;
-  // Always store SRC level name if available (for display fallback)
-  const finalLevelName = srcLevelName || undefined;
+  // Extract and map level - use unified extraction
+  const levelData = extractIdAndName(run.level);
+  let ourLevelId = levelData.id ? levelMapping.get(levelData.id) : undefined;
+  const finalLevelName = levelData.name || undefined;
   
-  // Use mapped IDs or fallback to SRC IDs
-  if (!ourCategoryId) {
-    ourCategoryId = srcCategoryId; // Fallback to SRC ID if no mapping
-  }
-  if (!ourPlatformId) {
-    ourPlatformId = srcPlatformId; // Fallback to SRC ID if no mapping
-  }
-  if (srcLevelId && !ourLevelId) {
-    ourLevelId = srcLevelId; // Fallback to SRC ID if no mapping
-  }
-  
-  // Ensure category and platform are strings (normalize to empty string if null/undefined)
+  // Normalize IDs (use empty string if mapping failed - SRC names will be used for display)
   ourCategoryId = ourCategoryId ? String(ourCategoryId).trim() : '';
   ourPlatformId = ourPlatformId ? String(ourPlatformId).trim() : '';
   

@@ -10,6 +10,7 @@ import {
   fetchCategories as fetchSRCCategories,
   fetchLevels as fetchSRCLevels,
   fetchPlatforms as fetchSRCPlatforms,
+  extractIdAndName,
   type SRCRun,
 } from "../speedruncom";
 import { 
@@ -54,46 +55,40 @@ export async function createSRCMappings() {
     fetchSRCLevels(gameId),
   ]);
 
-  // Create ID mappings (SRC ID -> our ID)
-  const categoryMapping = new Map<string, string>();
-  const platformMapping = new Map<string, string>();
-  const levelMapping = new Map<string, string>();
-
-  // Create name mappings (SRC name -> our ID) for fallback
-  const categoryNameMapping = new Map<string, string>();
-  const platformNameMapping = new Map<string, string>();
-
-  // Map categories by name (case-insensitive)
-  for (const srcCat of srcCategories) {
-    const ourCat = ourCategories.find(c => 
-      c.name.toLowerCase().trim() === srcCat.name.toLowerCase().trim()
-    );
-    if (ourCat) {
-      categoryMapping.set(srcCat.id, ourCat.id);
-      categoryNameMapping.set(srcCat.name.toLowerCase().trim(), ourCat.id);
+  // Generic mapping helper
+  const createMapping = <T extends { id: string; name: string }>(
+    srcItems: T[],
+    ourItems: Array<{ id: string; name: string }>,
+    createNameMapping: boolean = true
+  ): { idMapping: Map<string, string>; nameMapping: Map<string, string> } => {
+    const idMapping = new Map<string, string>();
+    const nameMapping = new Map<string, string>();
+    
+    for (const srcItem of srcItems) {
+      const ourItem = ourItems.find(item => 
+        item.name.toLowerCase().trim() === srcItem.name.toLowerCase().trim()
+      );
+      if (ourItem) {
+        idMapping.set(srcItem.id, ourItem.id);
+        if (createNameMapping) {
+          nameMapping.set(srcItem.name.toLowerCase().trim(), ourItem.id);
+        }
+      }
     }
-  }
+    
+    return { idMapping, nameMapping };
+  };
 
-  // Map platforms by name (case-insensitive)
-  for (const srcPlatform of srcPlatforms) {
-    const ourPlatform = ourPlatforms.find(p => 
-      p.name.toLowerCase().trim() === srcPlatform.name.toLowerCase().trim()
-    );
-    if (ourPlatform) {
-      platformMapping.set(srcPlatform.id, ourPlatform.id);
-      platformNameMapping.set(srcPlatform.name.toLowerCase().trim(), ourPlatform.id);
-    }
-  }
+  // Create mappings for categories, platforms, and levels
+  const categoryMaps = createMapping(srcCategories, ourCategories, true);
+  const platformMaps = createMapping(srcPlatforms, ourPlatforms, true);
+  const levelMaps = createMapping(srcLevels, ourLevels, false);
 
-  // Map levels by name (case-insensitive)
-  for (const srcLevel of srcLevels) {
-    const ourLevel = ourLevels.find(l => 
-      l.name.toLowerCase().trim() === srcLevel.name.toLowerCase().trim()
-    );
-    if (ourLevel) {
-      levelMapping.set(srcLevel.id, ourLevel.id);
-    }
-  }
+  const categoryMapping = categoryMaps.idMapping;
+  const platformMapping = platformMaps.idMapping;
+  const levelMapping = levelMaps.idMapping;
+  const categoryNameMapping = categoryMaps.nameMapping;
+  const platformNameMapping = platformMaps.nameMapping;
 
   return {
     categoryMapping,
@@ -109,94 +104,20 @@ export async function createSRCMappings() {
 
 /**
  * Extract SRC data from embedded API response
+ * Uses the unified extraction from speedruncom.ts
  */
 export function extractSRCData(srcRun: SRCRun) {
-  // Extract category
-  const srcCategoryId = typeof srcRun.category === 'string' 
-    ? srcRun.category 
-    : srcRun.category?.data?.id || '';
-  const srcCategoryName = typeof srcRun.category === 'string' 
-    ? '' 
-    : (srcRun.category?.data?.name || '');
-
-  // Extract platform
-  let srcPlatformId = '';
-  let srcPlatformName = '';
-  if (srcRun.system?.platform) {
-    if (typeof srcRun.system.platform === 'string') {
-      srcPlatformId = srcRun.system.platform;
-    } else {
-      srcPlatformId = srcRun.system.platform.data?.id || '';
-      srcPlatformName = srcRun.system.platform.data?.name || '';
-    }
-  }
-
-  // Extract level
-  let srcLevelId = '';
-  let srcLevelName = '';
-  if (srcRun.level) {
-    if (typeof srcRun.level === 'string') {
-      srcLevelId = srcRun.level;
-    } else {
-      srcLevelId = srcRun.level.data?.id || '';
-      srcLevelName = srcRun.level.data?.name || '';
-    }
-  }
+  const categoryData = extractIdAndName(srcRun.category);
+  const platformData = extractIdAndName(srcRun.system?.platform);
+  const levelData = extractIdAndName(srcRun.level);
 
   return {
-    srcCategoryId,
-    srcCategoryName,
-    srcPlatformId,
-    srcPlatformName,
-    srcLevelId,
-    srcLevelName,
-  };
-}
-
-/**
- * Map SRC IDs to our IDs using both ID and name mappings
- */
-export function mapSRCIdsToOurs(
-  srcData: ReturnType<typeof extractSRCData>,
-  mappings: Awaited<ReturnType<typeof createSRCMappings>>,
-  ourLevels: Array<{ id: string; name: string }>
-) {
-  // Map category
-  let ourCategoryId = mappings.categoryMapping.get(srcData.srcCategoryId);
-  if (!ourCategoryId && srcData.srcCategoryName) {
-    ourCategoryId = mappings.categoryNameMapping.get(srcData.srcCategoryName.toLowerCase().trim());
-  }
-  if (!ourCategoryId) {
-    ourCategoryId = srcData.srcCategoryId; // Fallback to SRC ID
-  }
-
-  // Map platform
-  let ourPlatformId = mappings.platformMapping.get(srcData.srcPlatformId);
-  if (!ourPlatformId && srcData.srcPlatformName) {
-    ourPlatformId = mappings.platformNameMapping.get(srcData.srcPlatformName.toLowerCase().trim());
-  }
-  if (!ourPlatformId) {
-    ourPlatformId = srcData.srcPlatformId; // Fallback to SRC ID
-  }
-
-  // Map level
-  let ourLevelId = srcData.srcLevelId ? mappings.levelMapping.get(srcData.srcLevelId) : undefined;
-  if (!ourLevelId && srcData.srcLevelName) {
-    const ourLevel = ourLevels.find(l => 
-      l.name.toLowerCase().trim() === srcData.srcLevelName.toLowerCase().trim()
-    );
-    if (ourLevel) {
-      ourLevelId = ourLevel.id;
-    }
-  }
-  if (srcData.srcLevelId && !ourLevelId) {
-    ourLevelId = srcData.srcLevelId; // Fallback to SRC ID
-  }
-
-  return {
-    ourCategoryId,
-    ourPlatformId,
-    ourLevelId,
+    srcCategoryId: categoryData.id,
+    srcCategoryName: categoryData.name,
+    srcPlatformId: platformData.id,
+    srcPlatformName: platformData.name,
+    srcLevelId: levelData.id,
+    srcLevelName: levelData.name,
   };
 }
 
@@ -288,11 +209,7 @@ export async function importSRCRuns(
           continue;
         }
 
-        // Extract SRC data and map to our IDs
-        const srcData = extractSRCData(srcRun);
-        const ourIds = mapSRCIdsToOurs(srcData, mappings, mappings.ourLevels);
-
-        // Map the run using the utility function
+        // Map the run using the utility function (it already handles all mapping)
         const mappedRun = mapSRCRunToLeaderboardEntry(
           srcRun,
           undefined,
@@ -304,25 +221,26 @@ export async function importSRCRuns(
           mappings.platformNameMapping
         );
 
-        // Override with mapped IDs
-        mappedRun.category = ourIds.ourCategoryId;
-        mappedRun.platform = ourIds.ourPlatformId;
-        if (ourIds.ourLevelId) {
-          mappedRun.level = ourIds.ourLevelId;
-        }
+        // Extract SRC data for validation (mapping already done in mapSRCRunToLeaderboardEntry)
+        const srcData = extractSRCData(srcRun);
 
-        // Preserve SRC names for display fallback
-        if (srcData.srcCategoryName) mappedRun.srcCategoryName = srcData.srcCategoryName;
-        if (srcData.srcPlatformName) mappedRun.srcPlatformName = srcData.srcPlatformName;
-        if (srcData.srcLevelName) mappedRun.srcLevelName = srcData.srcLevelName;
-
-        // Basic validation
-        if (!mappedRun.category || !mappedRun.platform) {
+        // Basic validation - must have category and platform (either mapped or SRC name)
+        if (!mappedRun.category && !srcData.srcCategoryName) {
           result.skipped++;
-          result.errors.push(`Run ${srcRun.id}: missing category or platform`);
+          result.errors.push(`Run ${srcRun.id}: missing category`);
           onProgress?.({ total: srcRuns.length, imported: result.imported, skipped: result.skipped });
           continue;
         }
+        if (!mappedRun.platform && !srcData.srcPlatformName) {
+          result.skipped++;
+          result.errors.push(`Run ${srcRun.id}: missing platform`);
+          onProgress?.({ total: srcRuns.length, imported: result.imported, skipped: result.skipped });
+          continue;
+        }
+        
+        // If mapping failed, ensure we have at least empty strings (not undefined)
+        if (!mappedRun.category) mappedRun.category = '';
+        if (!mappedRun.platform) mappedRun.platform = '';
 
         // Normalize player names
         mappedRun.playerName = (mappedRun.playerName || 'Unknown').trim();
