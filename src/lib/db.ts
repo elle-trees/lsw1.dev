@@ -44,6 +44,7 @@ import {
   deleteLevelFirestore,
   moveLevelUpFirestore,
   moveLevelDownFirestore,
+  updateLevelCategoryDisabledFirestore,
   getPlayersWithTwitchUsernamesFirestore,
   getDownloadCategoriesFirestore,
   addDownloadCategoryFirestore,
@@ -206,6 +207,7 @@ export const updateLevel = updateLevelFirestore;
 export const deleteLevel = deleteLevelFirestore;
 export const moveLevelUp = moveLevelUpFirestore;
 export const moveLevelDown = moveLevelDownFirestore;
+export const updateLevelCategoryDisabled = updateLevelCategoryDisabledFirestore;
 
 export const getPlayersWithTwitchUsernames = getPlayersWithTwitchUsernamesFirestore;
 

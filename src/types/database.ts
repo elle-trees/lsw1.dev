@@ -57,6 +57,7 @@ export interface Level {
   id: string;
   name: string;
   order?: number; // Order for displaying levels (lower numbers appear first)
+  disabledCategories?: Record<string, boolean>; // Map of categoryId -> disabled state (true = disabled)
 }
 
 export interface Platform {

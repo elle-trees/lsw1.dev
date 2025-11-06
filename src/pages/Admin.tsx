@@ -55,6 +55,7 @@ import {
   deleteAllImportedSRCRuns,
   getCategories,
   getVerifiedRunsWithInvalidData,
+  updateLevelCategoryDisabled,
 } from "@/lib/db";
 import { importSRCRuns, type ImportResult } from "@/lib/speedruncom/importService";
 import { useUploadThing } from "@/lib/uploadthing";
@@ -262,6 +263,12 @@ const Admin = () => {
     fetchCategories(categoryType);
     setManualRun(prev => ({ ...prev, category: "", level: "" })); // Reset category and level when type changes
   }, [manualRunLeaderboardType]);
+
+  // Fetch categories when level leaderboard type changes
+  useEffect(() => {
+    const categoryType = levelLeaderboardType === 'community-golds' ? 'regular' : levelLeaderboardType;
+    fetchCategories(categoryType);
+  }, [levelLeaderboardType]);
 
   const fetchAllData = async () => {
     if (hasFetchedData) return;
@@ -3109,6 +3116,97 @@ const Admin = () => {
                       </div>
                     )}
                   </div>
+                  
+                  {/* Category Management for Levels */}
+                  {availableLevels.length > 0 && (
+                    <div className="mt-6 pt-6 border-t border-[hsl(235,13%,30%)]">
+                      <h3 className="text-base font-semibold mb-4">Disable Levels by Category</h3>
+                      <p className="text-sm text-[hsl(222,15%,60%)] mb-4">
+                        Disable specific levels from appearing in certain categories for {levelLeaderboardType === 'individual-level' ? 'Individual Level' : 'Community Golds'} runs.
+                      </p>
+                      <div className="space-y-4 max-h-[500px] overflow-y-auto">
+                        {availableLevels.map((level) => {
+                          // Get categories for the current leaderboard type
+                          // For community-golds, use regular categories (community golds use regular categories)
+                          const categoryType = levelLeaderboardType === 'community-golds' ? 'regular' : levelLeaderboardType;
+                          const relevantCategories = firestoreCategories.filter(cat => 
+                            (cat.leaderboardType === categoryType) || 
+                            (levelLeaderboardType === 'community-golds' && cat.leaderboardType === 'regular')
+                          );
+                          
+                          if (relevantCategories.length === 0) {
+                            return null;
+                          }
+                          
+                          const isDisabled = (categoryId: string) => {
+                            return level.disabledCategories?.[categoryId] === true;
+                          };
+                          
+                          return (
+                            <div key={level.id} className="bg-[hsl(240,21%,15%)] rounded-lg p-4 border border-[hsl(235,13%,30%)]">
+                              <div className="font-medium text-sm mb-3 text-[#f2cdcd]">{level.name}</div>
+                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                {relevantCategories.map((category) => (
+                                  <label
+                                    key={category.id}
+                                    className="flex items-center gap-2 p-2 rounded hover:bg-[hsl(235,19%,13%)] cursor-pointer transition-colors"
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={!isDisabled(category.id)}
+                                      onChange={async (e) => {
+                                        const disabled = !e.target.checked;
+                                        try {
+                                          const success = await updateLevelCategoryDisabled(
+                                            level.id,
+                                            category.id,
+                                            disabled
+                                          );
+                                          if (success) {
+                                            // Update local state
+                                            setAvailableLevels(prev => 
+                                              prev.map(l => {
+                                                if (l.id === level.id) {
+                                                  const disabledCategories = l.disabledCategories || {};
+                                                  if (disabled) {
+                                                    disabledCategories[category.id] = true;
+                                                  } else {
+                                                    delete disabledCategories[category.id];
+                                                  }
+                                                  return { ...l, disabledCategories };
+                                                }
+                                                return l;
+                                              })
+                                            );
+                                            toast({
+                                              title: disabled ? "Level Disabled" : "Level Enabled",
+                                              description: `${level.name} is now ${disabled ? 'disabled' : 'enabled'} for ${category.name}.`,
+                                            });
+                                          } else {
+                                            throw new Error("Failed to update level category state");
+                                          }
+                                        } catch (error: any) {
+                                          toast({
+                                            title: "Error",
+                                            description: error.message || "Failed to update level category state.",
+                                            variant: "destructive",
+                                          });
+                                        }
+                                      }}
+                                      className="w-4 h-4 rounded border-[hsl(235,13%,30%)] bg-[hsl(240,21%,15%)] text-[#cba6f7] focus:ring-2 focus:ring-[#cba6f7] cursor-pointer"
+                                    />
+                                    <span className={`text-xs ${isDisabled(category.id) ? 'text-[hsl(222,15%,50%)] line-through' : 'text-[hsl(222,15%,70%)]'}`}>
+                                      {category.name}
+                                    </span>
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
                   </TabsContent>
                 </Tabs>
