@@ -4568,7 +4568,7 @@ const Admin = () => {
         </Card>
           </TabsContent>
         </Tabs>
-              </div>
+      </div>
 
       <style>{`
         @keyframes fadeIn {
