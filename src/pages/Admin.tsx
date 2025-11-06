@@ -900,9 +900,17 @@ const Admin = () => {
   const handleBatchVerify = async () => {
     if (!currentUser) return;
     
-    // Get the 10 most recent unverified imported runs
-    const unverifiedImported = importedSRCRuns
-      .filter(r => r.verified !== true)
+    // Get the 10 most recent unverified imported runs for the current tab
+    let unverifiedImported = importedSRCRuns.filter(r => r.verified !== true);
+    
+    // Filter by the current tab (Full Game vs Individual Levels)
+    unverifiedImported = unverifiedImported.filter(run => {
+      const runLeaderboardType = run.leaderboardType || 'regular';
+      return runLeaderboardType === importedRunsLeaderboardType;
+    });
+    
+    // Sort by date (most recent first) and take top 10
+    unverifiedImported = unverifiedImported
       .sort((a, b) => {
         // Sort by date (most recent first)
         if (!a.date && !b.date) return 0;
@@ -913,9 +921,10 @@ const Admin = () => {
       .slice(0, 10);
 
     if (unverifiedImported.length === 0) {
+      const tabName = importedRunsLeaderboardType === 'regular' ? 'Full Game' : 'Individual Levels';
       toast({
         title: "No Runs to Verify",
-        description: "There are no unverified imported runs to verify.",
+        description: `There are no unverified imported ${tabName} runs to verify.`,
         variant: "default",
       });
       return;
@@ -3474,13 +3483,71 @@ const Admin = () => {
                               <TableHead className="py-3 px-4 text-left">Platform</TableHead>
                               <TableHead className="py-3 px-4 text-left">Type</TableHead>
                               <TableHead className="py-3 px-4 text-left">Video</TableHead>
+                              <TableHead className="py-3 px-4 text-left">Issues</TableHead>
                               <TableHead className="py-3 px-4 text-center">Actions</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {unverifiedImported.slice((importedPage - 1) * itemsPerPage, importedPage * itemsPerPage).map((run) => {
+                              // Check for issues with this run
+                              const issues: string[] = [];
+                              
+                              // Check if category is missing or invalid
+                              const categoryExists = run.category ? 
+                                [...importedRunsCategories, ...firestoreCategories].some(c => c.id === run.category) : false;
+                              if (!run.category || run.category.trim() === "") {
+                                if (!run.srcCategoryName || run.srcCategoryName.trim() === "") {
+                                  issues.push("Missing Category");
+                                }
+                              } else if (!categoryExists) {
+                                issues.push("Invalid Category ID");
+                              }
+                              
+                              // Check if platform is missing or invalid
+                              const platformExists = run.platform ? 
+                                firestorePlatforms.some(p => p.id === run.platform) : false;
+                              if (!run.platform || run.platform.trim() === "") {
+                                if (!run.srcPlatformName || run.srcPlatformName.trim() === "") {
+                                  issues.push("Missing Platform");
+                                }
+                              } else if (!platformExists) {
+                                issues.push("Invalid Platform ID");
+                              }
+                              
+                              // Check if level is missing or invalid (for IL runs)
+                              if (importedRunsLeaderboardType === 'individual-level') {
+                                const levelExists = run.level ? 
+                                  availableLevels.some(l => l.id === run.level) : false;
+                                if (!run.level || run.level.trim() === "") {
+                                  if (!run.srcLevelName || run.srcLevelName.trim() === "") {
+                                    issues.push("Missing Level");
+                                  }
+                                } else if (!levelExists) {
+                                  issues.push("Invalid Level ID");
+                                }
+                              }
+                              
+                              // Check for other missing essential fields
+                              if (!run.playerName || run.playerName.trim() === "") {
+                                issues.push("Missing Player Name");
+                              }
+                              if (!run.time || run.time.trim() === "") {
+                                issues.push("Missing Time");
+                              }
+                              if (!run.date || run.date.trim() === "") {
+                                issues.push("Missing Date");
+                              }
+                              if (!run.runType) {
+                                issues.push("Missing Run Type");
+                              }
+                              
+                              // Check for co-op runs missing player2
+                              if (run.runType === 'co-op' && (!run.player2Name || run.player2Name.trim() === "")) {
+                                issues.push("Missing Player 2");
+                              }
+                              
                               return (
-                          <TableRow key={run.id} className="border-b border-[hsl(235,13%,30%)] hover:bg-[hsl(235,19%,13%)] transition-all duration-200 hover:shadow-md">
+                          <TableRow key={run.id} className={`border-b border-[hsl(235,13%,30%)] hover:bg-[hsl(235,19%,13%)] transition-all duration-200 hover:shadow-md ${issues.length > 0 ? 'bg-yellow-900/10' : ''}`}>
                             <TableCell className="py-3 px-4 font-medium">
                               <div className="flex items-center gap-2">
                                 <div className="flex flex-col gap-1">
@@ -3525,6 +3592,24 @@ const Admin = () => {
                                 >
                                   SRC <ExternalLink className="h-3 w-3" />
                                 </a>
+                              )}
+                            </TableCell>
+                            <TableCell className="py-3 px-4">
+                              {issues.length > 0 ? (
+                                <div className="flex flex-wrap gap-1">
+                                  {issues.map((issue, idx) => (
+                                    <Badge 
+                                      key={idx} 
+                                      variant="destructive" 
+                                      className="text-xs bg-yellow-600/20 text-yellow-400 border-yellow-600/50 hover:bg-yellow-600/30"
+                                    >
+                                      <AlertTriangle className="h-3 w-3 mr-1" />
+                                      {issue}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground text-xs">—</span>
                               )}
                             </TableCell>
                             <TableCell className="py-3 px-4 text-center space-x-2">
