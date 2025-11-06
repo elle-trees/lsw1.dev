@@ -66,6 +66,8 @@ import {
   getAllPlayersFirestore,
   updatePlayerFirestore,
   deletePlayerFirestore,
+  getPlayersWithSRCUsernamesFirestore,
+  runAutoclaimingForAllUsersFirestore,
 } from "./data/firestore";
 
 const defaultCategories = [
@@ -243,6 +245,8 @@ export const isDisplayNameAvailable = isDisplayNameAvailableFirestore;
 export const getAllPlayers = getAllPlayersFirestore;
 export const updatePlayer = updatePlayerFirestore;
 export const deletePlayer = deletePlayerFirestore;
+export const getPlayersWithSRCUsernames = getPlayersWithSRCUsernamesFirestore;
+export const runAutoclaimingForAllUsers = runAutoclaimingForAllUsersFirestore;
 
 export const backfillPointsForAllRuns = async () => {
   const { backfillPointsForAllRunsFirestore } = await import("./data/firestore");

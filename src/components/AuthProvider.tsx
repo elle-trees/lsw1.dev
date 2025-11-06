@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useRef } from "react";
 import { auth } from "@/lib/firebase";
-import { getPlayerByUid, createPlayer } from "@/lib/db";
+import { getPlayerByUid, createPlayer, runAutoclaimingForAllUsers } from "@/lib/db";
 import { CustomUser } from "@/types/database";
 import type { User } from "firebase/auth";
 import { logError } from "@/lib/errorUtils";
@@ -22,6 +22,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentUser, setCurrentUser] = useState<CustomUser | null>(null);
   const [loading, setLoading] = useState(true);
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const autoclaimIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const refreshPlayerData = async (user: User) => {
     try {
@@ -56,6 +57,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (refreshIntervalRef.current) {
         clearInterval(refreshIntervalRef.current);
         refreshIntervalRef.current = null;
+      }
+      if (autoclaimIntervalRef.current) {
+        clearInterval(autoclaimIntervalRef.current);
+        autoclaimIntervalRef.current = null;
       }
 
       if (user) {
@@ -131,6 +136,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           refreshIntervalRef.current = setInterval(() => {
             refreshPlayerData(user);
           }, 300000); // 5 minutes instead of 3 seconds
+          
+          // Run autoclaiming for all users periodically (every 10 minutes)
+          // This ensures all users with SRC usernames get their runs claimed
+          // Only run if user is authenticated (to avoid running for anonymous users)
+          if (user) {
+            // Run once after a short delay on login
+            setTimeout(() => {
+              runAutoclaimingForAllUsers().catch(error => {
+                logError(error, "AuthProvider.autoclaiming");
+              });
+            }, 30000); // Wait 30 seconds after login to avoid blocking initial load
+            
+            // Then run every 10 minutes
+            autoclaimIntervalRef.current = setInterval(() => {
+              runAutoclaimingForAllUsers().catch(error => {
+                logError(error, "AuthProvider.autoclaiming");
+              });
+            }, 600000); // 10 minutes
+          }
         })();
       } else {
         setCurrentUser(null);
@@ -142,6 +166,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       unsubscribe();
       if (refreshIntervalRef.current) {
         clearInterval(refreshIntervalRef.current);
+      }
+      if (autoclaimIntervalRef.current) {
+        clearInterval(autoclaimIntervalRef.current);
       }
     };
   }, []);

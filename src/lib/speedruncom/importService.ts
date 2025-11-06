@@ -19,6 +19,7 @@ import {
   getExistingSRCRunIds,
   addLeaderboardEntry,
   getPlayerByDisplayName,
+  runAutoclaimingForAllUsers,
 } from "../db";
 import { LeaderboardEntry } from "@/types/database";
 
@@ -568,6 +569,22 @@ export async function importSRCRuns(
         console.error(`Error processing run ${srcRun.id}:`, error);
         onProgress?.({ total: srcRuns.length, imported: result.imported, skipped: result.skipped });
       }
+    }
+
+    // After importing runs, run autoclaiming for all users with SRC usernames
+    // This ensures newly imported runs are automatically claimed
+    try {
+      console.log("[Import] Running autoclaiming for all users after import...");
+      const autoclaimResult = await runAutoclaimingForAllUsers();
+      if (autoclaimResult.totalClaimed > 0) {
+        console.log(`[Import] Autoclaimed ${autoclaimResult.totalClaimed} runs for ${autoclaimResult.totalUsers} users`);
+      }
+      if (autoclaimResult.errors.length > 0) {
+        console.warn(`[Import] Autoclaiming had ${autoclaimResult.errors.length} errors:`, autoclaimResult.errors);
+      }
+    } catch (autoclaimError) {
+      // Don't fail the import if autoclaiming fails
+      console.error("[Import] Error running autoclaiming after import:", autoclaimError);
     }
 
     return result;

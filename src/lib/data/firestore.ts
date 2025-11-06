@@ -642,6 +642,92 @@ export const getPlayersWithTwitchUsernamesFirestore = async (): Promise<Array<{ 
   }
 };
 
+/**
+ * Get all players with SRC usernames set
+ * Used for running autoclaiming for all users
+ */
+export const getPlayersWithSRCUsernamesFirestore = async (): Promise<Array<{ uid: string; srcUsername: string }>> => {
+  if (!db) return [];
+  try {
+    const q = query(collection(db, "players"), firestoreLimit(1000));
+    const querySnapshot = await getDocs(q);
+    
+    const players = querySnapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() } as Player))
+      .filter(player => player.srcUsername && player.srcUsername.trim())
+      .map(player => ({
+        uid: player.uid,
+        srcUsername: player.srcUsername!.trim(),
+      }));
+    
+    return players;
+  } catch (error) {
+    console.error("Error fetching players with SRC usernames:", error);
+    return [];
+  }
+};
+
+/**
+ * Run autoclaiming for all users with SRC usernames set
+ * This ensures that all users with autoclaiming enabled get their runs claimed
+ * Can be called periodically or when new runs are imported
+ */
+export const runAutoclaimingForAllUsersFirestore = async (): Promise<{ totalUsers: number; totalClaimed: number; errors: string[] }> => {
+  if (!db) {
+    return { totalUsers: 0, totalClaimed: 0, errors: [] };
+  }
+  
+  const result = { totalUsers: 0, totalClaimed: 0, errors: [] as string[] };
+  
+  try {
+    // Get all players with SRC usernames
+    const playersWithSRC = await getPlayersWithSRCUsernamesFirestore();
+    result.totalUsers = playersWithSRC.length;
+    
+    if (playersWithSRC.length === 0) {
+      return result;
+    }
+    
+    console.log(`[Autoclaiming] Running autoclaiming for ${playersWithSRC.length} users with SRC usernames`);
+    
+    // Run autoclaiming for each user
+    // Process in batches to avoid overwhelming the system
+    const BATCH_SIZE = 10;
+    for (let i = 0; i < playersWithSRC.length; i += BATCH_SIZE) {
+      const batch = playersWithSRC.slice(i, i + BATCH_SIZE);
+      
+      await Promise.all(
+        batch.map(async (player) => {
+          try {
+            const claimResult = await autoClaimRunsBySRCUsernameFirestore(player.uid, player.srcUsername);
+            result.totalClaimed += claimResult.claimed;
+            if (claimResult.errors.length > 0) {
+              result.errors.push(...claimResult.errors.map(err => `User ${player.uid}: ${err}`));
+            }
+          } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            result.errors.push(`User ${player.uid} (${player.srcUsername}): ${errorMsg}`);
+            console.error(`[Autoclaiming] Error autoclaiming for user ${player.uid}:`, error);
+          }
+        })
+      );
+      
+      // Small delay between batches to avoid rate limiting
+      if (i + BATCH_SIZE < playersWithSRC.length) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+    
+    console.log(`[Autoclaiming] Completed: ${result.totalClaimed} runs claimed for ${result.totalUsers} users`);
+    
+    return result;
+  } catch (error) {
+    console.error("[Autoclaiming] Error running autoclaiming for all users:", error);
+    result.errors.push(error instanceof Error ? error.message : String(error));
+    return result;
+  }
+};
+
 export const createPlayerFirestore = async (player: Omit<Player, 'id'>): Promise<string | null> => {
   if (!db) return null;
   try {

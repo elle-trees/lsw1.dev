@@ -97,7 +97,7 @@ service cloud.firestore {
                         // Client-side code handles case-insensitive matching - this rule is a safety check
                         (resource.data.importedFromSRC == true &&
                          get(/databases/$(database)/documents/players/$(request.auth.uid)).data.srcUsername != null &&
-                         (resource.data.srcPlayerName != null || resource.data.srcPlayer2Name != null));
+                         (resource.data.srcPlayerName != null || resource.data.srcPlayer2Name != null)));
     }
     
     // Download entries
