@@ -3090,26 +3090,41 @@ export const claimRunFirestore = async (runId: string, userId: string): Promise<
       }
       
       // If srcPlayerName is "Unknown" or empty but srcPlayerId exists, fetch from SRC API
-      
       if ((!actualSRCPlayerName || actualSRCPlayerName === "unknown") && runData.srcPlayerId) {
         try {
+          console.log(`[claimRun] Fetching player name for srcPlayerId: ${runData.srcPlayerId}`);
           const fetchedName = await fetchPlayerById(runData.srcPlayerId);
           if (fetchedName) {
             actualSRCPlayerName = fetchedName.trim().toLowerCase();
+            console.log(`[claimRun] Fetched player name: ${fetchedName} (normalized: ${actualSRCPlayerName})`);
+          } else {
+            console.warn(`[claimRun] fetchPlayerById returned null/empty for srcPlayerId: ${runData.srcPlayerId}`);
           }
         } catch (error) {
-          console.error("Error fetching player name from SRC API:", error);
+          console.error(`[claimRun] Error fetching player name from SRC API for srcPlayerId ${runData.srcPlayerId}:`, error);
+          // Continue with "Unknown" - will fail validation below with helpful error
         }
+      } else if ((!actualSRCPlayerName || actualSRCPlayerName === "unknown") && !runData.srcPlayerId) {
+        console.warn(`[claimRun] Run ${runId} has "Unknown" player name but no srcPlayerId. Run data:`, {
+          srcPlayerName: runData.srcPlayerName,
+          srcPlayerId: runData.srcPlayerId,
+          playerName: runData.playerName,
+          importedFromSRC: runData.importedFromSRC
+        });
       }
       
       if ((!actualSRCPlayer2Name || actualSRCPlayer2Name === "unknown") && runData.srcPlayer2Id) {
         try {
+          console.log(`[claimRun] Fetching player2 name for srcPlayer2Id: ${runData.srcPlayer2Id}`);
           const fetchedName = await fetchPlayerById(runData.srcPlayer2Id);
           if (fetchedName) {
             actualSRCPlayer2Name = fetchedName.trim().toLowerCase();
+            console.log(`[claimRun] Fetched player2 name: ${fetchedName} (normalized: ${actualSRCPlayer2Name})`);
+          } else {
+            console.warn(`[claimRun] fetchPlayerById returned null/empty for srcPlayer2Id: ${runData.srcPlayer2Id}`);
           }
         } catch (error) {
-          console.error("Error fetching player2 name from SRC API:", error);
+          console.error(`[claimRun] Error fetching player2 name from SRC API for srcPlayer2Id ${runData.srcPlayer2Id}:`, error);
         }
       }
       
@@ -3117,6 +3132,16 @@ export const claimRunFirestore = async (runId: string, userId: string): Promise<
                             (actualSRCPlayer2Name && actualSRCPlayer2Name === normalizedUserSRCUsername);
       
       if (!srcNameMatches) {
+        // If we couldn't fetch the name and srcPlayerId exists, provide more helpful error
+        if ((!actualSRCPlayerName || actualSRCPlayerName === "unknown") && runData.srcPlayerId) {
+          throw new Error(`Cannot claim run: Your Speedrun.com username "${player.srcUsername}" does not match this run's player. The run's player name could not be fetched from Speedrun.com (ID: ${runData.srcPlayerId}). Please contact an admin or try again later.`);
+        }
+        
+        // If srcPlayerId doesn't exist, the run might have been imported incorrectly
+        if ((!actualSRCPlayerName || actualSRCPlayerName === "unknown") && !runData.srcPlayerId) {
+          throw new Error(`Cannot claim run: This run was imported from Speedrun.com but is missing player information. The run shows player name "Unknown" and has no player ID. Please contact an admin to fix this run.`);
+        }
+        
         const displayName1 = actualSRCPlayerName && actualSRCPlayerName !== "unknown" ? actualSRCPlayerName : (runData.srcPlayerName || 'Unknown');
         const displayName2 = actualSRCPlayer2Name && actualSRCPlayer2Name !== "unknown" ? actualSRCPlayer2Name : (runData.srcPlayer2Name || 'Unknown');
         throw new Error(`Cannot claim run: Your Speedrun.com username "${player.srcUsername}" does not match this run's player name "${displayName1 || displayName2 || 'Unknown'}". Make sure your SRC username in Settings matches exactly (case-sensitive).`);
@@ -4253,26 +4278,62 @@ export const checkSRCRunExistsFirestore = async (srcRunId: string): Promise<bool
 /**
  * Get all existing srcRunIds for duplicate checking
  * More efficient than fetching all runs
+ * Checks both verified and unverified entries to prevent duplicate imports
+ * Note: Firestore doesn't support != queries with other filters without composite index
+ * So we fetch entries and filter client-side
  */
 export const getExistingSRCRunIdsFirestore = async (): Promise<Set<string>> => {
   if (!db) return new Set();
   try {
-    const q = query(
-      collection(db, "leaderboardEntries"),
-      where("srcRunId", "!=", ""),
-      firestoreLimit(5000)
-    );
-    const querySnapshot = await getDocs(q);
     const srcRunIds = new Set<string>();
-    querySnapshot.docs.forEach(doc => {
-      const data = doc.data();
-      if (data.srcRunId) {
-        srcRunIds.add(data.srcRunId);
+    
+    // Query verified entries (anyone can read)
+    try {
+      const verifiedQuery = query(
+        collection(db, "leaderboardEntries"),
+        where("verified", "==", true),
+        firestoreLimit(5000)
+      );
+      const verifiedSnapshot = await getDocs(verifiedQuery);
+      verifiedSnapshot.docs.forEach(doc => {
+        const data = doc.data();
+        // Filter client-side for entries with srcRunId
+        if (data.srcRunId && data.srcRunId.trim() !== "") {
+          srcRunIds.add(data.srcRunId);
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching verified SRC run IDs:", error);
+      // Continue with unverified check
+    }
+    
+    // Query unverified entries (admin-only, but try anyway - will fail gracefully if not admin)
+    try {
+      const unverifiedQuery = query(
+        collection(db, "leaderboardEntries"),
+        where("verified", "==", false),
+        firestoreLimit(5000)
+      );
+      const unverifiedSnapshot = await getDocs(unverifiedQuery);
+      unverifiedSnapshot.docs.forEach(doc => {
+        const data = doc.data();
+        // Filter client-side for entries with srcRunId
+        if (data.srcRunId && data.srcRunId.trim() !== "") {
+          srcRunIds.add(data.srcRunId);
+        }
+      });
+    } catch (error: any) {
+      // If permission denied, that's okay - we'll just use verified entries
+      // This function is typically called by admins during import, but might be called elsewhere
+      if (error?.code !== 'permission-denied') {
+        console.error("Error fetching unverified SRC run IDs:", error);
       }
-    });
+    }
+    
     return srcRunIds;
   } catch (error) {
     console.error("Error fetching existing SRC run IDs:", error);
+    // Return empty set on error - import will still work, just might import duplicates
     return new Set();
   }
 };

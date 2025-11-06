@@ -47,6 +47,7 @@ const RunDetails = () => {
   const [displayPoints, setDisplayPoints] = useState<number | null>(null);
   const leftColumnRef = useRef<HTMLDivElement>(null);
   const detailsCardRef = useRef<HTMLDivElement>(null);
+  const lastRefreshTimeRef = useRef<number>(Date.now());
 
   useEffect(() => {
     const fetchRunData = async () => {
@@ -142,41 +143,65 @@ const RunDetails = () => {
     fetchRunData();
   }, [runId, navigate, toast]);
   
-  // Refresh run data periodically to catch updates (e.g., when run is claimed)
+  // Refresh run data only when page becomes visible (not on every interval)
   useEffect(() => {
     if (!runId) return;
     
-    // Refresh every 30 seconds to catch any updates (like claiming)
-    const refreshInterval = setInterval(async () => {
-      try {
-        const runData = await getLeaderboardEntryById(runId);
-        if (runData) {
-          setRun(runData);
-          
-          // Re-fetch player data if playerId changed (run was claimed)
-          if (runData.playerId && runData.playerId !== run?.playerId) {
-            const playerData = await getPlayerByUid(runData.playerId);
-            setPlayer(playerData);
-          }
-          
-          // Re-fetch player2 data for co-op runs
-          if (runData.player2Id && runData.player2Id !== run?.player2Id && runData.runType === 'co-op') {
-            try {
-              const player2Data = await getPlayerByUid(runData.player2Id);
-              if (player2Data) {
-                setPlayer2(player2Data);
-              }
-            } catch {
-              // Silent fail
-            }
-          }
-        }
-      } catch (error) {
-        // Silent fail - don't spam errors
-      }
-    }, 30000); // Refresh every 30 seconds
+    const MIN_REFRESH_INTERVAL = 60000; // Minimum 1 minute between refreshes
     
-    return () => clearInterval(refreshInterval);
+    const handleVisibilityChange = async () => {
+      // Only refresh if page is visible and enough time has passed
+      if (document.visibilityState === 'visible') {
+        const timeSinceLastRefresh = Date.now() - lastRefreshTimeRef.current;
+        if (timeSinceLastRefresh < MIN_REFRESH_INTERVAL) {
+          return; // Skip if refreshed recently
+        }
+        
+        try {
+          const runData = await getLeaderboardEntryById(runId);
+          if (runData) {
+            // Only update if something actually changed
+            setRun(prevRun => {
+              if (prevRun && 
+                  prevRun.playerId === runData.playerId && 
+                  prevRun.player2Id === runData.player2Id &&
+                  prevRun.verified === runData.verified) {
+                return prevRun; // No changes, return previous
+              }
+              return runData;
+            });
+            
+            // Re-fetch player data if playerId changed (run was claimed)
+            if (runData.playerId && runData.playerId !== run?.playerId) {
+              const playerData = await getPlayerByUid(runData.playerId);
+              setPlayer(playerData);
+            }
+            
+            // Re-fetch player2 data for co-op runs
+            if (runData.player2Id && runData.player2Id !== run?.player2Id && runData.runType === 'co-op') {
+              try {
+                const player2Data = await getPlayerByUid(runData.player2Id);
+                if (player2Data) {
+                  setPlayer2(player2Data);
+                }
+              } catch {
+                // Silent fail
+              }
+            }
+            
+            lastRefreshTimeRef.current = Date.now();
+          }
+        } catch (error) {
+          // Silent fail - don't spam errors
+        }
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [runId, run?.playerId, run?.player2Id]);
 
   useEffect(() => {

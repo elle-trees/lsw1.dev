@@ -124,12 +124,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
           
           // Start refresh interval after initial data fetch
+          // Only refresh every 5 minutes - player data doesn't change frequently
           if (refreshIntervalRef.current) {
             clearInterval(refreshIntervalRef.current);
           }
           refreshIntervalRef.current = setInterval(() => {
             refreshPlayerData(user);
-          }, 3000);
+          }, 300000); // 5 minutes instead of 3 seconds
         })();
       } else {
         setCurrentUser(null);

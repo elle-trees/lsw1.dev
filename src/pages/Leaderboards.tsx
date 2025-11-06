@@ -30,6 +30,7 @@ const Leaderboards = () => {
   const itemsPerPage = 25;
   const requestCounterRef = useRef(0);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const lastRefreshTimeRef = useRef<number>(Date.now());
 
   useEffect(() => {
     const fetchData = async () => {
@@ -136,41 +137,51 @@ const Leaderboards = () => {
     };
   }, [selectedCategory, selectedPlatform, selectedRunType, selectedLevel, showObsoleteRuns, leaderboardType]);
   
-  // Refresh leaderboard data when page regains focus (e.g., after claiming a run in another tab)
+  // Only refresh when page becomes visible AND enough time has passed
   useEffect(() => {
-    const handleFocus = () => {
-      // Refresh data when user returns to the page
-      if (selectedCategory && selectedPlatform && selectedRunType) {
-        const hasLevelFilter = leaderboardType === 'regular' || selectedLevel;
-        if (hasLevelFilter) {
-          // Trigger a refresh by incrementing request counter
-          requestCounterRef.current++;
-          const fetchLeaderboardData = async () => {
-            setLoading(true);
-            try {
-              const data = await getLeaderboardEntries(
-                selectedCategory,
-                selectedPlatform,
-                selectedRunType as 'solo' | 'co-op',
-                showObsoleteRuns === "true",
-                leaderboardType,
-                (leaderboardType === 'individual-level' || leaderboardType === 'community-golds') ? selectedLevel : undefined
-              );
-              setLeaderboardData(data);
-              setCurrentPage(1);
-            } catch (error) {
-              // Silent fail
-            } finally {
-              setLoading(false);
-            }
-          };
-          fetchLeaderboardData();
+    const MIN_REFRESH_INTERVAL = 60000; // Minimum 1 minute between refreshes
+    
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        const timeSinceLastRefresh = Date.now() - lastRefreshTimeRef.current;
+        if (timeSinceLastRefresh < MIN_REFRESH_INTERVAL) {
+          return; // Skip if refreshed recently
+        }
+        
+        // Refresh data when user returns to the page
+        if (selectedCategory && selectedPlatform && selectedRunType) {
+          const hasLevelFilter = leaderboardType === 'regular' || selectedLevel;
+          if (hasLevelFilter) {
+            // Trigger a refresh by incrementing request counter
+            requestCounterRef.current++;
+            const fetchLeaderboardData = async () => {
+              setLoading(true);
+              try {
+                const data = await getLeaderboardEntries(
+                  selectedCategory,
+                  selectedPlatform,
+                  selectedRunType as 'solo' | 'co-op',
+                  showObsoleteRuns === "true",
+                  leaderboardType,
+                  (leaderboardType === 'individual-level' || leaderboardType === 'community-golds') ? selectedLevel : undefined
+                );
+                setLeaderboardData(data);
+                setCurrentPage(1);
+                lastRefreshTimeRef.current = Date.now();
+              } catch (error) {
+                // Silent fail
+              } finally {
+                setLoading(false);
+              }
+            };
+            fetchLeaderboardData();
+          }
         }
       }
     };
     
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [selectedCategory, selectedPlatform, selectedRunType, selectedLevel, showObsoleteRuns, leaderboardType]);
 
   return (

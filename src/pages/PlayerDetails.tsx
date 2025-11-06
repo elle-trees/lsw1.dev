@@ -146,6 +146,7 @@ const PlayerDetails = () => {
           profilePicture={player.profilePicture}
           bio={player.bio}
           pronouns={player.pronouns}
+          srcUsername={player.srcUsername}
         />
 
         {/* Pending Submissions Panel - Only show for own profile */}

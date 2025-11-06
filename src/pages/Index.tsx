@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,6 +16,7 @@ const Index = () => {
   const [totalVerifiedRuns, setTotalVerifiedRuns] = useState<number>(0);
   const [totalTime, setTotalTime] = useState<string>("00:00:00");
   const [statsLoading, setStatsLoading] = useState(true);
+  const lastRefreshTimeRef = useRef<number>(Date.now());
 
   useEffect(() => {
     const fetchData = async () => {
@@ -33,13 +34,21 @@ const Index = () => {
 
     fetchData();
     
-    // Refresh recent runs when page regains focus (e.g., after claiming a run in another tab)
-    const handleFocus = () => {
-      fetchData();
+    // Only refresh when page becomes visible AND enough time has passed
+    const MIN_REFRESH_INTERVAL = 30000; // Minimum 30 seconds between refreshes
+    
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        const timeSinceLastRefresh = Date.now() - lastRefreshTimeRef.current;
+        if (timeSinceLastRefresh >= MIN_REFRESH_INTERVAL) {
+          fetchData();
+          lastRefreshTimeRef.current = Date.now();
+        }
+      }
     };
     
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
   useEffect(() => {

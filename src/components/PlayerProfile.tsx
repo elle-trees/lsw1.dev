@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Trophy, Timer, Calendar, Gamepad2 } from "lucide-react";
+import { Trophy, Timer, Calendar, Gamepad2, ExternalLink, CheckCircle2, XCircle } from "lucide-react";
 
 interface PlayerStats {
   totalRuns: number;
@@ -18,9 +18,13 @@ interface PlayerProfileProps {
   profilePicture?: string; // URL to the player's profile picture
   bio?: string; // Bio/description for the player
   pronouns?: string; // Pronouns for the player
+  srcUsername?: string; // Speedrun.com username
 }
 
-export function PlayerProfile({ playerName, joinDate, stats, nameColor, profilePicture, bio, pronouns }: PlayerProfileProps) {
+export function PlayerProfile({ playerName, joinDate, stats, nameColor, profilePicture, bio, pronouns, srcUsername }: PlayerProfileProps) {
+  const isSRCLinked = !!srcUsername;
+  const autoclaimEnabled = isSRCLinked; // Autoclaiming is enabled when SRC username is set
+  
   return (
     <Card className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]">
       <CardHeader>
@@ -47,6 +51,38 @@ export function PlayerProfile({ playerName, joinDate, stats, nameColor, profileP
                 {bio}
               </p>
             )}
+            {/* SRC Link and Autoclaim Status */}
+            <div className="flex flex-wrap items-center gap-2 mt-3">
+              {isSRCLinked ? (
+                <>
+                  <Badge variant="outline" className="border-green-600/50 bg-green-600/10 text-green-400 text-xs px-2 py-0.5 flex items-center gap-1.5">
+                    <CheckCircle2 className="h-3 w-3" />
+                    <span>Linked with Speedrun.com</span>
+                    <a
+                      href={`https://www.speedrun.com/users/${srcUsername}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:underline flex items-center gap-1"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <span>{srcUsername}</span>
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </Badge>
+                  {autoclaimEnabled && (
+                    <Badge variant="outline" className="border-blue-600/50 bg-blue-600/10 text-blue-400 text-xs px-2 py-0.5 flex items-center gap-1.5">
+                      <CheckCircle2 className="h-3 w-3" />
+                      <span>Autoclaiming Enabled</span>
+                    </Badge>
+                  )}
+                </>
+              ) : (
+                <Badge variant="outline" className="border-ctp-surface1 text-ctp-subtext1 text-xs px-2 py-0.5 flex items-center gap-1.5">
+                  <XCircle className="h-3 w-3" />
+                  <span>Not linked with Speedrun.com</span>
+                </Badge>
+              )}
+            </div>
           </div>
         </CardTitle>
       </CardHeader>
