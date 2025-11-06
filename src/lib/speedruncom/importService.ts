@@ -36,9 +36,34 @@ export interface ImportProgress {
 }
 
 /**
- * Create mapping between SRC IDs and our IDs for categories, platforms, and levels
+ * SRC Mappings - stores all ID and name mappings between SRC and local data
  */
-export async function createSRCMappings() {
+interface SRCMappings {
+  // ID mappings: SRC ID -> Local ID
+  categoryMapping: Map<string, string>;
+  platformMapping: Map<string, string>;
+  levelMapping: Map<string, string>;
+  
+  // Name mappings: SRC name (lowercase) -> Local ID
+  categoryNameMapping: Map<string, string>;
+  platformNameMapping: Map<string, string>;
+  
+  // SRC ID -> SRC name (for fallback when embedded data is missing)
+  srcPlatformIdToName: Map<string, string>;
+  srcCategoryIdToName: Map<string, string>;
+  srcLevelIdToName: Map<string, string>;
+}
+
+// Cache for player and platform names fetched from API during import
+// This prevents duplicate API calls for the same ID
+const playerIdToNameCache = new Map<string, string>();
+const platformIdToNameCache = new Map<string, string>();
+
+/**
+ * Create mapping between SRC IDs and our IDs for categories, platforms, and levels
+ * Simplified and more robust mapping logic
+ */
+export async function createSRCMappings(): Promise<SRCMappings> {
   const gameId = await getLSWGameId();
   if (!gameId) {
     throw new Error("Could not find LEGO Star Wars game on speedrun.com");
@@ -54,72 +79,68 @@ export async function createSRCMappings() {
     fetchSRCLevels(gameId),
   ]);
 
-  // Create mappings by matching names (case-insensitive)
+  // Initialize mappings
   const categoryMapping = new Map<string, string>();
   const platformMapping = new Map<string, string>();
   const levelMapping = new Map<string, string>();
   const categoryNameMapping = new Map<string, string>();
   const platformNameMapping = new Map<string, string>();
-  
-  // Create reverse mappings from SRC ID to SRC name (for when embedded data is missing)
   const srcPlatformIdToName = new Map<string, string>();
   const srcCategoryIdToName = new Map<string, string>();
   const srcLevelIdToName = new Map<string, string>();
 
+  // Helper: normalize for comparison
+  const normalize = (str: string) => str.toLowerCase().trim();
+
   // Map categories
   for (const srcCat of srcCategories) {
-    // Store SRC category ID -> name mapping
-    if (srcCat.name) {
-      srcCategoryIdToName.set(srcCat.id, srcCat.name);
-    }
+    if (!srcCat.name) continue;
     
-    const ourCat = ourCategories.find(c => 
-      c.name.toLowerCase().trim() === srcCat.name.toLowerCase().trim()
-    );
+    // Store SRC ID -> name mapping
+    srcCategoryIdToName.set(srcCat.id, srcCat.name);
+    
+    // Find matching local category
+    const ourCat = ourCategories.find(c => normalize(c.name) === normalize(srcCat.name));
     if (ourCat) {
       categoryMapping.set(srcCat.id, ourCat.id);
-      categoryNameMapping.set(srcCat.name.toLowerCase().trim(), ourCat.id);
+      categoryNameMapping.set(normalize(srcCat.name), ourCat.id);
     }
   }
 
   // Map platforms
   for (const srcPlatform of srcPlatforms) {
-    // Platforms use names.international, not name
+    // Platforms use names.international (per SRC API docs)
     const platformName = srcPlatform.names?.international || srcPlatform.name || '';
     if (!platformName) {
       console.warn(`[SRC Mapping] Platform ${srcPlatform.id} has no name`);
       continue;
     }
     
-    // Store SRC platform ID -> name mapping (CRITICAL for fallback when platform isn't embedded)
+    // Store SRC ID -> name mapping (critical for fallback)
     srcPlatformIdToName.set(srcPlatform.id, platformName);
     
-    const ourPlatform = ourPlatforms.find(p => 
-      p.name.toLowerCase().trim() === platformName.toLowerCase().trim()
-    );
+    // Find matching local platform
+    const ourPlatform = ourPlatforms.find(p => normalize(p.name) === normalize(platformName));
     if (ourPlatform) {
       platformMapping.set(srcPlatform.id, ourPlatform.id);
-      platformNameMapping.set(platformName.toLowerCase().trim(), ourPlatform.id);
+      platformNameMapping.set(normalize(platformName), ourPlatform.id);
     } else {
-      // Log unmapped platforms for debugging
-      console.log(`[SRC Mapping] Platform "${platformName}" (ID: ${srcPlatform.id}) not found in local platforms`);
+      console.log(`[SRC Mapping] Platform "${platformName}" (ID: ${srcPlatform.id}) not found locally`);
     }
   }
-  
-  console.log(`[SRC Mapping] Created platform ID->name mapping with ${srcPlatformIdToName.size} entries`);
+
+  console.log(`[SRC Mapping] Created ${srcPlatformIdToName.size} platform ID->name mappings`);
 
   // Map levels
   for (const srcLevel of srcLevels) {
-    // Levels use name field
     const levelName = srcLevel.name || srcLevel.names?.international || '';
     if (!levelName) continue;
     
-    // Store SRC level ID -> name mapping
+    // Store SRC ID -> name mapping
     srcLevelIdToName.set(srcLevel.id, levelName);
     
-    const ourLevel = ourLevels.find(l => 
-      l.name.toLowerCase().trim() === levelName.toLowerCase().trim()
-    );
+    // Find matching local level
+    const ourLevel = ourLevels.find(l => normalize(l.name) === normalize(levelName));
     if (ourLevel) {
       levelMapping.set(srcLevel.id, ourLevel.id);
     }
@@ -134,14 +155,11 @@ export async function createSRCMappings() {
     srcPlatformIdToName,
     srcCategoryIdToName,
     srcLevelIdToName,
-    ourCategories,
-    ourPlatforms,
-    ourLevels,
   };
 }
 
 /**
- * Check if a run is a duplicate
+ * Check if a run is a duplicate based on run data
  */
 function isDuplicateRun(
   run: Partial<LeaderboardEntry>,
@@ -150,16 +168,17 @@ function isDuplicateRun(
   const normalizeName = (name: string) => name.trim().toLowerCase();
   const player1Name = normalizeName(run.playerName || '');
   const player2Name = run.player2Name ? normalizeName(run.player2Name) : '';
-  const runKey = `${player1Name}|${run.category}|${run.platform}|${run.runType}|${run.time}|${run.leaderboardType || 'regular'}|${run.level || ''}`;
   
-  // Check for exact duplicate
+  // Create run key: player1|player2|category|platform|runType|time|leaderboardType|level
+  const runKey = `${player1Name}|${player2Name}|${run.category || ''}|${run.platform || ''}|${run.runType || 'solo'}|${run.time || ''}|${run.leaderboardType || 'regular'}|${run.level || ''}`;
+  
   if (existingRunKeys.has(runKey)) {
     return true;
   }
 
-  // Check for co-op runs with swapped players
+  // For co-op runs, also check swapped players
   if (run.runType === 'co-op' && player2Name) {
-    const swappedKey = `${player2Name}|${run.category}|${run.platform}|${run.runType}|${run.time}|${run.leaderboardType || 'regular'}|${run.level || ''}`;
+    const swappedKey = `${player2Name}|${player1Name}|${run.category || ''}|${run.platform || ''}|${run.runType || 'co-op'}|${run.time || ''}|${run.leaderboardType || 'regular'}|${run.level || ''}`;
     if (existingRunKeys.has(swappedKey)) {
       return true;
     }
@@ -169,8 +188,72 @@ function isDuplicateRun(
 }
 
 /**
+ * Validate a mapped run before importing
+ * Returns validation errors if any
+ */
+function validateMappedRun(
+  run: Partial<LeaderboardEntry> & { srcRunId: string },
+  srcRunId: string
+): string[] {
+  const errors: string[] = [];
+
+  // Essential fields
+  if (!run.playerName || run.playerName.trim() === '') {
+    errors.push('missing player name');
+  }
+
+  if (!run.time || run.time.trim() === '') {
+    errors.push('missing time');
+  } else if (!/^\d{1,2}:\d{2}:\d{2}$/.test(run.time)) {
+    errors.push(`invalid time format "${run.time}" (expected HH:MM:SS)`);
+  }
+
+  if (!run.date || run.date.trim() === '') {
+    errors.push('missing date');
+  } else if (!/^\d{4}-\d{2}-\d{2}$/.test(run.date)) {
+    errors.push(`invalid date format "${run.date}" (expected YYYY-MM-DD)`);
+  }
+
+  // Category must be mapped (we only import runs with matching categories)
+  if (!run.category || run.category.trim() === '') {
+    errors.push(`category "${run.srcCategoryName || 'Unknown'}" not found on leaderboards`);
+  }
+
+  // Platform validation - allow empty if SRC name exists
+  if (!run.platform && !run.srcPlatformName) {
+    errors.push('missing platform');
+  }
+
+  // Run type must be valid
+  if (run.runType && run.runType !== 'solo' && run.runType !== 'co-op') {
+    errors.push(`invalid run type "${run.runType}"`);
+  }
+
+  // Leaderboard type must be valid
+  if (run.leaderboardType && 
+      run.leaderboardType !== 'regular' && 
+      run.leaderboardType !== 'individual-level' && 
+      run.leaderboardType !== 'community-golds') {
+    errors.push(`invalid leaderboard type "${run.leaderboardType}"`);
+  }
+
+  // For IL/Community Golds, level should be present if category requires it
+  if ((run.leaderboardType === 'individual-level' || run.leaderboardType === 'community-golds') && 
+      !run.level && !run.srcLevelName) {
+    errors.push('missing level for individual level run');
+  }
+
+  // For co-op, player2Name should be present
+  if (run.runType === 'co-op' && (!run.player2Name || run.player2Name.trim() === '')) {
+    errors.push('missing player 2 name for co-op run');
+  }
+
+  return errors;
+}
+
+/**
  * Import runs from speedrun.com
- * Simplified approach: try to import, catch and log errors but continue
+ * Simplified, robust implementation with clear error handling
  */
 export async function importSRCRuns(
   onProgress?: (progress: ImportProgress) => void
@@ -183,29 +266,29 @@ export async function importSRCRuns(
   };
 
   try {
-    // Get game ID
+    // Step 1: Get game ID
     const gameId = await getLSWGameId();
     if (!gameId) {
       result.errors.push("Could not find LEGO Star Wars game on speedrun.com");
       return result;
     }
 
-    // Fetch runs from SRC
+    // Step 2: Fetch runs from SRC
     let srcRuns: SRCRun[];
     try {
       srcRuns = await fetchRunsNotOnLeaderboards(gameId, 500);
     } catch (error) {
-      result.errors.push(`Failed to fetch runs from speedrun.com: ${error instanceof Error ? error.message : String(error)}`);
+      result.errors.push(`Failed to fetch runs: ${error instanceof Error ? error.message : String(error)}`);
       return result;
     }
 
     if (srcRuns.length === 0) {
-      result.errors.push("No runs found to import from speedrun.com");
+      result.errors.push("No runs found to import");
       return result;
     }
 
-    // Create mappings
-    let mappings;
+    // Step 3: Create mappings
+    let mappings: SRCMappings;
     try {
       mappings = await createSRCMappings();
     } catch (error) {
@@ -213,33 +296,38 @@ export async function importSRCRuns(
       return result;
     }
 
-    // Get existing runs for duplicate checking
-    let existingRuns;
+    // Step 4: Get existing runs for duplicate checking
+    let existingRuns: LeaderboardEntry[];
     try {
       existingRuns = await getAllRunsForDuplicateCheck();
     } catch (error) {
       result.errors.push(`Failed to fetch existing runs: ${error instanceof Error ? error.message : String(error)}`);
       return result;
     }
+
+    // Build sets for duplicate checking
     const existingSRCRunIds = new Set(
       existingRuns.filter(r => r.srcRunId).map(r => r.srcRunId!)
     );
 
-    // Create duplicate check keys (only for verified runs)
     const normalizeName = (name: string) => name.trim().toLowerCase();
     const existingRunKeys = new Set<string>();
     for (const run of existingRuns.filter(r => r.verified)) {
-      const key = `${normalizeName(run.playerName)}|${run.category}|${run.platform}|${run.runType}|${run.time}|${run.leaderboardType || 'regular'}|${run.level || ''}`;
+      const player1Name = normalizeName(run.playerName);
+      const player2Name = run.player2Name ? normalizeName(run.player2Name) : '';
+      const key = `${player1Name}|${player2Name}|${run.category || ''}|${run.platform || ''}|${run.runType || 'solo'}|${run.time || ''}|${run.leaderboardType || 'regular'}|${run.level || ''}`;
       existingRunKeys.add(key);
-      if (run.runType === 'co-op' && run.player2Name) {
-        const swappedKey = `${normalizeName(run.player2Name)}|${run.category}|${run.platform}|${run.runType}|${run.time}|${run.leaderboardType || 'regular'}|${run.level || ''}`;
+      
+      // For co-op runs, also add swapped key
+      if (run.runType === 'co-op' && player2Name) {
+        const swappedKey = `${player2Name}|${player1Name}|${run.category || ''}|${run.platform || ''}|${run.runType || 'co-op'}|${run.time || ''}|${run.leaderboardType || 'regular'}|${run.level || ''}`;
         existingRunKeys.add(swappedKey);
       }
     }
 
     onProgress?.({ total: srcRuns.length, imported: 0, skipped: 0 });
 
-    // Import each run
+    // Step 5: Process each run
     for (const srcRun of srcRuns) {
       try {
         // Skip if already imported
@@ -249,10 +337,10 @@ export async function importSRCRuns(
           continue;
         }
 
-              // Map the run
-        let mappedRun;
+        // Map SRC run to our format (now async to support fetching names from API)
+        let mappedRun: Partial<LeaderboardEntry> & { srcRunId: string; importedFromSRC: boolean };
         try {
-          mappedRun = mapSRCRunToLeaderboardEntry(
+          mappedRun = await mapSRCRunToLeaderboardEntry(
             srcRun,
             undefined,
             mappings.categoryMapping,
@@ -263,104 +351,45 @@ export async function importSRCRuns(
             mappings.platformNameMapping,
             mappings.srcPlatformIdToName,
             mappings.srcCategoryIdToName,
-            mappings.srcLevelIdToName
+            mappings.srcLevelIdToName,
+            playerIdToNameCache,
+            platformIdToNameCache
           );
         } catch (mapError) {
           result.skipped++;
-          result.errors.push(`Run ${srcRun.id}: Failed to map run data: ${mapError instanceof Error ? mapError.message : String(mapError)}`);
-          console.error(`Error mapping run ${srcRun.id}:`, mapError);
+          result.errors.push(`Run ${srcRun.id}: mapping failed: ${mapError instanceof Error ? mapError.message : String(mapError)}`);
           onProgress?.({ total: srcRuns.length, imported: result.imported, skipped: result.skipped });
           continue;
         }
 
-        // Set import flags - ensure importedFromSRC is explicitly true (boolean)
-        mappedRun.importedFromSRC = true as boolean;
+        // Set import metadata
+        mappedRun.importedFromSRC = true;
         mappedRun.srcRunId = srcRun.id;
         mappedRun.verified = false;
-        
-        // Ensure runType is set (required field)
-        if (!mappedRun.runType) {
-          mappedRun.runType = 'solo';
-        }
-        
-        // Ensure leaderboardType is set (required field)
-        if (!mappedRun.leaderboardType) {
-          mappedRun.leaderboardType = 'regular';
-        }
-        
-        // Ensure all required fields for import are present
-        if (!mappedRun.srcCategoryName && !mappedRun.category) {
-          console.warn(`Run ${srcRun.id}: No category ID or SRC category name`);
-        }
-        if (!mappedRun.srcPlatformName && !mappedRun.platform) {
-          console.warn(`Run ${srcRun.id}: No platform ID or SRC platform name`);
-        }
 
-        // Ensure required fields are present
+        // Ensure required fields have defaults
+        if (!mappedRun.runType) mappedRun.runType = 'solo';
+        if (!mappedRun.leaderboardType) mappedRun.leaderboardType = 'regular';
         if (!mappedRun.playerName || mappedRun.playerName.trim() === '') {
           mappedRun.playerName = 'Unknown';
         }
-        
-        // Validate and ensure time format is correct
-        if (!mappedRun.time || mappedRun.time.trim() === '') {
+
+        // Validate the mapped run
+        const validationErrors = validateMappedRun(mappedRun, srcRun.id);
+        if (validationErrors.length > 0) {
           result.skipped++;
-          result.errors.push(`Run ${srcRun.id}: missing time`);
-          onProgress?.({ total: srcRuns.length, imported: result.imported, skipped: result.skipped });
-          continue;
-        }
-        
-        // Validate time format (HH:MM:SS)
-        if (!/^\d{1,2}:\d{2}:\d{2}$/.test(mappedRun.time)) {
-          result.skipped++;
-          result.errors.push(`Run ${srcRun.id}: invalid time format "${mappedRun.time}" (expected HH:MM:SS)`);
-          onProgress?.({ total: srcRuns.length, imported: result.imported, skipped: result.skipped });
-          continue;
-        }
-        
-        // Validate and ensure date format is correct
-        if (!mappedRun.date || mappedRun.date.trim() === '') {
-          result.skipped++;
-          result.errors.push(`Run ${srcRun.id}: missing date`);
-          onProgress?.({ total: srcRuns.length, imported: result.imported, skipped: result.skipped });
-          continue;
-        }
-        
-        // Validate date format (YYYY-MM-DD)
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(mappedRun.date)) {
-          result.skipped++;
-          result.errors.push(`Run ${srcRun.id}: invalid date format "${mappedRun.date}" (expected YYYY-MM-DD)`);
+          result.errors.push(`Run ${srcRun.id}: ${validationErrors.join(', ')}`);
           onProgress?.({ total: srcRuns.length, imported: result.imported, skipped: result.skipped });
           continue;
         }
 
-        // Skip runs that don't have a matching category on our leaderboards
-        // Category is required - we only import runs that can be properly categorized
-        if (!mappedRun.category || mappedRun.category.trim() === '') {
-          // No category mapping found - skip this run
-          result.skipped++;
-          result.errors.push(`Run ${srcRun.id}: category "${mappedRun.srcCategoryName || 'Unknown'}" not found on leaderboards`);
-          onProgress?.({ total: srcRuns.length, imported: result.imported, skipped: result.skipped });
-          continue;
-        }
-        // Handle platform - be more lenient
+        // Handle platform - allow empty if SRC name exists
         if (!mappedRun.platform || mappedRun.platform.trim() === '') {
           if (!mappedRun.srcPlatformName) {
-            // Log the raw platform data for debugging
-            if (result.imported + result.skipped < 5) {
-              console.log(`[Import] Run ${srcRun.id} has no platform data:`, {
-                system: srcRun.system,
-                platform: srcRun.system?.platform,
-                platformType: typeof srcRun.system?.platform,
-                platformData: srcRun.system?.platform,
-              });
-            }
-            // For imported runs, allow empty platform - admins can fix it later
-            // Use a placeholder platform ID so it passes validation
             mappedRun.platform = '';
             mappedRun.srcPlatformName = 'Unknown Platform (from SRC)';
             result.errors.push(`Run ${srcRun.id}: missing platform (using placeholder)`);
           } else {
-            // For imported runs with SRC names, empty platform ID is OK - validation allows it
             mappedRun.platform = '';
           }
         }
@@ -378,7 +407,7 @@ export async function importSRCRuns(
           continue;
         }
 
-        // Check player matching (for warnings, but don't block import)
+        // Check player matching (for warnings, doesn't block import)
         const player1Matched = await getPlayerByDisplayName(mappedRun.playerName);
         const player2Matched = mappedRun.player2Name ? await getPlayerByDisplayName(mappedRun.player2Name) : null;
 
@@ -386,43 +415,17 @@ export async function importSRCRuns(
         if (!player1Matched) unmatched.player1 = mappedRun.playerName;
         if (mappedRun.player2Name && !player2Matched) unmatched.player2 = mappedRun.player2Name;
 
-        // Log the mapped run before attempting to add (for first few runs)
-        if (result.imported + result.skipped < 3) {
-          console.log(`[Import] Attempting to add run ${srcRun.id}:`, {
-            category: mappedRun.category,
-            platform: mappedRun.platform,
-            srcCategoryName: mappedRun.srcCategoryName,
-            srcPlatformName: mappedRun.srcPlatformName,
-            srcLevelName: mappedRun.srcLevelName,
-            importedFromSRC: mappedRun.importedFromSRC,
-            playerName: mappedRun.playerName,
-            player2Name: mappedRun.player2Name,
-            time: mappedRun.time,
-            date: mappedRun.date,
-            leaderboardType: mappedRun.leaderboardType,
-            runType: mappedRun.runType,
-            level: mappedRun.level,
-            // Raw SRC data for debugging
-            rawPlatform: srcRun.system?.platform,
-            rawPlatformType: typeof srcRun.system?.platform,
-            rawPlayers: srcRun.players,
-            rawCategory: srcRun.category,
-            rawLevel: srcRun.level,
-          });
-        }
-
-        // Try to add the run
+        // Save to database
         try {
           const addedRunId = await addLeaderboardEntry(mappedRun as LeaderboardEntry);
-
           if (!addedRunId) {
             result.skipped++;
-            result.errors.push(`Run ${srcRun.id}: failed to add to database`);
+            result.errors.push(`Run ${srcRun.id}: failed to save to database`);
             onProgress?.({ total: srcRuns.length, imported: result.imported, skipped: result.skipped });
             continue;
           }
 
-          // Store unmatched players
+          // Track unmatched players
           if (unmatched.player1 || unmatched.player2) {
             result.unmatchedPlayers.set(addedRunId, unmatched);
           }
@@ -430,23 +433,22 @@ export async function importSRCRuns(
           // Add to existing keys to prevent batch duplicates
           const player1Name = normalizeName(mappedRun.playerName);
           const player2Name = mappedRun.player2Name ? normalizeName(mappedRun.player2Name) : '';
-          const runKey = `${player1Name}|${mappedRun.category}|${mappedRun.platform}|${mappedRun.runType}|${mappedRun.time}|${mappedRun.leaderboardType || 'regular'}|${mappedRun.level || ''}`;
+          const runKey = `${player1Name}|${player2Name}|${mappedRun.category || ''}|${mappedRun.platform || ''}|${mappedRun.runType || 'solo'}|${mappedRun.time || ''}|${mappedRun.leaderboardType || 'regular'}|${mappedRun.level || ''}`;
           existingRunKeys.add(runKey);
 
           result.imported++;
           onProgress?.({ total: srcRuns.length, imported: result.imported, skipped: result.skipped });
 
         } catch (addError: any) {
-          // Catch validation or database errors
           result.skipped++;
           const errorMsg = addError?.message || String(addError);
           result.errors.push(`Run ${srcRun.id}: ${errorMsg}`);
-          console.error(`Failed to add run ${srcRun.id}:`, addError, mappedRun);
+          console.error(`Failed to save run ${srcRun.id}:`, addError);
           onProgress?.({ total: srcRuns.length, imported: result.imported, skipped: result.skipped });
         }
 
       } catch (error) {
-        // Catch any other errors in processing this run
+        // Catch any unexpected errors processing this run
         result.skipped++;
         result.errors.push(`Run ${srcRun.id}: ${error instanceof Error ? error.message : String(error)}`);
         console.error(`Error processing run ${srcRun.id}:`, error);
@@ -456,7 +458,7 @@ export async function importSRCRuns(
 
     return result;
   } catch (error) {
-    // Catch any unexpected errors and return them in the result instead of throwing
+    // Catch any unexpected top-level errors
     result.errors.push(`Unexpected error: ${error instanceof Error ? error.message : String(error)}`);
     console.error("Import error:", error);
     return result;
