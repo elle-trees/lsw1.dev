@@ -486,35 +486,44 @@ const Admin = () => {
           if (!run.verified && run.importedFromSRC) {
             const playerStatus: { player1?: string; player2?: string; player1Matched?: boolean; player2Matched?: boolean } = {};
             
-            // Check player1
+            // Check player1 - always set status if player name exists
             if (run.playerName && run.playerName.trim()) {
-              const player1 = await getPlayerByDisplayName(run.playerName);
-              if (player1) {
-                playerStatus.player1Matched = true;
-              } else {
-                playerStatus.player1 = run.playerName;
+              try {
+                const player1 = await getPlayerByDisplayName(run.playerName);
+                playerStatus.player1Matched = !!player1;
+                if (!player1) {
+                  playerStatus.player1 = run.playerName;
+                }
+              } catch (error) {
+                console.error(`Error checking player1 ${run.playerName}:`, error);
                 playerStatus.player1Matched = false;
+                playerStatus.player1 = run.playerName;
               }
             }
             
-            // Check player2
+            // Check player2 - always set status if player name exists
             if (run.player2Name && run.player2Name.trim()) {
-              const player2 = await getPlayerByDisplayName(run.player2Name);
-              if (player2) {
-                playerStatus.player2Matched = true;
-              } else {
-                playerStatus.player2 = run.player2Name;
+              try {
+                const player2 = await getPlayerByDisplayName(run.player2Name);
+                playerStatus.player2Matched = !!player2;
+                if (!player2) {
+                  playerStatus.player2 = run.player2Name;
+                }
+              } catch (error) {
+                console.error(`Error checking player2 ${run.player2Name}:`, error);
                 playerStatus.player2Matched = false;
+                playerStatus.player2 = run.player2Name;
               }
             }
             
             // Store status for all runs (both matched and unmatched)
-            // Only store if we have at least one player to check
+            // Always store if we have at least one player to check
             if (run.playerName || run.player2Name) {
               unmatchedMap.set(run.id, playerStatus);
             }
           }
         }
+        console.log(`[Admin] Player matching complete. Checked ${unmatchedMap.size} runs.`);
         setUnmatchedPlayers(unmatchedMap);
       } catch (importError) {
         console.error("Error fetching imported runs:", importError);
@@ -2642,6 +2651,7 @@ const Admin = () => {
                                 <TableHead className="py-3 px-4 text-left">Level</TableHead>
                               )}
                               <TableHead className="py-3 px-4 text-left">Time</TableHead>
+                              <TableHead className="py-3 px-4 text-left">Date</TableHead>
                               <TableHead className="py-3 px-4 text-left">Platform</TableHead>
                               <TableHead className="py-3 px-4 text-left">Type</TableHead>
                               <TableHead className="py-3 px-4 text-left">Video</TableHead>
@@ -2651,10 +2661,6 @@ const Admin = () => {
                           <TableBody>
                             {unverifiedImported.slice((importedPage - 1) * itemsPerPage, importedPage * itemsPerPage).map((run) => {
                               const unmatched = unmatchedPlayers.get(run.id);
-                              // Debug: log if unmatched is undefined but run has players
-                              if (!unmatched && (run.playerName || run.player2Name)) {
-                                console.log(`[Admin] No match status for run ${run.id}, player1: ${run.playerName}, player2: ${run.player2Name}`);
-                              }
                               return (
                           <TableRow key={run.id} className="border-b border-[hsl(235,13%,30%)] hover:bg-[hsl(235,19%,13%)] transition-all duration-200 hover:shadow-md">
                             <TableCell className="py-3 px-4 font-medium">
@@ -2701,6 +2707,7 @@ const Admin = () => {
                               }</TableCell>
                             )}
                             <TableCell className="py-3 px-4">{formatTime(run.time || '00:00:00')}</TableCell>
+                            <TableCell className="py-3 px-4">{run.date || 'N/A'}</TableCell>
                             <TableCell className="py-3 px-4">{
                               getPlatformName(run.platform, firestorePlatforms, run.srcPlatformName)
                             }</TableCell>
