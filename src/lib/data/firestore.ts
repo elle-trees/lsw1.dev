@@ -2780,29 +2780,27 @@ export const getAllVerifiedRunsFirestore = async (): Promise<LeaderboardEntry[]>
 
 /**
  * Get unassigned runs (runs that haven't been assigned to any user)
- * These are runs with playerId = "imported", "unlinked_*", "unclaimed_*", or empty
+ * Only includes verified runs that are unclaimed
+ * Excludes:
+ * - Unverified manually submitted runs (those are in the unverified runs panel)
+ * - Unverified imported runs (those are in the imported runs panel waiting to be verified)
  */
 export const getUnassignedRunsFirestore = async (limit: number = 500): Promise<LeaderboardEntry[]> => {
   if (!db) return [];
   try {
-    // Get all runs (verified and unverified)
-    const queries = [
-      query(collection(db, "leaderboardEntries"), where("verified", "==", true), firestoreLimit(limit)),
-      query(collection(db, "leaderboardEntries"), where("verified", "==", false), firestoreLimit(limit))
-    ];
+    // Only get verified runs (imported runs waiting to be verified are excluded)
+    const q = query(
+      collection(db, "leaderboardEntries"),
+      where("verified", "==", true),
+      firestoreLimit(limit)
+    );
     
-    const [verifiedSnapshot, unverifiedSnapshot] = await Promise.all([
-      getDocs(queries[0]),
-      getDocs(queries[1])
-    ]);
+    const verifiedSnapshot = await getDocs(q);
+    const verifiedRuns = verifiedSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LeaderboardEntry));
     
-    const allRuns = [
-      ...verifiedSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LeaderboardEntry)),
-      ...unverifiedSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LeaderboardEntry))
-    ];
-    
-    // Filter for unassigned runs
-    const unassignedRuns = allRuns.filter(run => {
+    // Filter for unassigned runs (only verified runs)
+    const unassignedRuns = verifiedRuns.filter(run => {
+      // Check if unassigned
       const playerId = run.playerId || "";
       // Unassigned if: empty, "imported", starts with "unlinked_", or starts with "unclaimed_"
       return !playerId || 
