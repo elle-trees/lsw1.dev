@@ -2344,7 +2344,7 @@ const Admin = () => {
               </CardHeader>
               <CardContent className="space-y-6">
                 {/* Import Section */}
-                <div className="space-y-4 pb-6 border-b border-[hsl(235,13%,30%)]">
+                <div className="space-y-4 pb-6 pt-2 border-b border-[hsl(235,13%,30%)]">
                   <p className="text-[hsl(222,15%,60%)]">
                     Import runs from speedrun.com that aren't on the leaderboards. 
                     Runs will be added as unverified and can be edited or rejected.
