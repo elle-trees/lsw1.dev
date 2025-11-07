@@ -175,47 +175,16 @@ export const getLeaderboardEntriesFirestore = async (
     constraints.push(firestoreLimit(fetchLimit));
     const querySnapshot = await getDocs(query(collection(db, "leaderboardEntries"), ...constraints));
     
-    // Debug logging for IL queries
-    if (leaderboardType === 'individual-level') {
-      console.debug(`[getLeaderboardEntriesFirestore] IL query found ${querySnapshot.size} documents before filtering`, {
-        categoryId: normalizedCategoryId,
-        platformId: normalizedPlatformId,
-        levelId: normalizedLevelId,
-        runType,
-        constraints: constraints.length
-      });
-    }
-    
     // Normalize and validate entries
     let entries: LeaderboardEntry[] = querySnapshot.docs
       .map(doc => {
         const data = doc.data();
-        
-        // Debug: Log raw data for IL queries
-        if (leaderboardType === 'individual-level') {
-          console.debug(`[getLeaderboardEntriesFirestore] Raw doc ${doc.id}:`, {
-            leaderboardType: data.leaderboardType,
-            level: data.level,
-            verified: data.verified,
-            category: data.category,
-            platform: data.platform,
-          });
-        }
         
         // Normalize the entry data
         const normalized = normalizeLeaderboardEntry({ 
           id: doc.id, 
           ...data 
         } as LeaderboardEntry);
-        
-        // Debug: Log normalized data for IL queries
-        if (leaderboardType === 'individual-level') {
-          console.debug(`[getLeaderboardEntriesFirestore] Normalized doc ${doc.id}:`, {
-            leaderboardType: normalized.leaderboardType,
-            level: normalized.level,
-            verified: normalized.verified,
-          });
-        }
         
         // Ensure id is always present
         return {
@@ -224,23 +193,14 @@ export const getLeaderboardEntriesFirestore = async (
         } as LeaderboardEntry;
       })
       .filter(entry => {
-        // Debug: Track filtering for IL queries
-        const isILQuery = leaderboardType === 'individual-level';
-        
         // Validate entry
         const validation = validateLeaderboardEntry(entry);
         if (!validation.valid) {
-          if (isILQuery) {
-            console.debug(`[getLeaderboardEntriesFirestore] Filtering out IL run ${entry.id}: validation failed:`, validation.errors);
-          }
           return false;
         }
         
         // Ensure entry is verified (double-check, though query already filters this)
         if (entry.verified !== true) {
-          if (isILQuery) {
-            console.debug(`[getLeaderboardEntriesFirestore] Filtering out IL run ${entry.id}: not verified (verified=${entry.verified})`);
-          }
           return false;
         }
         
@@ -260,27 +220,12 @@ export const getLeaderboardEntriesFirestore = async (
         if (leaderboardType === 'individual-level') {
           // Must have leaderboardType === 'individual-level'
           if (entry.leaderboardType !== 'individual-level') {
-            console.debug(`[getLeaderboardEntriesFirestore] Filtering out IL run ${entry.id}: leaderboardType='${entry.leaderboardType}' (expected 'individual-level')`);
             return false;
           }
           
           // IL runs must have a level field
           if (!entry.level || entry.level.trim() === '') {
-            console.debug(`[getLeaderboardEntriesFirestore] Filtering out IL run ${entry.id}: missing level field (level='${entry.level}')`);
             return false;
-          }
-          
-          // Debug: Log successful IL run (only log first few to avoid spam)
-          if (querySnapshot.size <= 10 || Math.random() < 0.1) {
-            console.debug(`[getLeaderboardEntriesFirestore] IL run ${entry.id} passed all filters:`, {
-              leaderboardType: entry.leaderboardType,
-              level: entry.level,
-              verified: entry.verified,
-              category: entry.category,
-              platform: entry.platform,
-              srcCategoryName: entry.srcCategoryName,
-              srcPlatformName: entry.srcPlatformName,
-            });
           }
         }
         
@@ -300,9 +245,6 @@ export const getLeaderboardEntriesFirestore = async (
         // All verified runs should have category and platform (verified runs must be complete)
         // For imported runs, allow empty category/platform if SRC names exist
         if (!entry.time || !entry.runType) {
-          if (isILQuery) {
-            console.debug(`[getLeaderboardEntriesFirestore] Filtering out IL run ${entry.id}: missing time or runType`);
-          }
           return false;
         }
         // For imported runs, allow empty category/platform if SRC names exist
@@ -313,15 +255,9 @@ export const getLeaderboardEntriesFirestore = async (
         const hasSRCPlatform = entry.srcPlatformName && entry.srcPlatformName.trim() !== '';
         
         if (!hasCategory && !hasSRCCategory) {
-          if (isILQuery) {
-            console.debug(`[getLeaderboardEntriesFirestore] Filtering out IL run ${entry.id}: missing category (hasCategory=${hasCategory}, hasSRCCategory=${hasSRCCategory})`);
-          }
           return false;
         }
         if (!hasPlatform && !hasSRCPlatform) {
-          if (isILQuery) {
-            console.debug(`[getLeaderboardEntriesFirestore] Filtering out IL run ${entry.id}: missing platform (hasPlatform=${hasPlatform}, hasSRCPlatform=${hasSRCPlatform})`);
-          }
           return false;
         }
         
@@ -349,9 +285,6 @@ export const getLeaderboardEntriesFirestore = async (
           if (hasCategory && entry.category) {
             const isCategoryDisabled = selectedLevelData.disabledCategories?.[entry.category] === true;
             if (isCategoryDisabled) {
-              if (isILQuery) {
-                console.debug(`[getLeaderboardEntriesFirestore] Filtering out IL run ${entry.id}: category ${entry.category} is disabled for level ${normalizedLevelId}`);
-              }
               return false; // Filter out entries where category is disabled for this level
             }
           }
@@ -570,22 +503,6 @@ export const getLeaderboardEntriesFirestore = async (
       return entry;
     });
 
-    // Debug: Log final count for IL queries
-    if (leaderboardType === 'individual-level') {
-      console.debug(`[getLeaderboardEntriesFirestore] Returning ${enrichedEntries.length} IL entries after enrichment`);
-      if (enrichedEntries.length > 0) {
-        console.debug(`[getLeaderboardEntriesFirestore] Sample IL entry:`, {
-          id: enrichedEntries[0].id,
-          leaderboardType: enrichedEntries[0].leaderboardType,
-          level: enrichedEntries[0].level,
-          category: enrichedEntries[0].category,
-          platform: enrichedEntries[0].platform,
-          playerName: enrichedEntries[0].playerName,
-          verified: enrichedEntries[0].verified,
-        });
-      }
-    }
-
     return enrichedEntries;
   } catch (error) {
     console.error("Error fetching leaderboard entries:", error);
@@ -596,39 +513,8 @@ export const getLeaderboardEntriesFirestore = async (
 export const addLeaderboardEntryFirestore = async (entry: Omit<LeaderboardEntry, 'id' | 'rank' | 'isObsolete'> & { verified?: boolean }): Promise<string | null> => {
   if (!db) return null;
   try {
-    // Log entry before normalization for debugging imported runs
-    if (entry.importedFromSRC) {
-      console.debug("[addLeaderboardEntry] Before normalization:", {
-        category: entry.category,
-        platform: entry.platform,
-        srcCategoryName: entry.srcCategoryName,
-        srcPlatformName: entry.srcPlatformName,
-        importedFromSRC: entry.importedFromSRC,
-        playerName: entry.playerName,
-        time: entry.time,
-        date: entry.date,
-      });
-    }
-    
     // Normalize and validate the entry
     const normalized = normalizeLeaderboardEntry(entry);
-    
-    // Log normalized entry for debugging
-    if (entry.importedFromSRC) {
-      console.debug("[addLeaderboardEntry] After normalization:", {
-        category: normalized.category,
-        platform: normalized.platform,
-        leaderboardType: normalized.leaderboardType,
-        level: normalized.level,
-        srcCategoryName: normalized.srcCategoryName,
-        srcPlatformName: normalized.srcPlatformName,
-        srcLevelName: normalized.srcLevelName,
-        importedFromSRC: normalized.importedFromSRC,
-        playerName: normalized.playerName,
-        time: normalized.time,
-        date: normalized.date,
-      });
-    }
     
     // For imported runs, ALWAYS use lenient validation
     // Imported runs can have empty category/platform IDs if SRC names exist
@@ -637,12 +523,6 @@ export const addLeaderboardEntryFirestore = async (entry: Omit<LeaderboardEntry,
     if (isImportedRun) {
       // For imported runs, only validate essential fields
       // Category and platform can be empty if SRC names exist, or even if they don't (admin can fix later)
-      console.debug(`[addLeaderboardEntry] Imported run detected - using lenient validation`, {
-        hasCategory: !!normalized.category && normalized.category.trim() !== "",
-        hasPlatform: !!normalized.platform && normalized.platform.trim() !== "",
-        hasSRCCategory: !!normalized.srcCategoryName,
-        hasSRCPlatform: !!normalized.srcPlatformName,
-      });
       
       if (!normalized.playerName || normalized.playerName.trim() === "") {
         throw new Error("Player name is required");
@@ -689,11 +569,6 @@ export const addLeaderboardEntryFirestore = async (entry: Omit<LeaderboardEntry,
       verified: normalized.verified ?? false, 
       isObsolete: false,
     };
-    
-    // Log leaderboardType for IL runs to debug
-    if (finalLeaderboardType === 'individual-level') {
-      console.debug(`[addLeaderboardEntry] Saving IL run with leaderboardType='individual-level', level='${normalized.level || 'none'}'`);
-    }
     
     // Only include optional fields if they have values
     if (normalized.player2Name) {

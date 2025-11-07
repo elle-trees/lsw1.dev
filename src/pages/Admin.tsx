@@ -1149,6 +1149,66 @@ const Admin = () => {
     }
   };
 
+  // Helper function to autofill category, platform, and level for imported runs
+  const autofillRunFields = (run: LeaderboardEntry): { category: string; platform: string; level: string } => {
+    const runLeaderboardType = run.leaderboardType || 'regular';
+    let category = run.category || "";
+    let platform = run.platform || "";
+    let level = run.level || "";
+    
+    // Validate and fix category
+    if (category) {
+      const categoryObj = firestoreCategories.find(cat => cat.id === category);
+      if (categoryObj) {
+        const catType = (categoryObj as Category).leaderboardType || 'regular';
+        if (catType !== runLeaderboardType) {
+          // Category ID doesn't match the run's leaderboard type - clear it
+          category = "";
+        }
+      } else {
+        // Category ID not found - clear it
+        category = "";
+      }
+    }
+    
+    // Try to match category by SRC name if we don't have a valid category ID
+    if (!category && run.srcCategoryName) {
+      const matchingCategory = firestoreCategories.find(cat => {
+        const catType = (cat as Category).leaderboardType || 'regular';
+        return catType === runLeaderboardType && 
+               cat.name.toLowerCase().trim() === run.srcCategoryName!.toLowerCase().trim();
+      });
+      if (matchingCategory) {
+        category = matchingCategory.id;
+      }
+    }
+    
+    // Try to match platform by SRC name if we don't have a platform ID
+    if (!platform && run.srcPlatformName) {
+      const matchingPlatform = firestorePlatforms.find(p => 
+        p.name.toLowerCase().trim() === run.srcPlatformName!.toLowerCase().trim()
+      );
+      if (matchingPlatform) {
+        platform = matchingPlatform.id;
+      }
+    }
+    
+    // For regular (full game) runs, ensure level is always empty
+    if (runLeaderboardType === 'regular') {
+      level = "";
+    } else if ((runLeaderboardType === 'individual-level' || runLeaderboardType === 'community-golds') && !level && run.srcLevelName) {
+      // Try to match level by SRC name if we don't have a level ID (for ILs and Community Golds only)
+      const matchingLevel = availableLevels.find(l => 
+        l.name.toLowerCase().trim() === run.srcLevelName!.toLowerCase().trim()
+      );
+      if (matchingLevel) {
+        level = matchingLevel.id;
+      }
+    }
+    
+    return { category, platform, level };
+  };
+
   const handleBatchVerify = async () => {
     if (!currentUser) return;
     
@@ -1197,8 +1257,33 @@ const Admin = () => {
             continue;
           }
 
-          // Don't assign runs to users - they must be claimed first
-          // Just verify the run without assigning playerId/player2Id
+          // Autofill category, platform, and level before verifying
+          const autofilled = autofillRunFields(run);
+          const updateData: Partial<LeaderboardEntry> = {};
+          
+          // Only update if values changed or were missing
+          if (autofilled.category && autofilled.category !== run.category) {
+            updateData.category = autofilled.category;
+          }
+          if (autofilled.platform && autofilled.platform !== run.platform) {
+            updateData.platform = autofilled.platform;
+          }
+          
+          // Handle level: only set for ILs/Community Golds, clear for regular runs
+          if (run.leaderboardType === 'regular') {
+            // For regular runs, ensure level is cleared if it exists
+            if (run.level && run.level.trim() !== '') {
+              updateData.level = "";
+            }
+          } else if ((run.leaderboardType === 'individual-level' || run.leaderboardType === 'community-golds') && 
+              autofilled.level && autofilled.level !== run.level) {
+            updateData.level = autofilled.level;
+          }
+          
+          // Update run data if needed before verifying
+          if (Object.keys(updateData).length > 0) {
+            await updateLeaderboardEntry(run.id, updateData);
+          }
 
           // Verify the run
           const success = await updateRunVerificationStatus(run.id, true, verifiedBy);
@@ -1326,8 +1411,33 @@ const Admin = () => {
             continue;
           }
 
-          // Don't assign runs to users - they must be claimed first
-          // Just verify the run without assigning playerId/player2Id
+          // Autofill category, platform, and level before verifying
+          const autofilled = autofillRunFields(run);
+          const updateData: Partial<LeaderboardEntry> = {};
+          
+          // Only update if values changed or were missing
+          if (autofilled.category && autofilled.category !== run.category) {
+            updateData.category = autofilled.category;
+          }
+          if (autofilled.platform && autofilled.platform !== run.platform) {
+            updateData.platform = autofilled.platform;
+          }
+          
+          // Handle level: only set for ILs/Community Golds, clear for regular runs
+          if (run.leaderboardType === 'regular') {
+            // For regular runs, ensure level is cleared if it exists
+            if (run.level && run.level.trim() !== '') {
+              updateData.level = "";
+            }
+          } else if ((run.leaderboardType === 'individual-level' || run.leaderboardType === 'community-golds') && 
+              autofilled.level && autofilled.level !== run.level) {
+            updateData.level = autofilled.level;
+          }
+          
+          // Update run data if needed before verifying
+          if (Object.keys(updateData).length > 0) {
+            await updateLeaderboardEntry(run.id, updateData);
+          }
 
           // Verify the run
           const success = await updateRunVerificationStatus(run.id, true, verifiedBy);
@@ -5123,79 +5233,129 @@ const Admin = () => {
                 <p className="text-sm text-[hsl(222,15%,60%)]">
                   Select the category, platform, and level (if applicable) for this run before verifying.
                 </p>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="verify-category">Category <span className="text-red-500">*</span></Label>
-                    <Select
-                      value={verifyingRunCategory}
-                      onValueChange={setVerifyingRunCategory}
-                    >
-                      <SelectTrigger className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]">
-                        <SelectValue placeholder="Select a category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {firestoreCategories
-                          .filter(cat => {
-                            const runLeaderboardType = verifyingRun.leaderboardType || 'regular';
-                            const catType = (cat as Category).leaderboardType || 'regular';
-                            return catType === runLeaderboardType;
-                          })
-                          .map((cat) => (
-                            <SelectItem key={cat.id} value={cat.id}>
-                              {cat.name}
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="verify-category" className="text-sm font-medium">
+                        Category <span className="text-red-500">*</span>
+                      </Label>
+                      <Select
+                        value={verifyingRunCategory || ""}
+                        onValueChange={(value) => {
+                          setVerifyingRunCategory(value);
+                          // Clear subcategory if category changes (for regular runs)
+                          if (verifyingRun.leaderboardType === 'regular') {
+                            // Subcategory will be handled by the category change
+                          }
+                        }}
+                      >
+                        <SelectTrigger 
+                          id="verify-category"
+                          className="w-full bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] hover:border-[hsl(235,13%,40%)] focus:ring-2 focus:ring-[#cba6f7] transition-colors"
+                        >
+                          <SelectValue placeholder="Select a category" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-[hsl(240,21%,16%)] border-[hsl(235,13%,30%)]">
+                          {firestoreCategories
+                            .filter(cat => {
+                              const runLeaderboardType = verifyingRun.leaderboardType || 'regular';
+                              const catType = (cat as Category).leaderboardType || 'regular';
+                              return catType === runLeaderboardType;
+                            })
+                            .map((cat) => (
+                              <SelectItem 
+                                key={cat.id} 
+                                value={cat.id}
+                                className="focus:bg-[hsl(240,21%,20%)] cursor-pointer"
+                              >
+                                {cat.name}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                      {!verifyingRunCategory && (
+                        <p className="text-xs text-red-400 mt-1">Category is required</p>
+                      )}
+                      {verifyingRun.srcCategoryName && (
+                        <p className="text-xs text-[hsl(222,15%,60%)] mt-1">
+                          SRC: {verifyingRun.srcCategoryName}
+                        </p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="verify-platform" className="text-sm font-medium">
+                        Platform <span className="text-red-500">*</span>
+                      </Label>
+                      <Select
+                        value={verifyingRunPlatform || ""}
+                        onValueChange={setVerifyingRunPlatform}
+                      >
+                        <SelectTrigger 
+                          id="verify-platform"
+                          className="w-full bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] hover:border-[hsl(235,13%,40%)] focus:ring-2 focus:ring-[#cba6f7] transition-colors"
+                        >
+                          <SelectValue placeholder="Select a platform" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-[hsl(240,21%,16%)] border-[hsl(235,13%,30%)]">
+                          {firestorePlatforms.map((platform) => (
+                            <SelectItem 
+                              key={platform.id} 
+                              value={platform.id}
+                              className="focus:bg-[hsl(240,21%,20%)] cursor-pointer"
+                            >
+                              {platform.name}
                             </SelectItem>
                           ))}
-                      </SelectContent>
-                    </Select>
-                    {!verifyingRunCategory && (
-                      <p className="text-xs text-red-400 mt-1">Category is required</p>
-                    )}
+                        </SelectContent>
+                      </Select>
+                      {!verifyingRunPlatform && (
+                        <p className="text-xs text-red-400 mt-1">Platform is required</p>
+                      )}
+                      {verifyingRun.srcPlatformName && (
+                        <p className="text-xs text-[hsl(222,15%,60%)] mt-1">
+                          SRC: {verifyingRun.srcPlatformName}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  <div>
-                    <Label htmlFor="verify-platform">Platform <span className="text-red-500">*</span></Label>
-                    <Select
-                      value={verifyingRunPlatform}
-                      onValueChange={setVerifyingRunPlatform}
-                    >
-                      <SelectTrigger className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]">
-                        <SelectValue placeholder="Select a platform" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {firestorePlatforms.map((platform) => (
-                          <SelectItem key={platform.id} value={platform.id}>
-                            {platform.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {!verifyingRunPlatform && (
-                      <p className="text-xs text-red-400 mt-1">Platform is required</p>
-                    )}
-                  </div>
+                  {(verifyingRun.leaderboardType === 'individual-level' || verifyingRun.leaderboardType === 'community-golds') && (
+                    <div className="space-y-2">
+                      <Label htmlFor="verify-level" className="text-sm font-medium">
+                        Level <span className="text-red-500">*</span>
+                      </Label>
+                      <Select
+                        value={verifyingRunLevel || ""}
+                        onValueChange={setVerifyingRunLevel}
+                      >
+                        <SelectTrigger 
+                          id="verify-level"
+                          className="w-full bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] hover:border-[hsl(235,13%,40%)] focus:ring-2 focus:ring-[#cba6f7] transition-colors"
+                        >
+                          <SelectValue placeholder="Select a level" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-[hsl(240,21%,16%)] border-[hsl(235,13%,30%)]">
+                          {availableLevels.map((level) => (
+                            <SelectItem 
+                              key={level.id} 
+                              value={level.id}
+                              className="focus:bg-[hsl(240,21%,20%)] cursor-pointer"
+                            >
+                              {level.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {!verifyingRunLevel && (
+                        <p className="text-xs text-red-400 mt-1">Level is required</p>
+                      )}
+                      {verifyingRun.srcLevelName && (
+                        <p className="text-xs text-[hsl(222,15%,60%)] mt-1">
+                          SRC: {verifyingRun.srcLevelName}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
-                {(verifyingRun.leaderboardType === 'individual-level' || verifyingRun.leaderboardType === 'community-golds') && (
-                  <div>
-                    <Label htmlFor="verify-level">Level <span className="text-red-500">*</span></Label>
-                    <Select
-                      value={verifyingRunLevel}
-                      onValueChange={setVerifyingRunLevel}
-                    >
-                      <SelectTrigger className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]">
-                        <SelectValue placeholder="Select a level" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableLevels.map((level) => (
-                          <SelectItem key={level.id} value={level.id}>
-                            {level.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {!verifyingRunLevel && (
-                      <p className="text-xs text-red-400 mt-1">Level is required</p>
-                    )}
-                  </div>
-                )}
                 <div className="bg-[hsl(240,21%,15%)] rounded-lg p-3 border border-[hsl(235,13%,30%)]">
                   <div className="text-sm space-y-1">
                     <div><strong>Player:</strong> {verifyingRun.playerName}</div>
@@ -6932,59 +7092,88 @@ const Admin = () => {
                     )}
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="edit-category">Category <span className="text-red-500">*</span></Label>
-                    <Select
-                      value={editingImportedRunForm.category ?? editingImportedRun.category ?? ""}
-                      onValueChange={(value) => setEditingImportedRunForm({ ...editingImportedRunForm, category: value, subcategory: "" })}
-                    >
-                      <SelectTrigger className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]">
-                        <SelectValue placeholder="Select a category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {firestoreCategories
-                          .filter(cat => {
-                            // Filter categories by leaderboard type
-                            const runLeaderboardType = editingImportedRunForm.leaderboardType ?? editingImportedRun.leaderboardType ?? 'regular';
-                            const catType = (cat as Category).leaderboardType || 'regular';
-                            return catType === runLeaderboardType;
-                          })
-                          .map((cat) => (
-                            <SelectItem key={cat.id} value={cat.id}>
-                              {cat.name}
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-category" className="text-sm font-medium">
+                        Category <span className="text-red-500">*</span>
+                      </Label>
+                      <Select
+                        value={editingImportedRunForm.category ?? editingImportedRun.category ?? ""}
+                        onValueChange={(value) => setEditingImportedRunForm({ ...editingImportedRunForm, category: value, subcategory: "" })}
+                      >
+                        <SelectTrigger 
+                          id="edit-category"
+                          className="w-full bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] hover:border-[hsl(235,13%,40%)] focus:ring-2 focus:ring-[#cba6f7] transition-colors"
+                        >
+                          <SelectValue placeholder="Select a category" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-[hsl(240,21%,16%)] border-[hsl(235,13%,30%)]">
+                          {firestoreCategories
+                            .filter(cat => {
+                              // Filter categories by leaderboard type
+                              const runLeaderboardType = editingImportedRunForm.leaderboardType ?? editingImportedRun.leaderboardType ?? 'regular';
+                              const catType = (cat as Category).leaderboardType || 'regular';
+                              return catType === runLeaderboardType;
+                            })
+                            .map((cat) => (
+                              <SelectItem 
+                                key={cat.id} 
+                                value={cat.id}
+                                className="focus:bg-[hsl(240,21%,20%)] cursor-pointer"
+                              >
+                                {cat.name}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                      {(!editingImportedRunForm.category && !editingImportedRun.category) && (
+                        <p className="text-xs text-red-400 mt-1">Category is required</p>
+                      )}
+                      {editingImportedRun.srcCategoryName && (
+                        <p className="text-xs text-[hsl(222,15%,60%)] mt-1">
+                          SRC: {editingImportedRun.srcCategoryName}
+                        </p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-platform" className="text-sm font-medium">
+                        Platform <span className="text-red-500">*</span>
+                      </Label>
+                      <Select
+                        value={editingImportedRunForm.platform ?? editingImportedRun.platform ?? ""}
+                        onValueChange={(value) => setEditingImportedRunForm({ ...editingImportedRunForm, platform: value })}
+                      >
+                        <SelectTrigger 
+                          id="edit-platform"
+                          className="w-full bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] hover:border-[hsl(235,13%,40%)] focus:ring-2 focus:ring-[#cba6f7] transition-colors"
+                        >
+                          <SelectValue placeholder="Select a platform" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-[hsl(240,21%,16%)] border-[hsl(235,13%,30%)]">
+                          {firestorePlatforms.map((platform) => (
+                            <SelectItem 
+                              key={platform.id} 
+                              value={platform.id}
+                              className="focus:bg-[hsl(240,21%,20%)] cursor-pointer"
+                            >
+                              {platform.name}
                             </SelectItem>
                           ))}
-                      </SelectContent>
-                    </Select>
-                    {(!editingImportedRunForm.category && !editingImportedRun.category) && (
-                      <p className="text-xs text-red-400 mt-1">Category is required</p>
-                    )}
+                        </SelectContent>
+                      </Select>
+                      {(!editingImportedRunForm.platform && !editingImportedRun.platform) && (
+                        <p className="text-xs text-red-400 mt-1">Platform is required</p>
+                      )}
+                      {editingImportedRun.srcPlatformName && (
+                        <p className="text-xs text-[hsl(222,15%,60%)] mt-1">
+                          SRC: {editingImportedRun.srcPlatformName}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  <div>
-                    <Label htmlFor="edit-platform">Platform <span className="text-red-500">*</span></Label>
-                    <Select
-                      value={editingImportedRunForm.platform ?? editingImportedRun.platform ?? ""}
-                      onValueChange={(value) => setEditingImportedRunForm({ ...editingImportedRunForm, platform: value })}
-                    >
-                      <SelectTrigger className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]">
-                        <SelectValue placeholder="Select a platform" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {firestorePlatforms.map((platform) => (
-                          <SelectItem key={platform.id} value={platform.id}>
-                            {platform.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {(!editingImportedRunForm.platform && !editingImportedRun.platform) && (
-                      <p className="text-xs text-red-400 mt-1">Platform is required</p>
-                    )}
-                  </div>
-                </div>
-                {/* Subcategory selector (only for regular leaderboard type) */}
-                {editingImportedRun.leaderboardType === 'regular' && editingSubcategories.length > 0 && (
+                  {/* Subcategory selector (only for regular leaderboard type) */}
+                  {editingImportedRun.leaderboardType === 'regular' && editingSubcategories.length > 0 && (
                   <div>
                     <Label className="text-sm font-semibold mb-2 block flex items-center gap-2">
                       <Trophy className="h-3.5 w-3.5 text-[#cba6f7]" />
@@ -7057,18 +7246,27 @@ const Admin = () => {
                   </div>
                 </div>
                 {(editingImportedRun.leaderboardType === 'individual-level' || editingImportedRun.leaderboardType === 'community-golds') && (
-                  <div>
-                    <Label htmlFor="edit-level">Level <span className="text-red-500">*</span></Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-level" className="text-sm font-medium">
+                      Level <span className="text-red-500">*</span>
+                    </Label>
                     <Select
                       value={editingImportedRunForm.level ?? editingImportedRun.level ?? ""}
                       onValueChange={(value) => setEditingImportedRunForm({ ...editingImportedRunForm, level: value })}
                     >
-                      <SelectTrigger className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]">
+                      <SelectTrigger 
+                        id="edit-level"
+                        className="w-full bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] hover:border-[hsl(235,13%,40%)] focus:ring-2 focus:ring-[#cba6f7] transition-colors"
+                      >
                         <SelectValue placeholder="Select a level" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-[hsl(240,21%,16%)] border-[hsl(235,13%,30%)]">
                         {availableLevels.map((level) => (
-                          <SelectItem key={level.id} value={level.id}>
+                          <SelectItem 
+                            key={level.id} 
+                            value={level.id}
+                            className="focus:bg-[hsl(240,21%,20%)] cursor-pointer"
+                          >
                             {level.name}
                           </SelectItem>
                         ))}
@@ -7077,8 +7275,14 @@ const Admin = () => {
                     {(!editingImportedRunForm.level && !editingImportedRun.level) && (
                       <p className="text-xs text-red-400 mt-1">Level is required for {editingImportedRun.leaderboardType === 'individual-level' ? 'Individual Level' : 'Community Gold'} runs</p>
                     )}
+                    {editingImportedRun.srcLevelName && (
+                      <p className="text-xs text-[hsl(222,15%,60%)] mt-1">
+                        SRC: {editingImportedRun.srcLevelName}
+                      </p>
+                    )}
                   </div>
-                )}
+                  )}
+                </div>
                 <div>
                   <Label htmlFor="edit-date">Date <span className="text-red-500">*</span></Label>
                   <Input
