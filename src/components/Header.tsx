@@ -1,8 +1,9 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Upload, User, Settings, ShieldAlert, Download, Radio, Trophy, Github, Menu, Plus } from "lucide-react";
+import { Upload, User, Settings, ShieldAlert, Download, Radio, Trophy, Github, Menu, Plus, Bell } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
+import { Badge } from "@/components/ui/badge";
 import LegoStudIcon from "@/components/icons/LegoStudIcon";
 import { useAuth } from "@/components/AuthProvider";
 import { signOut } from "firebase/auth";
@@ -10,16 +11,22 @@ import { auth } from "@/lib/firebase";
 import { LoginModal } from "@/components/LoginModal";
 import { useToast } from "@/hooks/use-toast";
 import { getErrorMessage, logError } from "@/lib/errorUtils";
+import { getUnverifiedLeaderboardEntries, getUnclaimedRunsBySRCUsername, getPlayerByUid } from "@/lib/db";
 
 export function Header() {
   const { currentUser, loading } = useAuth();
+  const navigate = useNavigate();
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [unclaimedRunsCount, setUnclaimedRunsCount] = useState(0);
+  const [unverifiedRunsCount, setUnverifiedRunsCount] = useState(0);
   const { toast } = useToast();
 
   const handleLogout = async () => {
     try {
       await signOut(auth);
+      setUnclaimedRunsCount(0);
+      setUnverifiedRunsCount(0);
       toast({
         title: "Logged Out",
         description: "You have been logged out successfully.",
@@ -33,6 +40,66 @@ export function Header() {
       });
     }
   };
+
+  // Fetch notification counts
+  useEffect(() => {
+    if (!currentUser || loading) {
+      setUnclaimedRunsCount(0);
+      setUnverifiedRunsCount(0);
+      return;
+    }
+
+    const fetchNotificationCounts = async () => {
+      try {
+        // Check for unclaimed runs (for all users)
+        const player = await getPlayerByUid(currentUser.uid);
+        if (player?.srcUsername) {
+          try {
+            const unclaimedRuns = await getUnclaimedRunsBySRCUsername(player.srcUsername, currentUser.uid);
+            setUnclaimedRunsCount(unclaimedRuns.length);
+          } catch (error) {
+            setUnclaimedRunsCount(0);
+          }
+        } else {
+          setUnclaimedRunsCount(0);
+        }
+
+        // Check for unverified runs (for admins only)
+        if (currentUser.isAdmin) {
+          try {
+            const unverifiedRuns = await getUnverifiedLeaderboardEntries();
+            // Count only manually submitted runs (not imported)
+            const manualUnverified = unverifiedRuns.filter(run => !run.importedFromSRC);
+            setUnverifiedRunsCount(manualUnverified.length);
+          } catch (error) {
+            setUnverifiedRunsCount(0);
+          }
+        } else {
+          setUnverifiedRunsCount(0);
+        }
+      } catch (error) {
+        // Silent fail
+      }
+    };
+
+    fetchNotificationCounts();
+    
+    // Refresh counts every 30 seconds
+    const interval = setInterval(fetchNotificationCounts, 30000);
+    
+    return () => clearInterval(interval);
+  }, [currentUser?.uid, currentUser?.isAdmin, loading]);
+
+  const handleNotificationClick = () => {
+    if (currentUser?.isAdmin && unverifiedRunsCount > 0) {
+      navigate("/admin");
+    } else if (unclaimedRunsCount > 0) {
+      navigate("/settings");
+    }
+  };
+
+  const notificationCount = currentUser?.isAdmin ? unverifiedRunsCount : unclaimedRunsCount;
+  const hasNotifications = notificationCount > 0;
 
   const NavLinks = () => (
     <>
@@ -160,6 +227,28 @@ export function Header() {
                 >
                           Hi, {currentUser.displayName || currentUser.email?.split('@')[0]}
                 </Link>
+                        {hasNotifications && (
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              handleNotificationClick();
+                              setIsMobileMenuOpen(false);
+                            }}
+                            className="relative w-full text-ctp-text hover:text-ctp-text border-yellow-600/50 hover:bg-yellow-600/20 hover:border-yellow-600"
+                            title={currentUser.isAdmin ? `${unverifiedRunsCount} run(s) waiting for verification` : `${unclaimedRunsCount} unclaimed run(s)`}
+                          >
+                            <Bell className="h-4 w-4 mr-2" />
+                            <span className="flex-1 text-left">
+                              {currentUser.isAdmin ? 'Verify Runs' : 'Claim Runs'}
+                            </span>
+                            <Badge 
+                              variant="destructive" 
+                              className="h-5 w-5 flex items-center justify-center p-0 text-xs font-bold"
+                            >
+                              {notificationCount > 99 ? '99+' : notificationCount}
+                            </Badge>
+                          </Button>
+                        )}
                         <Button 
                           variant="outline" 
                           asChild
@@ -256,6 +345,22 @@ export function Header() {
                   >
                     Hi, {currentUser.displayName || currentUser.email?.split('@')[0]}
                   </Link>
+                  {hasNotifications && (
+                    <Button
+                      variant="outline"
+                      onClick={handleNotificationClick}
+                      className="relative text-ctp-text hover:text-ctp-text border-yellow-600/50 hover:bg-yellow-600/20 hover:border-yellow-600 transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                      title={currentUser.isAdmin ? `${unverifiedRunsCount} run(s) waiting for verification` : `${unclaimedRunsCount} unclaimed run(s)`}
+                    >
+                      <Bell className="h-4 w-4" />
+                      <Badge 
+                        variant="destructive" 
+                        className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 text-xs font-bold"
+                      >
+                        {notificationCount > 99 ? '99+' : notificationCount}
+                      </Badge>
+                    </Button>
+                  )}
                   <Button 
                     variant="outline" 
                     asChild

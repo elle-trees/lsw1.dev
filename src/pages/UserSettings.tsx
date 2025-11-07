@@ -6,10 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Settings, User, Mail, Lock, Palette, Trophy, CheckCircle, Upload, X } from "lucide-react";
+import { Settings, User, Mail, Lock, Palette, Trophy, CheckCircle, Upload, X, Sparkles, Gem, Users } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getCategoryName, getPlatformName, getLevelName } from "@/lib/dataValidation";
 import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
-import { updatePlayerProfile, getPlayerByUid, getUnclaimedRunsBySRCUsername, claimRun, getCategories, getPlatforms } from "@/lib/db";
+import { updatePlayerProfile, getPlayerByUid, getUnclaimedRunsBySRCUsername, claimRun, getCategories, getPlatforms, getLevels, getCategoriesFromFirestore } from "@/lib/db";
 import { updateEmail, updatePassword, updateProfile } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useNavigate, Link } from "react-router-dom";
@@ -39,6 +41,8 @@ const UserSettings = () => {
   const [loadingSRCUnclaimed, setLoadingSRCUnclaimed] = useState(false);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [platforms, setPlatforms] = useState<{ id: string; name: string }[]>([]);
+  const [levels, setLevels] = useState<{ id: string; name: string }[]>([]);
+  const [unclaimedLeaderboardType, setUnclaimedLeaderboardType] = useState<'regular' | 'individual-level' | 'community-golds'>('regular');
   const { startUpload, isUploading } = useUploadThing("profilePicture");
 
   useEffect(() => {
@@ -56,13 +60,18 @@ const UserSettings = () => {
       const fetchPlayerData = async () => {
         setPageLoading(true);
         try {
-          // Fetch categories and platforms for displaying unclaimed runs
-          const [fetchedCategories, fetchedPlatforms] = await Promise.all([
+          // Fetch categories, platforms, and levels for displaying unclaimed runs
+          const [fetchedCategories, fetchedPlatforms, fetchedLevels, regularCategories, ilCategories, cgCategories] = await Promise.all([
             getCategories(),
             getPlatforms(),
+            getLevels(),
+            getCategoriesFromFirestore('regular'),
+            getCategoriesFromFirestore('individual-level'),
+            getCategoriesFromFirestore('community-golds'),
           ]);
-          setCategories(fetchedCategories);
+          setCategories([...regularCategories, ...ilCategories, ...cgCategories]);
           setPlatforms(fetchedPlatforms);
+          setLevels(fetchedLevels);
 
           const player = await getPlayerByUid(currentUser.uid);
           if (player) {
@@ -663,7 +672,7 @@ const UserSettings = () => {
             {/* SRC Username Runs */}
             {srcUsername && (
               <>
-                <h3 className="text-sm font-semibold text-ctp-text mb-2 mt-4">Runs imported from Speedrun.com ({srcUsername})</h3>
+                <h3 className="text-sm font-semibold text-ctp-text mb-4 mt-4">Runs imported from Speedrun.com ({srcUsername})</h3>
                 {loadingSRCUnclaimed ? (
                   <div className="text-center py-4">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#cba6f7] mx-auto"></div>
@@ -673,68 +682,117 @@ const UserSettings = () => {
                     No unclaimed runs found for your SRC username. Make sure you've entered your exact Speedrun.com username above.
                   </p>
                 ) : (
-                  <div className="space-y-3">
-                    {unclaimedSRCRuns.map((run) => (
-                      <div
-                        key={run.id}
-                        className="flex items-center justify-between p-4 bg-[hsl(234,14%,29%)] rounded-lg border border-[hsl(235,13%,30%)]"
-                      >
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <span className="text-base font-semibold text-[#cba6f7]">
-                              {formatTime(run.time)}
-                            </span>
-                            <Badge variant="outline" className="border-[hsl(235,13%,30%)]">
-                              {categories?.find(c => c.id === run.category)?.name || run.srcCategoryName || run.category || "Unknown"}
-                            </Badge>
-                            <Badge variant="outline" className="border-[hsl(235,13%,30%)]">
-                              {platforms?.find(p => p.id === run.platform)?.name || run.srcPlatformName || run.platform || "Unknown"}
-                            </Badge>
-                            {run.rank && (
-                              <Badge variant={run.rank <= 3 ? "default" : "secondary"}>
-                                #{run.rank}
-                              </Badge>
-                            )}
-                            <Badge variant="outline" className="border-[hsl(235,13%,30%)] text-xs">
-                              From SRC
-                            </Badge>
+                  <Tabs value={unclaimedLeaderboardType} onValueChange={(value) => setUnclaimedLeaderboardType(value as 'regular' | 'individual-level' | 'community-golds')}>
+                    <TabsList className="grid w-full grid-cols-3 mb-4">
+                      <TabsTrigger value="regular" className="flex items-center gap-2">
+                        <Trophy className="h-4 w-4" />
+                        <span className="hidden sm:inline">Full Game</span>
+                        <span className="sm:hidden">FG</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="individual-level" className="flex items-center gap-2">
+                        <Sparkles className="h-4 w-4" />
+                        <span className="hidden sm:inline">Individual Level</span>
+                        <span className="sm:hidden">IL</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="community-golds" className="flex items-center gap-2">
+                        <Gem className="h-4 w-4" />
+                        <span className="hidden sm:inline">Community Golds</span>
+                        <span className="sm:hidden">CGs</span>
+                      </TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value={unclaimedLeaderboardType} className="mt-0">
+                      {(() => {
+                        // Filter runs by leaderboard type
+                        const filteredRuns = unclaimedSRCRuns.filter(run => {
+                          const runLeaderboardType = run.leaderboardType || 'regular';
+                          return runLeaderboardType === unclaimedLeaderboardType;
+                        });
+
+                        if (filteredRuns.length === 0) {
+                          return (
+                            <div className="text-center py-8">
+                              <p className="text-ctp-overlay0">No unclaimed {unclaimedLeaderboardType === 'regular' ? 'Full Game' : unclaimedLeaderboardType === 'individual-level' ? 'Individual Level' : 'Community Gold'} runs found</p>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div className="overflow-x-auto scrollbar-custom rounded-none">
+                            <table className="w-full">
+                              <thead>
+                                <tr className="border-b border-[hsl(235,13%,30%)]">
+                                  <th className="py-3 px-4 text-left">Category</th>
+                                  {unclaimedLeaderboardType !== 'regular' && (
+                                    <th className="py-3 px-4 text-left">Level</th>
+                                  )}
+                                  <th className="py-3 px-4 text-left">Time</th>
+                                  <th className="py-3 px-4 text-left">Date</th>
+                                  <th className="py-3 px-4 text-left">Platform</th>
+                                  <th className="py-3 px-4 text-left">Type</th>
+                                  <th className="py-3 px-4 text-left">Action</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {filteredRuns.map((run) => {
+                                  const categoryName = getCategoryName(
+                                    run.category,
+                                    categories,
+                                    run.srcCategoryName
+                                  );
+                                  const platformName = getPlatformName(
+                                    run.platform,
+                                    platforms,
+                                    run.srcPlatformName
+                                  );
+                                  const levelName = unclaimedLeaderboardType !== 'regular' && run.level
+                                    ? getLevelName(run.level, levels, run.srcLevelName)
+                                    : undefined;
+
+                                  return (
+                                    <tr 
+                                      key={run.id} 
+                                      className="border-b border-[hsl(235,13%,30%)] hover:bg-[hsl(235,19%,13%)] transition-colors"
+                                    >
+                                      <td className="py-3 px-4 font-medium">{categoryName}</td>
+                                      {unclaimedLeaderboardType !== 'regular' && (
+                                        <td className="py-3 px-4 text-ctp-overlay0">
+                                          {levelName || run.srcLevelName || '—'}
+                                        </td>
+                                      )}
+                                      <td className="py-3 px-4 text-base font-semibold">{formatTime(run.time)}</td>
+                                      <td className="py-3 px-4 text-ctp-overlay0">{formatDate(run.date)}</td>
+                                      <td className="py-3 px-4">
+                                        <Badge variant="outline" className="border-[hsl(235,13%,30%)]">
+                                          {platformName}
+                                        </Badge>
+                                      </td>
+                                      <td className="py-3 px-4">
+                                        <Badge variant="outline" className="border-[hsl(235,13%,30%)] flex items-center gap-1 w-fit">
+                                          {run.runType === 'solo' ? <User className="h-3 w-3" /> : <Users className="h-3 w-3" />}
+                                          {run.runType.charAt(0).toUpperCase() + run.runType.slice(1)}
+                                        </Badge>
+                                      </td>
+                                      <td className="py-3 px-4">
+                                        <Button
+                                          onClick={() => handleClaimRun(run.id)}
+                                          size="sm"
+                                          className="bg-[#cba6f7] hover:bg-[#b4a0e2] text-[hsl(240,21%,15%)] font-bold"
+                                        >
+                                          <CheckCircle className="h-4 w-4 mr-2" />
+                                          Claim
+                                        </Button>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
                           </div>
-                          <div className="text-sm text-[hsl(222,15%,60%)]">
-                            {formatDate(run.date)} • {run.runType === 'solo' ? 'Solo' : (() => {
-                              // For co-op runs, show the partner's name
-                              const currentDisplayName = displayName?.toLowerCase().trim() || "";
-                              const runPlayer1Name = (run.playerName || "").toLowerCase().trim();
-                              const runPlayer2Name = (run.player2Name || "").toLowerCase().trim();
-                              
-                              if (currentDisplayName === runPlayer1Name && runPlayer2Name) {
-                                return `Co-op with ${run.player2Name}`;
-                              } else if (currentDisplayName === runPlayer2Name && runPlayer1Name) {
-                                return `Co-op with ${run.playerName}`;
-                              } else {
-                                return run.player2Name ? `Co-op with ${run.player2Name}` : 'Co-op';
-                              }
-                            })()}
-                            {run.videoUrl && (
-                              <Link
-                                to={`/run/${run.id}`}
-                                className="ml-2 text-[#cba6f7] hover:underline"
-                              >
-                                View Run
-                              </Link>
-                            )}
-                          </div>
-                        </div>
-                        <Button
-                          onClick={() => handleClaimRun(run.id)}
-                          size="sm"
-                          className="bg-[#cba6f7] hover:bg-[#b4a0e2] text-[hsl(240,21%,15%)] font-bold ml-4"
-                        >
-                          <CheckCircle className="h-4 w-4 mr-2" />
-                          Claim
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
+                        );
+                      })()}
+                    </TabsContent>
+                  </Tabs>
                 )}
               </>
             )}

@@ -58,6 +58,8 @@ interface SRCMappings {
 // Cache for player and platform names fetched from API during import (prevents duplicate API calls)
 const playerIdToNameCache = new Map<string, string>();
 const platformIdToNameCache = new Map<string, string>();
+// Cache for gameId to avoid redundant API calls
+let cachedGameId: string | null = null;
 
 /**
  * Extract platform ID and name from SRC run data
@@ -137,20 +139,44 @@ export async function createSRCMappings(srcRuns: SRCRun[], gameId: string): Prom
   }
 
   // Fetch platform names for any platforms we only have IDs for
+  // Optimize: Fetch all platforms once and cache, then look up names
   const platformsToFetch = Array.from(uniquePlatforms.values()).filter(p => !p.name && p.id);
-  const platformFetchPromises = platformsToFetch.map(async (platform) => {
+  if (platformsToFetch.length > 0) {
     try {
-      const name = await fetchPlatformById(platform.id);
-      if (name) {
-        uniquePlatforms.set(platform.id, { id: platform.id, name });
+      // Fetch all platforms once and create a lookup map
+      const { fetchPlatforms } = await import("../speedruncom");
+      const allPlatforms = await fetchPlatforms();
+      const platformLookup = new Map<string, string>();
+      
+      for (const platform of allPlatforms) {
+        const name = platform.names?.international || platform.name || '';
+        if (name && platform.id) {
+          platformLookup.set(platform.id, name);
+        }
+      }
+      
+      // Update uniquePlatforms with names from the lookup
+      for (const platform of platformsToFetch) {
+        const name = platformLookup.get(platform.id);
+        if (name) {
+          uniquePlatforms.set(platform.id, { id: platform.id, name });
+        }
       }
     } catch (error) {
-      // Platform fetch failed, skip this platform
+      // Fallback: Fetch platforms individually if bulk fetch fails
+      const platformFetchPromises = platformsToFetch.map(async (platform) => {
+        try {
+          const { fetchPlatformById } = await import("../speedruncom");
+          const name = await fetchPlatformById(platform.id);
+          if (name) {
+            uniquePlatforms.set(platform.id, { id: platform.id, name });
+          }
+        } catch (error) {
+          // Platform fetch failed, skip this platform
+        }
+      });
+      await Promise.all(platformFetchPromises);
     }
-  });
-
-  if (platformFetchPromises.length > 0) {
-    await Promise.all(platformFetchPromises);
   }
 
   // Initialize mappings
@@ -437,8 +463,14 @@ export async function importSRCRuns(
   };
 
   try {
-    // Step 1: Get game ID
-    const gameId = await getLSWGameId();
+    // Step 1: Get game ID (use cache if available)
+    let gameId: string | null = cachedGameId;
+    if (!gameId) {
+      gameId = await getLSWGameId();
+      if (gameId) {
+        cachedGameId = gameId; // Cache for future imports
+      }
+    }
     if (!gameId) {
       result.errors.push("Could not find LEGO Star Wars game on speedrun.com");
       return result;
@@ -454,12 +486,12 @@ export async function importSRCRuns(
       return result;
     }
 
-    // Step 3: Fetch runs from SRC progressively until we find 200 unlinked runs
+    // Step 3: Fetch runs from SRC progressively until we find 400 unlinked runs
     // We'll fetch in batches of 200, filtering out already-linked ones, and continue
-    // fetching until we have 200 unlinked runs or exhaust all available runs
-    const TARGET_UNLINKED_COUNT = 200;
+    // fetching until we have 400 unlinked runs or exhaust all available runs
+    const TARGET_UNLINKED_COUNT = 400; // Doubled from 200 to 400
     const BATCH_SIZE = 200;
-    const MAX_TOTAL_FETCH = 5000; // Safety limit: stop after fetching 5000 runs total
+    const MAX_TOTAL_FETCH = 10000; // Increased safety limit to support larger imports
     
     let srcRuns: SRCRun[] = [];
     let unlinkedRuns: SRCRun[] = [];
@@ -497,7 +529,7 @@ export async function importSRCRuns(
         return result;
       }
       
-      // Take only the first 200 unlinked runs (most recent ones)
+      // Take only the first 400 unlinked runs (most recent ones)
       srcRuns = unlinkedRuns.slice(0, TARGET_UNLINKED_COUNT);
       
       if (srcRuns.length === 0) {
@@ -559,21 +591,29 @@ export async function importSRCRuns(
     });
     await Promise.all(playerLookupPromises);
 
-    // Step 6: Process each run
-    // Note: We've already filtered out linked runs, so we can process all of them
-    for (const srcRun of srcRuns) {
-      try {
-        // Double-check: Skip if already exists in database (safety check)
-        if (existingSRCRunIds.has(srcRun.id)) {
-          result.skipped++;
-          onProgress?.({ total: srcRuns.length, imported: result.imported, skipped: result.skipped });
-          continue;
-        }
+    // Step 6: Process runs in parallel batches for better performance
+    // Process in batches of 20 to balance speed and API rate limits
+    const PROCESS_BATCH_SIZE = 20;
+    const runBatches: SRCRun[][] = [];
+    for (let i = 0; i < srcRuns.length; i += PROCESS_BATCH_SIZE) {
+      runBatches.push(srcRuns.slice(i, i + PROCESS_BATCH_SIZE));
+    }
 
-        // Map SRC run to our format
-        let mappedRun: Partial<LeaderboardEntry> & { srcRunId: string; importedFromSRC: boolean };
+    // Process each batch in parallel
+    for (const batch of runBatches) {
+      await Promise.all(batch.map(async (srcRun) => {
         try {
-          mappedRun = await mapSRCRunToLeaderboardEntry(
+          // Double-check: Skip if already exists in database (safety check)
+          if (existingSRCRunIds.has(srcRun.id)) {
+            result.skipped++;
+            onProgress?.({ total: srcRuns.length, imported: result.imported, skipped: result.skipped });
+            return;
+          }
+
+          // Map SRC run to our format
+          let mappedRun: Partial<LeaderboardEntry> & { srcRunId: string; importedFromSRC: boolean };
+          try {
+            mappedRun = await mapSRCRunToLeaderboardEntry(
             srcRun,
             undefined,
             mappings.categoryMapping,
@@ -587,148 +627,149 @@ export async function importSRCRuns(
             mappings.srcLevelIdToName,
             playerIdToNameCache,
             platformIdToNameCache,
-            localCategories // Pass local categories with subcategories for mapping
-          );
-        } catch (mapError: any) {
-          result.skipped++;
-          const errorMessage = mapError instanceof Error ? mapError.message : String(mapError);
-          result.errors.push(`Run ${srcRun?.id || 'unknown'}: ${errorMessage}`);
-          onProgress?.({ total: srcRuns.length, imported: result.imported, skipped: result.skipped });
-          continue;
-        }
-
-        // Set import metadata
-        mappedRun.importedFromSRC = true;
-        mappedRun.srcRunId = srcRun.id;
-        mappedRun.verified = false;
-
-        // Ensure required fields have defaults
-        if (!mappedRun.runType) mappedRun.runType = 'solo';
-        // CRITICAL: Don't override leaderboardType - mapSRCRunToLeaderboardEntry already sets it correctly
-        // Only set default if it's truly undefined/null (shouldn't happen, but safety check)
-        if (mappedRun.leaderboardType === undefined || mappedRun.leaderboardType === null) {
-          // If leaderboardType is missing, infer from level field
-          mappedRun.leaderboardType = mappedRun.level ? 'individual-level' : 'regular';
-        }
-        if (!mappedRun.playerName || mappedRun.playerName.trim() === '') {
-          mappedRun.playerName = 'Unknown';
-        }
-        
-        // Validate time - check if time is missing or 00:00:00 when it shouldn't be
-        if (!mappedRun.time || mappedRun.time.trim() === '' || mappedRun.time === '00:00:00') {
-          // Check if the source run actually has a time
-          if (srcRun.times?.primary_t && srcRun.times.primary_t > 0) {
-            // Time exists in source but was lost during conversion - try to fix it
-            const fixedTime = secondsToTime(srcRun.times.primary_t);
-            if (fixedTime && fixedTime !== '00:00:00') {
-              mappedRun.time = fixedTime;
-            } else {
-              result.errors.push(`Run ${srcRun.id}: time conversion failed`);
-            }
-          } else if (srcRun.times?.primary && srcRun.times.primary.trim() !== '') {
-            // Try ISO duration conversion
-            const fixedTime = isoDurationToTime(srcRun.times.primary);
-            if (fixedTime && fixedTime !== '00:00:00') {
-              mappedRun.time = fixedTime;
-            } else {
-              result.errors.push(`Run ${srcRun.id}: time conversion failed`);
-            }
-          } else {
-            result.errors.push(`Run ${srcRun.id}: missing time data in source run`);
-          }
-        }
-
-        // Validate the mapped run - only skip if essential fields are missing
-        const validationErrors = validateMappedRun(mappedRun, srcRun.id);
-        const criticalErrors = validationErrors.filter(err => 
-          err.includes('missing player name') || 
-          err.includes('missing time') || 
-          err.includes('invalid time format') ||
-          err.includes('missing date') ||
-          err.includes('invalid date format')
-        );
-        
-        if (criticalErrors.length > 0) {
-          result.skipped++;
-          result.errors.push(`Run ${srcRun.id}: ${criticalErrors.join(', ')}`);
-          onProgress?.({ total: srcRuns.length, imported: result.imported, skipped: result.skipped });
-          continue;
-        }
-        
-        // Log non-critical validation issues as warnings
-        const warnings = validationErrors.filter(err => 
-          !err.includes('missing player name') && 
-          !err.includes('missing time') && 
-          !err.includes('invalid time format') &&
-          !err.includes('missing date') &&
-          !err.includes('invalid date format')
-        );
-
-        // Handle platform - allow empty if SRC name exists
-        if (!mappedRun.platform || mappedRun.platform.trim() === '') {
-          if (!mappedRun.srcPlatformName) {
-            mappedRun.platform = '';
-            mappedRun.srcPlatformName = 'Unknown Platform (from SRC)';
-            result.errors.push(`Run ${srcRun.id}: missing platform (using placeholder)`);
-          } else {
-            mappedRun.platform = '';
-          }
-        }
-
-        // Normalize player names
-        mappedRun.playerName = mappedRun.playerName.trim();
-        
-        // For co-op runs, preserve player2Name even if it's "Unknown"
-        if (mappedRun.runType === 'co-op') {
-          if (mappedRun.player2Name) {
-            mappedRun.player2Name = mappedRun.player2Name.trim() || "Unknown";
-          } else {
-            mappedRun.player2Name = "Unknown";
-          }
-        } else {
-          // For solo runs, clear player2Name
-          mappedRun.player2Name = undefined;
-        }
-
-        // Check player matching (for warnings only, doesn't block import) - use cached lookups
-        const player1Matched = playerNameCache.get(mappedRun.playerName.toLowerCase());
-        const player2Matched = mappedRun.player2Name ? playerNameCache.get(mappedRun.player2Name.toLowerCase()) : null;
-
-        const unmatched: { player1?: string; player2?: string } = {};
-        if (!player1Matched) unmatched.player1 = mappedRun.playerName;
-        if (mappedRun.player2Name && !player2Matched) unmatched.player2 = mappedRun.player2Name;
-
-        // Save to database
-        try {
-          const addedRunId = await addLeaderboardEntry(mappedRun as LeaderboardEntry);
-          if (!addedRunId) {
+              localCategories // Pass local categories with subcategories for mapping
+            );
+          } catch (mapError: any) {
             result.skipped++;
-            result.errors.push(`Run ${srcRun.id}: failed to save to database`);
+            const errorMessage = mapError instanceof Error ? mapError.message : String(mapError);
+            result.errors.push(`Run ${srcRun?.id || 'unknown'}: ${errorMessage}`);
             onProgress?.({ total: srcRuns.length, imported: result.imported, skipped: result.skipped });
-            continue;
+            return;
           }
 
-          // Track unmatched players
-          if (unmatched.player1 || unmatched.player2) {
-            result.unmatchedPlayers.set(addedRunId, unmatched);
+          // Set import metadata
+          mappedRun.importedFromSRC = true;
+          mappedRun.srcRunId = srcRun.id;
+          mappedRun.verified = false;
+
+          // Ensure required fields have defaults
+          if (!mappedRun.runType) mappedRun.runType = 'solo';
+          // CRITICAL: Don't override leaderboardType - mapSRCRunToLeaderboardEntry already sets it correctly
+          // Only set default if it's truly undefined/null (shouldn't happen, but safety check)
+          if (mappedRun.leaderboardType === undefined || mappedRun.leaderboardType === null) {
+            // If leaderboardType is missing, infer from level field
+            mappedRun.leaderboardType = mappedRun.level ? 'individual-level' : 'regular';
+          }
+          if (!mappedRun.playerName || mappedRun.playerName.trim() === '') {
+            mappedRun.playerName = 'Unknown';
+          }
+          
+          // Validate time - check if time is missing or 00:00:00 when it shouldn't be
+          if (!mappedRun.time || mappedRun.time.trim() === '' || mappedRun.time === '00:00:00') {
+            // Check if the source run actually has a time
+            if (srcRun.times?.primary_t && srcRun.times.primary_t > 0) {
+              // Time exists in source but was lost during conversion - try to fix it
+              const fixedTime = secondsToTime(srcRun.times.primary_t);
+              if (fixedTime && fixedTime !== '00:00:00') {
+                mappedRun.time = fixedTime;
+              } else {
+                result.errors.push(`Run ${srcRun.id}: time conversion failed`);
+              }
+            } else if (srcRun.times?.primary && srcRun.times.primary.trim() !== '') {
+              // Try ISO duration conversion
+              const fixedTime = isoDurationToTime(srcRun.times.primary);
+              if (fixedTime && fixedTime !== '00:00:00') {
+                mappedRun.time = fixedTime;
+              } else {
+                result.errors.push(`Run ${srcRun.id}: time conversion failed`);
+              }
+            } else {
+              result.errors.push(`Run ${srcRun.id}: missing time data in source run`);
+            }
           }
 
-          result.imported++;
-          onProgress?.({ total: srcRuns.length, imported: result.imported, skipped: result.skipped });
+          // Validate the mapped run - only skip if essential fields are missing
+          const validationErrors = validateMappedRun(mappedRun, srcRun.id);
+          const criticalErrors = validationErrors.filter(err => 
+            err.includes('missing player name') || 
+            err.includes('missing time') || 
+            err.includes('invalid time format') ||
+            err.includes('missing date') ||
+            err.includes('invalid date format')
+          );
+          
+          if (criticalErrors.length > 0) {
+            result.skipped++;
+            result.errors.push(`Run ${srcRun.id}: ${criticalErrors.join(', ')}`);
+            onProgress?.({ total: srcRuns.length, imported: result.imported, skipped: result.skipped });
+            return;
+          }
+          
+          // Log non-critical validation issues as warnings
+          const warnings = validationErrors.filter(err => 
+            !err.includes('missing player name') && 
+            !err.includes('missing time') && 
+            !err.includes('invalid time format') &&
+            !err.includes('missing date') &&
+            !err.includes('invalid date format')
+          );
 
-        } catch (addError: any) {
+          // Handle platform - allow empty if SRC name exists
+          if (!mappedRun.platform || mappedRun.platform.trim() === '') {
+            if (!mappedRun.srcPlatformName) {
+              mappedRun.platform = '';
+              mappedRun.srcPlatformName = 'Unknown Platform (from SRC)';
+              result.errors.push(`Run ${srcRun.id}: missing platform (using placeholder)`);
+            } else {
+              mappedRun.platform = '';
+            }
+          }
+
+          // Normalize player names
+          mappedRun.playerName = mappedRun.playerName.trim();
+          
+          // For co-op runs, preserve player2Name even if it's "Unknown"
+          if (mappedRun.runType === 'co-op') {
+            if (mappedRun.player2Name) {
+              mappedRun.player2Name = mappedRun.player2Name.trim() || "Unknown";
+            } else {
+              mappedRun.player2Name = "Unknown";
+            }
+          } else {
+            // For solo runs, clear player2Name
+            mappedRun.player2Name = undefined;
+          }
+
+          // Check player matching (for warnings only, doesn't block import) - use cached lookups
+          const player1Matched = playerNameCache.get(mappedRun.playerName.toLowerCase());
+          const player2Matched = mappedRun.player2Name ? playerNameCache.get(mappedRun.player2Name.toLowerCase()) : null;
+
+          const unmatched: { player1?: string; player2?: string } = {};
+          if (!player1Matched) unmatched.player1 = mappedRun.playerName;
+          if (mappedRun.player2Name && !player2Matched) unmatched.player2 = mappedRun.player2Name;
+
+          // Save to database
+          try {
+            const addedRunId = await addLeaderboardEntry(mappedRun as LeaderboardEntry);
+            if (!addedRunId) {
+              result.skipped++;
+              result.errors.push(`Run ${srcRun.id}: failed to save to database`);
+              onProgress?.({ total: srcRuns.length, imported: result.imported, skipped: result.skipped });
+              return;
+            }
+
+            // Track unmatched players
+            if (unmatched.player1 || unmatched.player2) {
+              result.unmatchedPlayers.set(addedRunId, unmatched);
+            }
+
+            result.imported++;
+            onProgress?.({ total: srcRuns.length, imported: result.imported, skipped: result.skipped });
+
+          } catch (addError: any) {
+            result.skipped++;
+            const errorMsg = addError?.message || String(addError);
+            result.errors.push(`Run ${srcRun.id}: ${errorMsg}`);
+            onProgress?.({ total: srcRuns.length, imported: result.imported, skipped: result.skipped });
+          }
+
+        } catch (error) {
+          // Catch any unexpected errors processing this run
           result.skipped++;
-          const errorMsg = addError?.message || String(addError);
-          result.errors.push(`Run ${srcRun.id}: ${errorMsg}`);
+          result.errors.push(`Run ${srcRun.id}: ${error instanceof Error ? error.message : String(error)}`);
           onProgress?.({ total: srcRuns.length, imported: result.imported, skipped: result.skipped });
         }
-
-      } catch (error) {
-        // Catch any unexpected errors processing this run
-        result.skipped++;
-        result.errors.push(`Run ${srcRun.id}: ${error instanceof Error ? error.message : String(error)}`);
-        onProgress?.({ total: srcRuns.length, imported: result.imported, skipped: result.skipped });
-      }
+      }));
     }
 
     // After importing runs, run autoclaiming for all users with SRC usernames

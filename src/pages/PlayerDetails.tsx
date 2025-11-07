@@ -5,23 +5,26 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlayerProfile } from "@/components/PlayerProfile";
-import { ArrowLeft, Trophy, User, Users, Clock, Star, Gem } from "lucide-react";
+import { ArrowLeft, Trophy, User, Users, Clock, Star, Gem, CheckCircle } from "lucide-react";
 import { Link } from "react-router-dom";
-import { getPlayerRuns, getPlayerByUid, getCategories, getPlatforms, getPlayerPendingRuns, getLevels, getCategoriesFromFirestore } from "@/lib/db";
+import { getPlayerRuns, getPlayerByUid, getCategories, getPlatforms, getPlayerPendingRuns, getLevels, getCategoriesFromFirestore, getUnclaimedRunsBySRCUsername, claimRun } from "@/lib/db";
 import LegoStudIcon from "@/components/icons/LegoStudIcon";
 import { Player, LeaderboardEntry } from "@/types/database";
 import { formatDate, formatTime } from "@/lib/utils";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { useAuth } from "@/components/AuthProvider";
 import { getCategoryName, getPlatformName, getLevelName } from "@/lib/dataValidation";
+import { useToast } from "@/hooks/use-toast";
 
 const PlayerDetails = () => {
   const { playerId } = useParams<{ playerId: string }>();
   const navigate = useNavigate();
   const { currentUser } = useAuth();
+  const { toast } = useToast();
   const [player, setPlayer] = useState<Player | null>(null);
   const [playerRuns, setPlayerRuns] = useState<LeaderboardEntry[]>([]);
   const [pendingRuns, setPendingRuns] = useState<LeaderboardEntry[]>([]);
+  const [unclaimedRuns, setUnclaimedRuns] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [platforms, setPlatforms] = useState<{ id: string; name: string }[]>([]);
@@ -71,18 +74,30 @@ const PlayerDetails = () => {
         setPlatforms(fetchedPlatforms);
         setLevels(fetchedLevels);
         
-        // Only fetch pending runs if viewing own profile
+        // Only fetch pending runs and unclaimed runs if viewing own profile
         // Check both currentUser exists and uid matches playerId
         if (currentUser && currentUser.uid && currentUser.uid === playerId) {
           try {
             const fetchedPending = await getPlayerPendingRuns(playerId);
             setPendingRuns(fetchedPending || []);
+            
+            // Fetch unclaimed runs if player has SRC username
+            if (fetchedPlayer.srcUsername) {
+              try {
+                const fetchedUnclaimed = await getUnclaimedRunsBySRCUsername(fetchedPlayer.srcUsername, currentUser.uid);
+                setUnclaimedRuns(fetchedUnclaimed || []);
+              } catch (error) {
+                setUnclaimedRuns([]);
+              }
+            }
           } catch (error) {
             setPendingRuns([]);
+            setUnclaimedRuns([]);
           }
         } else {
-          // Clear pending runs if not own profile
+          // Clear pending runs and unclaimed runs if not own profile
           setPendingRuns([]);
+          setUnclaimedRuns([]);
         }
       } catch (error) {
         // Error handling - player data fetch failed
@@ -95,6 +110,48 @@ const PlayerDetails = () => {
 
     fetchPlayerData();
   }, [playerId, currentUser?.uid]);
+
+  const handleClaimRun = async (runId: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation(); // Prevent row click navigation
+    }
+    if (!currentUser?.uid) return;
+    
+    try {
+      const success = await claimRun(runId, currentUser.uid);
+      if (success) {
+        toast({
+          title: "Run Claimed",
+          description: "This run has been linked to your account.",
+        });
+        // Refresh player data to update the runs list
+        const [fetchedPlayer, fetchedRuns] = await Promise.all([
+          getPlayerByUid(playerId!),
+          getPlayerRuns(playerId!)
+        ]);
+        setPlayer(fetchedPlayer);
+        setPlayerRuns(fetchedRuns);
+        
+        // Refresh unclaimed runs
+        if (fetchedPlayer?.srcUsername) {
+          try {
+            const fetchedUnclaimed = await getUnclaimedRunsBySRCUsername(fetchedPlayer.srcUsername, currentUser.uid);
+            setUnclaimedRuns(fetchedUnclaimed || []);
+          } catch (error) {
+            setUnclaimedRuns([]);
+          }
+        }
+      } else {
+        throw new Error("Failed to claim run.");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to claim run.",
+        variant: "destructive",
+      });
+    }
+  };
 
   if (loading) {
     return (
@@ -254,13 +311,22 @@ const PlayerDetails = () => {
 
               <TabsContent value={leaderboardType} className="mt-0">
                 {(() => {
-                  // Filter runs by leaderboard type
-                  const filteredRuns = playerRuns.filter(run => {
+                  // Filter verified runs by leaderboard type
+                  const filteredVerifiedRuns = playerRuns.filter(run => {
                     const runLeaderboardType = run.leaderboardType || 'regular';
                     return runLeaderboardType === leaderboardType;
                   });
+                  
+                  // Filter unclaimed runs by leaderboard type (only show on own profile)
+                  const filteredUnclaimedRuns = isOwnProfile ? unclaimedRuns.filter(run => {
+                    const runLeaderboardType = run.leaderboardType || 'regular';
+                    return runLeaderboardType === leaderboardType;
+                  }) : [];
+                  
+                  // Combine verified and unclaimed runs
+                  const allRuns = [...filteredVerifiedRuns, ...filteredUnclaimedRuns];
 
-                  if (filteredRuns.length === 0) {
+                  if (allRuns.length === 0) {
                     return (
                       <div className="text-center py-8">
                         <p className="text-ctp-overlay0">No {leaderboardType === 'regular' ? 'Full Game' : leaderboardType === 'individual-level' ? 'Individual Level' : 'Community Gold'} runs submitted yet</p>
@@ -282,10 +348,15 @@ const PlayerDetails = () => {
                             <th className="py-3 px-4 text-left">Date</th>
                             <th className="py-3 px-4 text-left">Platform</th>
                             <th className="py-3 px-4 text-left">Type</th>
+                            {isOwnProfile && (
+                              <th className="py-3 px-4 text-left">Action</th>
+                            )}
                           </tr>
                         </thead>
                         <tbody>
-                          {filteredRuns.map((run) => {
+                          {allRuns.map((run) => {
+                            // Check if this is an unclaimed run
+                            const isUnclaimed = !run.playerId || run.playerId.trim() === "";
                             // Use data validation utilities for proper name resolution with SRC fallbacks
                             const categoryName = getCategoryName(
                               run.category,
@@ -339,7 +410,16 @@ const PlayerDetails = () => {
                                     <span className="text-ctp-overlay0">—</span>
                                   )}
                                 </td>
-                                <td className="py-3 px-4 font-medium">{categoryName}</td>
+                                <td className="py-3 px-4 font-medium">
+                                  <div className="flex items-center gap-2">
+                                    {categoryName}
+                                    {isUnclaimed && (
+                                      <Badge variant="outline" className="border-yellow-600/50 bg-yellow-600/10 text-yellow-400 text-xs">
+                                        Unclaimed
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </td>
                                 {leaderboardType !== 'regular' && (
                                   <td className="py-3 px-4 text-ctp-overlay0">
                                     {levelName || run.srcLevelName || '—'}
@@ -358,6 +438,22 @@ const PlayerDetails = () => {
                                     {run.runType.charAt(0).toUpperCase() + run.runType.slice(1)}
                                   </Badge>
                                 </td>
+                                {isOwnProfile && (
+                                  <td className="py-3 px-4">
+                                    {isUnclaimed ? (
+                                      <Button
+                                        onClick={(e) => handleClaimRun(run.id, e)}
+                                        size="sm"
+                                        className="bg-[#cba6f7] hover:bg-[#b4a0e2] text-[hsl(240,21%,15%)] font-bold"
+                                      >
+                                        <CheckCircle className="h-4 w-4 mr-2" />
+                                        Claim
+                                      </Button>
+                                    ) : (
+                                      <span className="text-ctp-overlay0 text-sm">—</span>
+                                    )}
+                                  </td>
+                                )}
                               </tr>
                             );
                           })}
