@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, User, Users, Calendar, CheckCircle, UserCircle, Trophy, Edit2, Save, X, Trash2, Plus } from "lucide-react";
+import { ArrowLeft, User, Users, Calendar, CheckCircle, UserCircle, Trophy, Edit2, Save, X, Trash2 } from "lucide-react";
 import LegoStudIcon from "@/components/icons/LegoStudIcon";
 import { getLeaderboardEntryById, getPlayerByUid, getPlayerByDisplayName, getCategories, getCategoriesFromFirestore, getPlatforms, runTypes, updateLeaderboardEntry, deleteLeaderboardEntry } from "@/lib/db";
 import { LeaderboardEntry, Player } from "@/types/database";
@@ -944,16 +944,16 @@ const RunDetails = () => {
                   </>
                 )}
 
-                {/* Points */}
+                {/* Studs */}
                 {run.verified && !run.isObsolete && finalDisplayPoints > 0 && (
                   <div>
-                    <div className="text-base text-muted-foreground mb-2 font-medium">Points Earned</div>
+                    <div className="text-base text-muted-foreground mb-2 font-medium">Studs Earned</div>
                     <div className="flex items-center gap-2 text-lg">
-                      <Plus className="h-5 w-5 text-[#fab387]" />
+                      <LegoStudIcon size={20} color="#fab387" />
                       <span className="font-bold text-[#fab387]">
                         +{finalDisplayPoints.toLocaleString()}
                       </span>
-                      <span className="text-muted-foreground text-sm">points</span>
+                      <span className="text-muted-foreground text-sm">studs</span>
                       {run.runType === 'co-op' && (
                         <span className="text-muted-foreground text-xs">(split between both players)</span>
                       )}

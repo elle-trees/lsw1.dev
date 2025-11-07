@@ -286,25 +286,19 @@ const PointsLeaderboard = () => {
                   <div>
                     <h3 className="text-lg font-semibold text-[#fab387] mb-3">Individual Levels & Community Golds</h3>
                     <p className="text-ctp-text leading-relaxed mb-2">
-                      ILs and Community Golds award <strong>half the studs</strong> of Full Game runs:
+                      ILs and Community Golds receive <strong>base studs only</strong> (no rank bonuses):
                     </p>
                     <div className="space-y-2 text-ctp-text">
                       <p className="font-medium">Solo Runs:</p>
                       <ul className="list-disc list-inside space-y-1 ml-2 text-ctp-subtext1">
-                        <li>Rank 1: 30 studs (60 × 0.5)</li>
-                        <li>Rank 2: 20 studs (40 × 0.5)</li>
-                        <li>Rank 3: 15 studs (30 × 0.5)</li>
-                        <li>All others: 5 base studs (10 × 0.5)</li>
+                        <li>All ranks: 10 base studs</li>
                       </ul>
                       <p className="font-medium mt-3">Co-op Runs:</p>
                       <ul className="list-disc list-inside space-y-1 ml-2 text-ctp-subtext1">
-                        <li>Rank 1: 15 studs per player (30 × 0.5)</li>
-                        <li>Rank 2: 10 studs per player (20 × 0.5)</li>
-                        <li>Rank 3: 8 studs per player (15 × 0.5, rounded)</li>
-                        <li>All others: 3 studs per player (5 × 0.5, rounded)</li>
+                        <li>All ranks: 5 studs per player (10 ÷ 2)</li>
                       </ul>
                       <p className="text-sm text-ctp-overlay0 mt-2 italic">
-                        Studs are halved for ILs/Community Golds, then split for co-op runs.
+                        ILs and Community Golds do not receive rank bonuses. Co-op runs split studs equally between both players.
                       </p>
                     </div>
                   </div>

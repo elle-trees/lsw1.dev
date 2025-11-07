@@ -86,55 +86,49 @@ export function formatTime(timeString: string): string {
 }
 
 /**
- * Calculate points for a run using simple flat rates
- * Points are awarded for:
+ * Calculate studs for a run using simple flat rates
+ * Studs are awarded for:
  * - All verified runs (full game, individual levels, and community golds)
  * - All platforms
  * - All categories
  * - Both solo and co-op runs are eligible
  * 
- * Points calculation:
- * - Base points: 10 points for all verified runs
- * - Top 3 bonus: additional bonus points for runs ranked 1st, 2nd, or 3rd (NOT applied to obsolete runs)
- * - IL/Community Gold reduction: Individual Levels and Community Golds give half points (0.5x multiplier)
- * - Co-op split: Co-op runs split points equally between both players (0.5x multiplier)
- * - Obsolete runs: Only receive base points (no rank bonuses), but still subject to IL/CG reduction and co-op split
+ * Studs calculation:
+ * - Base studs: 10 studs for all verified runs
+ * - Top 3 bonus: additional bonus studs for Full Game runs ranked 1st, 2nd, or 3rd (NOT applied to ILs, Community Golds, or obsolete runs)
+ * - IL/Community Gold: Individual Levels and Community Golds only receive base studs (no rank bonuses)
+ * - Co-op split: Co-op runs split studs equally between both players (0.5x multiplier)
+ * - Obsolete runs: Only receive base studs (no rank bonuses), but still subject to co-op split
  * 
  * Full Game Solo runs:
- * - Rank 1: 10 + 50 = 60 points
- * - Rank 2: 10 + 30 = 40 points
- * - Rank 3: 10 + 20 = 30 points
- * - All others: 10 points
+ * - Rank 1: 10 + 50 = 60 studs
+ * - Rank 2: 10 + 30 = 40 studs
+ * - Rank 3: 10 + 20 = 30 studs
+ * - All others: 10 studs
  * 
  * Full Game Co-op runs:
- * - Points are split equally between both players
- * - Rank 1: (10 + 50) / 2 = 30 points per player
- * - Rank 2: (10 + 30) / 2 = 20 points per player
- * - Rank 3: (10 + 20) / 2 = 15 points per player
- * - All others: 10 / 2 = 5 points per player
+ * - Studs are split equally between both players
+ * - Rank 1: (10 + 50) / 2 = 30 studs per player
+ * - Rank 2: (10 + 30) / 2 = 20 studs per player
+ * - Rank 3: (10 + 20) / 2 = 15 studs per player
+ * - All others: 10 / 2 = 5 studs per player
  * 
- * IL/Community Gold Solo runs (half points):
- * - Rank 1: (10 + 50) * 0.5 = 30 points
- * - Rank 2: (10 + 30) * 0.5 = 20 points
- * - Rank 3: (10 + 20) * 0.5 = 15 points
- * - All others: 10 * 0.5 = 5 points
+ * IL/Community Gold Solo runs (base studs only, no rank bonuses):
+ * - All ranks: 10 studs
  * 
- * IL/Community Gold Co-op runs (half points, then split):
- * - Rank 1: (10 + 50) * 0.5 * 0.5 = 15 points per player
- * - Rank 2: (10 + 30) * 0.5 * 0.5 = 10 points per player
- * - Rank 3: (10 + 20) * 0.5 * 0.5 = 7.5 → 8 points per player (rounded)
- * - All others: 10 * 0.5 * 0.5 = 2.5 → 3 points per player (rounded)
+ * IL/Community Gold Co-op runs (base studs only, then split):
+ * - All ranks: 10 / 2 = 5 studs per player
  * 
  * @param timeString - Time string in HH:MM:SS format (not used but kept for compatibility)
  * @param categoryName - Name of the category (not used but kept for compatibility)
  * @param platformName - Name of the platform (not used but kept for compatibility)
  * @param categoryId - Optional category ID (not used but kept for compatibility)
  * @param platformId - Optional platform ID (not used but kept for compatibility)
- * @param rank - Optional rank of the run in its category (1-3 for bonus points)
- * @param runType - Optional run type ('solo' or 'co-op'). If 'co-op', points are split in half
- * @param leaderboardType - Optional leaderboard type ('regular', 'individual-level', or 'community-golds'). ILs and community golds give half points
- * @param isObsolete - Optional flag indicating if the run is obsolete. Obsolete runs only receive base points (no rank bonuses)
- * @returns Points awarded for the run (already split for co-op runs and reduced for ILs/community golds)
+ * @param rank - Optional rank of the run in its category (1-3 for bonus studs, only for Full Game)
+ * @param runType - Optional run type ('solo' or 'co-op'). If 'co-op', studs are split in half
+ * @param leaderboardType - Optional leaderboard type ('regular', 'individual-level', or 'community-golds'). ILs and community golds receive base studs only
+ * @param isObsolete - Optional flag indicating if the run is obsolete. Obsolete runs only receive base studs (no rank bonuses)
+ * @returns Studs awarded for the run (already split for co-op runs)
  */
 export function calculatePoints(
   timeString: string, 
@@ -147,20 +141,17 @@ export function calculatePoints(
   leaderboardType?: 'regular' | 'individual-level' | 'community-golds',
   isObsolete?: boolean
 ): number {
-  // Base points for all verified runs
+  // Base studs for all verified runs
   const basePoints = 10;
   
-  // Obsolete runs only get base points (no rank bonuses)
-  if (isObsolete === true) {
+  // Check if this is an IL or Community Gold
+  const isILOrCommunityGold = leaderboardType === 'individual-level' || leaderboardType === 'community-golds';
+  
+  // ILs, Community Golds, and obsolete runs only get base studs (no rank bonuses)
+  if (isObsolete === true || isILOrCommunityGold) {
     let points = basePoints;
     
-    // Apply IL/Community Gold reduction: Individual Levels and Community Golds give half points
-    const isILOrCommunityGold = leaderboardType === 'individual-level' || leaderboardType === 'community-golds';
-    if (isILOrCommunityGold) {
-      points = points * 0.5;
-    }
-    
-    // CRITICAL: For co-op runs, ALWAYS split points equally between both players
+    // CRITICAL: For co-op runs, ALWAYS split studs equally between both players
     const isCoOp = runType === 'co-op' || 
                    (typeof runType === 'string' && runType.toLowerCase().includes('co-op')) ||
                    (typeof runType === 'string' && runType.toLowerCase() === 'coop');
@@ -173,6 +164,7 @@ export function calculatePoints(
     return Math.round(points);
   }
   
+  // For Full Game runs, apply rank bonuses
   // Ensure rank is a number for comparison
   // Handle null, undefined, and non-number values
   let numericRank: number | undefined = undefined;
@@ -187,10 +179,10 @@ export function calculatePoints(
     }
   }
   
-  // Start with base points
+  // Start with base studs
   let points = basePoints;
 
-  // Add top 3 bonus if applicable
+  // Add top 3 bonus if applicable (only for Full Game runs)
   // Only apply bonus if rank is exactly 1, 2, or 3
   if (numericRank !== undefined && numericRank >= 1 && numericRank <= 3 && Number.isInteger(numericRank)) {
     if (numericRank === 1) {
@@ -202,16 +194,9 @@ export function calculatePoints(
     }
   }
 
-  // Apply IL/Community Gold reduction: Individual Levels and Community Golds give half points
-  // This reduction happens BEFORE co-op split
-  const isILOrCommunityGold = leaderboardType === 'individual-level' || leaderboardType === 'community-golds';
-  if (isILOrCommunityGold) {
-    points = points * 0.5;
-  }
-
-  // CRITICAL: For co-op runs, ALWAYS split points equally between both players
-  // This ensures both players get half the points for co-op runs
-  // Points are already split here, so each player gets the returned value
+  // CRITICAL: For co-op runs, ALWAYS split studs equally between both players
+  // This ensures both players get half the studs for co-op runs
+  // Studs are already split here, so each player gets the returned value
   // Safeguard: Check for 'co-op' or 'coop' (case-insensitive) to handle any variations
   const isCoOp = runType === 'co-op' || 
                  (typeof runType === 'string' && runType.toLowerCase().includes('co-op')) ||
