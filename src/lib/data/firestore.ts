@@ -505,7 +505,6 @@ export const getLeaderboardEntriesFirestore = async (
 
     return enrichedEntries;
   } catch (error) {
-    console.error("Error fetching leaderboard entries:", error);
     return [];
   }
 };
@@ -540,11 +539,6 @@ export const addLeaderboardEntryFirestore = async (entry: Omit<LeaderboardEntry,
       const validation = validateLeaderboardEntry(normalized);
       
       if (!validation.valid) {
-        console.error("Validation failed for leaderboard entry:", validation.errors, {
-          entry: normalized,
-          importedFromSRC: normalized.importedFromSRC,
-          importedFromSRCType: typeof normalized.importedFromSRC,
-        });
         throw new Error(`Invalid entry data: ${validation.errors.join(', ')}`);
       }
     }
@@ -603,10 +597,8 @@ export const addLeaderboardEntryFirestore = async (entry: Omit<LeaderboardEntry,
     }
     
     await setDoc(newDocRef, newEntry);
-    console.debug(`Saved entry with SRC names: category="${normalized.srcCategoryName}", platform="${normalized.srcPlatformName}", level="${normalized.srcLevelName}"`);
     return newDocRef.id;
   } catch (error) {
-    console.error("Error adding leaderboard entry:", error);
     // Re-throw the error so the caller can see what went wrong
     throw error;
   }
@@ -660,7 +652,7 @@ export const getPlayerByDisplayNameFirestore = async (displayName: string): Prom
     }
     return null;
   } catch (error) {
-    console.error("Error fetching player by display name:", error);
+    
     return null;
   }
 };
@@ -689,7 +681,7 @@ export const isDisplayNameAvailableFirestore = async (displayName: string): Prom
     
     return true; // Display name is available
   } catch (error) {
-    console.error("Error checking display name availability:", error);
+    
     return false; // On error, assume not available to be safe
   }
 };
@@ -713,7 +705,7 @@ export const getPlayersWithTwitchUsernamesFirestore = async (): Promise<Array<{ 
     
     return players;
   } catch (error) {
-    console.error("Error fetching players with Twitch usernames:", error);
+    
     return [];
   }
 };
@@ -738,7 +730,7 @@ export const getPlayersWithSRCUsernamesFirestore = async (): Promise<Array<{ uid
     
     return players;
   } catch (error) {
-    console.error("Error fetching players with SRC usernames:", error);
+    
     return [];
   }
 };
@@ -764,7 +756,7 @@ export const runAutoclaimingForAllUsersFirestore = async (): Promise<{ totalUser
       return result;
     }
     
-    console.log(`[Autoclaiming] Running autoclaiming for ${playersWithSRC.length} users with SRC usernames`);
+    
     
     // Run autoclaiming for each user
     // Process in batches to avoid overwhelming the system
@@ -783,7 +775,7 @@ export const runAutoclaimingForAllUsersFirestore = async (): Promise<{ totalUser
           } catch (error) {
             const errorMsg = error instanceof Error ? error.message : String(error);
             result.errors.push(`User ${player.uid} (${player.srcUsername}): ${errorMsg}`);
-            console.error(`[Autoclaiming] Error autoclaiming for user ${player.uid}:`, error);
+            
           }
         })
       );
@@ -794,11 +786,11 @@ export const runAutoclaimingForAllUsersFirestore = async (): Promise<{ totalUser
       }
     }
     
-    console.log(`[Autoclaiming] Completed: ${result.totalClaimed} runs claimed for ${result.totalUsers} users`);
+    
     
     return result;
   } catch (error) {
-    console.error("[Autoclaiming] Error running autoclaiming for all users:", error);
+    
     result.errors.push(error instanceof Error ? error.message : String(error));
     return result;
   }
@@ -811,7 +803,7 @@ export const createPlayerFirestore = async (player: Omit<Player, 'id'>): Promise
     await setDoc(playerDocRef, player);
     return player.uid;
   } catch (error) {
-    console.error("createPlayerFirestore error:", error);
+    
     return null;
   }
 };
@@ -845,7 +837,7 @@ export const autoClaimRunsBySRCUsernameFirestore = async (userId: string, srcUse
       );
       verifiedSnapshot = await getDocs(verifiedQuery);
     } catch (error) {
-      console.error("Error fetching verified runs for autoclaiming:", error);
+      
       verifiedSnapshot = { docs: [] } as any;
     }
     
@@ -864,7 +856,7 @@ export const autoClaimRunsBySRCUsernameFirestore = async (userId: string, srcUse
                                 (typeof errorCode === 'string' && errorCode.toLowerCase().includes('permission'));
       
       if (!isPermissionError) {
-        console.error("Error fetching unverified runs for autoclaiming:", error);
+        
       }
       unverifiedSnapshot = { docs: [] } as any;
     }
@@ -970,7 +962,7 @@ export const autoClaimRunsBySRCUsernameFirestore = async (userId: string, srcUse
             }
           }
         } catch (error) {
-          console.error(`Error calculating points for run ${run.id}:`, error);
+          
           result.errors.push(`Failed to calculate points for run ${run.id}: ${error instanceof Error ? error.message : String(error)}`);
         }
       }
@@ -984,7 +976,7 @@ export const autoClaimRunsBySRCUsernameFirestore = async (userId: string, srcUse
       try {
         await recalculatePlayerPointsFirestore(userId);
       } catch (error) {
-        console.error(`Error recalculating points after auto-claiming:`, error);
+        
         result.errors.push(`Failed to recalculate points: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
@@ -999,14 +991,14 @@ export const autoClaimRunsBySRCUsernameFirestore = async (userId: string, srcUse
             await recalculatePlayerPointsFirestore(player2.uid);
           }
         } catch (error) {
-          console.error(`Error recalculating player2 points for ${run.player2Name}:`, error);
+          
         }
       }
     }
     
     return result;
   } catch (error) {
-    console.error("Error auto-claiming runs by SRC username:", error);
+    
     result.errors.push(error instanceof Error ? error.message : String(error));
     return result;
   }
@@ -1083,25 +1075,25 @@ export const updatePlayerProfileFirestore = async (uid: string, data: Partial<Pl
       // Run auto-claiming asynchronously (don't block the profile update)
       autoClaimRunsBySRCUsernameFirestore(uid, newSRCUsername).then(result => {
         if (result.claimed > 0) {
-          console.debug(`Auto-claimed ${result.claimed} runs for SRC username: ${newSRCUsername}`);
+          
         }
       }).catch(error => {
-        console.error("Error auto-claiming runs after SRC username update:", error);
+        
       });
     } else if (!docSnap.exists() && newSRCUsername) {
       // If creating a new profile with SRC username, also auto-claim runs
       autoClaimRunsBySRCUsernameFirestore(uid, newSRCUsername).then(result => {
         if (result.claimed > 0) {
-          console.debug(`Auto-claimed ${result.claimed} runs for new profile with SRC username: ${newSRCUsername}`);
+          
         }
       }).catch(error => {
-        console.error("Error auto-claiming runs after profile creation:", error);
+        
       });
     }
     
     return true;
   } catch (error) {
-    console.error("updatePlayerProfileFirestore error:", error?.code, error?.message);
+    
     return false;
   }
 };
@@ -1177,7 +1169,7 @@ export const getRecentRunsFirestore = async (limitCount: number = 10): Promise<L
 
     return enrichedEntries;
   } catch (error) {
-    console.error("Error fetching recent runs:", error);
+    
     return [];
   }
 };
@@ -1306,11 +1298,11 @@ export const getPlayerRunsFirestore = async (playerId: string): Promise<Leaderbo
 
 export const getPlayerPendingRunsFirestore = async (playerId: string): Promise<LeaderboardEntry[]> => {
   if (!db) {
-    console.error("getPlayerPendingRunsFirestore: Database not initialized");
+    
     return [];
   }
   if (!playerId) {
-    console.error("getPlayerPendingRunsFirestore: playerId is required");
+    
     return [];
   }
   try {
@@ -1332,7 +1324,7 @@ export const getPlayerPendingRunsFirestore = async (playerId: string): Promise<L
         return dateB.localeCompare(dateA);
       });
 
-    console.debug(`getPlayerPendingRunsFirestore: Found ${entries.length} pending runs for player ${playerId}`);
+    
 
     // Enrich with player display name and color
     const player = await getPlayerByUidFirestore(playerId);
@@ -1348,7 +1340,7 @@ export const getPlayerPendingRunsFirestore = async (playerId: string): Promise<L
       return entry;
     });
   } catch (error) {
-    console.error("getPlayerPendingRunsFirestore error:", error);
+    
     return [];
   }
 };
@@ -1404,7 +1396,7 @@ export const getLeaderboardEntryByIdFirestore = async (runId: string): Promise<L
           }
         } catch (error) {
           // Silent fail - rank will remain undefined
-          console.error("Error calculating rank:", error);
+          
         }
       }
       
@@ -1470,7 +1462,7 @@ export const updateLeaderboardEntryFirestore = async (runId: string, data: Parti
             }
           } catch (error) {
             // Use SRC fallback if fetch fails
-            console.warn(`Could not fetch category ${newCategoryId}, using SRC fallback: ${categoryName}`);
+            
           }
         }
         
@@ -1482,7 +1474,7 @@ export const updateLeaderboardEntryFirestore = async (runId: string, data: Parti
             }
           } catch (error) {
             // Use SRC fallback if fetch fails
-            console.warn(`Could not fetch platform ${newPlatformId}, using SRC fallback: ${platformName}`);
+            
           }
         }
       
@@ -1533,7 +1525,7 @@ export const updateLeaderboardEntryFirestore = async (runId: string, data: Parti
     await updateDoc(runDocRef, updateData);
     return true;
   } catch (error) {
-    console.error("Error updating leaderboard entry:", error);
+    
     // Re-throw the error so the caller can see what went wrong
     throw error;
   }
@@ -1559,7 +1551,7 @@ async function createPlayerDocumentForPlayer2(name: string, uid: string, joinDat
   try {
     await createPlayerFirestore(newPlayerData);
   } catch (createError) {
-    console.error("Error creating player2 document:", createError);
+    
     throw createError; // Re-throw so caller can handle
   }
 }
@@ -1605,7 +1597,7 @@ export const updateRunVerificationStatusFirestore = async (runId: string, verifi
           }
         } catch (error) {
           // Use SRC fallback if fetch fails
-          console.warn(`Could not fetch category ${runData.category}, using SRC fallback: ${categoryName}`);
+          
         }
       }
       
@@ -1617,7 +1609,7 @@ export const updateRunVerificationStatusFirestore = async (runId: string, verifi
           }
         } catch (error) {
           // Use SRC fallback if fetch fails
-          console.warn(`Could not fetch platform ${runData.platform}, using SRC fallback: ${platformName}`);
+          
         }
       }
         
@@ -1749,7 +1741,7 @@ export const recalculatePlayerPointsFirestore = async (playerId: string): Promis
     try {
       playerDocSnap = await getDoc(playerDocRef);
     } catch (error) {
-      console.error(`Error reading player document ${playerId}:`, error);
+      
       playerDocSnap = null;
     }
     
@@ -2020,7 +2012,7 @@ export const recalculatePlayerPointsFirestore = async (playerId: string): Promis
       try {
       await updateDoc(playerDocRef, { totalPoints, totalRuns: totalVerifiedRuns });
       } catch (error) {
-        console.error(`Error updating player ${playerId} totalPoints and totalRuns:`, error?.code, error?.message);
+        
         throw error; // Re-throw to be caught by outer catch
       }
     } else {
@@ -2028,15 +2020,15 @@ export const recalculatePlayerPointsFirestore = async (playerId: string): Promis
       // Player documents should only be created by AuthProvider when users sign up
       // If a player doesn't exist, we can't recalculate their points
       // This prevents creating temporary profiles for unclaimed runs
-      console.warn(`Cannot recalculate points for player ${playerId}: player document does not exist. Player profiles should only be created on signup.`);
+      
       return false;
     }
     
     return true;
   } catch (error) {
-    console.error(`Error recalculating points for player ${playerId}:`, error?.code, error?.message);
+    
     if (error?.code === 'permission-denied') {
-      console.error(`Permission denied. Make sure you are logged in as an admin and your admin status is set correctly in Firestore.`);
+      
     }
     return false;
   }
@@ -2152,7 +2144,7 @@ async function recalculatePointsForPlayers(
         uniquePlayerIds.add(player2.uid);
       }
     } catch (error) {
-      console.error("Error fetching player2 for points recalculation:", error);
+      
     }
   }
   
@@ -2164,7 +2156,7 @@ async function recalculatePointsForPlayers(
       try {
         await recalculatePlayerPointsFirestore(playerId);
       } catch (error) {
-        console.error(`Error recalculating points for player ${playerId}:`, error);
+        
         // Don't throw - continue with other players
       }
     });
@@ -2213,15 +2205,10 @@ export const deleteLeaderboardEntryFirestore = async (runId: string): Promise<bo
     
     // Check if it's a permission error
     if (errorCode === 'permission-denied' || errorMessage.includes('permission')) {
-      console.error("Error deleting leaderboard entry: Permission denied. Ensure your player document exists and has isAdmin: true set.", {
-        runId,
-        errorCode,
-        errorMessage
-      });
       throw new Error("Permission denied. Please ensure your admin account has a player document with isAdmin: true set. You can set this in the Admin panel under 'Manage Admin Status'.");
     }
     
-    console.error("Error deleting leaderboard entry:", error);
+    
     throw error; // Re-throw to let caller handle it
   }
 };
@@ -2439,7 +2426,7 @@ export const addDownloadEntryFirestore = async (entry: Omit<DownloadEntry, 'id' 
     await setDoc(newDocRef, newEntry);
     return newDocRef.id;
   } catch (error) {
-    console.error("Error adding download entry:", error);
+    
     throw error; // Re-throw so the caller can see what went wrong
   }
 };
@@ -2967,7 +2954,7 @@ export const getIlRunsToFixFirestore = async (): Promise<LeaderboardEntry[]> => 
     
     return runsToFix;
   } catch (error) {
-    console.error("Error finding IL runs to fix:", error);
+    
     return [];
   }
 };
@@ -3001,7 +2988,7 @@ export const getUnassignedRunsFirestore = async (limit: number = 500): Promise<L
     
     return unassignedRuns;
   } catch (error) {
-    console.error("Error fetching unassigned runs:", error);
+    
     return [];
   }
 };
@@ -3065,11 +3052,11 @@ export const getUnclaimedRunsBySRCUsernameFirestore = async (srcUsername: string
       
       return matchingRuns;
     } catch (error) {
-      console.error("Error fetching unclaimed runs by SRC username:", error);
+      
       return [];
     }
   } catch (error) {
-    console.error("Error fetching unclaimed runs by SRC username:", error);
+    
     return [];
   }
 };
@@ -3094,7 +3081,7 @@ export const claimRunFirestore = async (runId: string, userId: string): Promise<
     // Get the user's player data
     const player = await getPlayerByUidFirestore(userId);
     if (!player) {
-      console.error("Cannot claim run: User does not have a player profile");
+      
       return false;
     }
     
@@ -3134,18 +3121,18 @@ export const claimRunFirestore = async (runId: string, userId: string): Promise<
     // Use the same fetchPlayerById function and normalization as during import
     if ((!actualSRCPlayerName || actualSRCPlayerName === "unknown") && runData.srcPlayerId) {
       try {
-        console.log(`[claimRun] Fetching player name for srcPlayerId: ${runData.srcPlayerId}`);
+        
         const { fetchPlayerById } = await import("@/lib/speedruncom");
         const fetchedName = await fetchPlayerById(runData.srcPlayerId);
         if (fetchedName) {
           // Use the same normalization function as import for consistency
           actualSRCPlayerName = normalizeSRCUsername(fetchedName);
-          console.log(`[claimRun] Fetched player name: ${fetchedName} (normalized: ${actualSRCPlayerName})`);
+          
         } else {
-          console.warn(`[claimRun] fetchPlayerById returned null/empty for srcPlayerId: ${runData.srcPlayerId}`);
+          
         }
       } catch (error) {
-        console.error(`[claimRun] Error fetching player name from SRC API for srcPlayerId ${runData.srcPlayerId}:`, error);
+        
         // Continue with "Unknown" - will fail validation below with helpful error
       }
     }
@@ -3156,33 +3143,28 @@ export const claimRunFirestore = async (runId: string, userId: string): Promise<
     if ((!actualSRCPlayerName || actualSRCPlayerName === "unknown") && runData.playerName && 
         normalizeSRCUsername(runData.playerName) !== "unknown" && 
         normalizeSRCUsername(runData.playerName) === normalizedUserSRCUsername) {
-      console.log(`[claimRun] Using playerName as fallback SRC username: ${runData.playerName}`);
+      
       actualSRCPlayerName = normalizeSRCUsername(runData.playerName);
     }
     
     if ((!actualSRCPlayerName || actualSRCPlayerName === "unknown") && !runData.srcPlayerId) {
-      console.warn(`[claimRun] Run ${runId} has "Unknown" player name but no srcPlayerId. Run data:`, {
-        srcPlayerName: runData.srcPlayerName,
-        srcPlayerId: runData.srcPlayerId,
-        playerName: runData.playerName,
-        importedFromSRC: runData.importedFromSRC
-      });
+      // Run has "Unknown" player name but no srcPlayerId
     }
     
     if ((!actualSRCPlayer2Name || actualSRCPlayer2Name === "unknown") && runData.srcPlayer2Id) {
       try {
-        console.log(`[claimRun] Fetching player2 name for srcPlayer2Id: ${runData.srcPlayer2Id}`);
+        
         const { fetchPlayerById } = await import("@/lib/speedruncom");
         const fetchedName = await fetchPlayerById(runData.srcPlayer2Id);
         if (fetchedName) {
           // Use the same normalization function as import for consistency
           actualSRCPlayer2Name = normalizeSRCUsername(fetchedName);
-          console.log(`[claimRun] Fetched player2 name: ${fetchedName} (normalized: ${actualSRCPlayer2Name})`);
+          
         } else {
-          console.warn(`[claimRun] fetchPlayerById returned null/empty for srcPlayer2Id: ${runData.srcPlayer2Id}`);
+          
         }
       } catch (error) {
-        console.error(`[claimRun] Error fetching player2 name from SRC API for srcPlayer2Id ${runData.srcPlayer2Id}:`, error);
+        
       }
     }
     
@@ -3191,7 +3173,7 @@ export const claimRunFirestore = async (runId: string, userId: string): Promise<
     if ((!actualSRCPlayer2Name || actualSRCPlayer2Name === "unknown") && runData.player2Name && 
         normalizeSRCUsername(runData.player2Name) !== "unknown" && 
         normalizeSRCUsername(runData.player2Name) === normalizedUserSRCUsername) {
-      console.log(`[claimRun] Using player2Name as fallback SRC username: ${runData.player2Name}`);
+      
       actualSRCPlayer2Name = normalizeSRCUsername(runData.player2Name);
     }
     
@@ -3292,7 +3274,7 @@ export const claimRunFirestore = async (runId: string, userId: string): Promise<
       // Verify the run (this will calculate points and rank now that it's claimed)
       const verificationSuccess = await updateRunVerificationStatusFirestore(runId, true, verifiedBy);
       if (!verificationSuccess) {
-        console.error("Failed to verify run when claiming");
+        
         // Continue anyway - the run is still assigned to the user
       }
       
@@ -3323,7 +3305,7 @@ export const claimRunFirestore = async (runId: string, userId: string): Promise<
               categoryName = categoryDocSnap.data().name || categoryName;
             }
           } catch (error) {
-            console.warn(`Could not fetch category ${runData.category}, using SRC fallback: ${categoryName}`);
+            
           }
         }
         
@@ -3334,7 +3316,7 @@ export const claimRunFirestore = async (runId: string, userId: string): Promise<
               platformName = platformDocSnap.data().name || platformName;
             }
           } catch (error) {
-            console.warn(`Could not fetch platform ${runData.platform}, using SRC fallback: ${platformName}`);
+            
           }
         }
         
@@ -3410,7 +3392,7 @@ export const claimRunFirestore = async (runId: string, userId: string): Promise<
     
     return true;
   } catch (error) {
-    console.error("Error claiming run:", error);
+    
     // Re-throw errors so they can be displayed to the user
     if (error instanceof Error) {
       throw error;
@@ -3489,12 +3471,12 @@ export const getAllPlayersFirestore = async (
         
         return limit ? players.slice(0, limit) : players;
       } catch (fallbackError) {
-        console.error("Error fetching all players (fallback):", fallbackError);
+        
         return [];
       }
     }
     
-    console.error("Error getting all players:", error);
+    
     return [];
   }
 };
@@ -3512,7 +3494,7 @@ export const updatePlayerFirestore = async (
     await updateDoc(playerDocRef, updates);
     return true;
   } catch (error) {
-    console.error("Error updating player:", error);
+    
     return false;
   }
 };
@@ -3584,7 +3566,7 @@ export const deletePlayerFirestore = async (
     
     return { success: true, deletedRuns: deletedRunsCount };
   } catch (error) {
-    console.error("Error deleting player:", error);
+    
     return { success: false, error: error.message || "Failed to delete player" };
   }
 };
@@ -3680,11 +3662,11 @@ export const getPlayersByPointsFirestore = async (limit: number = 100): Promise<
     } catch (error) {
       // If index doesn't exist yet, return empty array and log warning
       // Admin should run recalculation to populate player totalPoints, then deploy index
-      console.warn("Points index not available. Please deploy firestore.indexes.json and run recalculation:", error);
+      
       return [];
     }
   } catch (error) {
-    console.error("Error getting players by points:", error);
+    
     return [];
   }
 };
@@ -4113,7 +4095,7 @@ export const updateLevelCategoryDisabledFirestore = async (
     await updateDoc(levelDocRef, { disabledCategories });
     return true;
   } catch (error) {
-    console.error("Error updating level category disabled state:", error);
+    
     return false;
   }
 };
@@ -4251,7 +4233,7 @@ export const getDownloadCategoriesFirestore = async (): Promise<DownloadCategory
     
     return categories;
   } catch (error) {
-    console.error("Error fetching download categories:", error);
+    
     // Return defaults on error
     return DEFAULT_DOWNLOAD_CATEGORIES.map((cat) => ({ id: cat.name.toLowerCase().replace(/\s+/g, '_'), ...cat }));
   }
@@ -4273,7 +4255,7 @@ export const addDownloadCategoryFirestore = async (name: string, order?: number)
     
     return categoryId;
   } catch (error) {
-    console.error("Error adding download category:", error);
+    
     return null;
   }
 };
@@ -4290,7 +4272,7 @@ export const updateDownloadCategoryFirestore = async (categoryId: string, name?:
     await updateDoc(categoryRef, updateData);
     return true;
   } catch (error) {
-    console.error("Error updating download category:", error);
+    
     return false;
   }
 };
@@ -4302,7 +4284,7 @@ export const deleteDownloadCategoryFirestore = async (categoryId: string): Promi
     await deleteDoc(categoryRef);
     return true;
   } catch (error) {
-    console.error("Error deleting download category:", error);
+    
     return false;
   }
 };
@@ -4322,7 +4304,7 @@ export const checkSRCRunExistsFirestore = async (srcRunId: string): Promise<bool
     const querySnapshot = await getDocs(q);
     return !querySnapshot.empty;
   } catch (error) {
-    console.error("Error checking SRC run existence:", error);
+    
     return false;
   }
 };
@@ -4355,7 +4337,7 @@ export const getExistingSRCRunIdsFirestore = async (): Promise<Set<string>> => {
         }
       });
     } catch (error) {
-      console.error("Error fetching verified SRC run IDs:", error);
+      
       // Continue with unverified check
     }
     
@@ -4383,14 +4365,14 @@ export const getExistingSRCRunIdsFirestore = async (): Promise<Set<string>> => {
                                 (typeof errorCode === 'string' && errorCode.toLowerCase().includes('permission'));
       
       if (!isPermissionError) {
-        console.error("Error fetching unverified SRC run IDs:", error);
+        
       }
       // Silently continue - we have verified entries at least
     }
     
     return srcRunIds;
   } catch (error) {
-    console.error("Error fetching existing SRC run IDs:", error);
+    
     // Return empty set on error - import will still work, just might import duplicates
     return new Set();
   }
@@ -4421,7 +4403,7 @@ export const getImportedSRCRunsFirestore = async (): Promise<LeaderboardEntry[]>
       ...doc.data() 
     } as LeaderboardEntry));
   } catch (error) {
-    console.error("Error fetching imported SRC runs:", error);
+    
     return [];
   }
 };
@@ -4445,7 +4427,7 @@ export const getAllRunsForDuplicateCheckFirestore = async (): Promise<Leaderboar
       ...doc.data() 
     } as LeaderboardEntry));
   } catch (error) {
-    console.error("Error fetching runs for duplicate check:", error);
+    
     return [];
   }
 };
@@ -4518,7 +4500,7 @@ export const getVerifiedRunsWithInvalidDataFirestore = async (): Promise<Leaderb
     
     return invalidRuns;
   } catch (error) {
-    console.error("Error fetching verified runs with invalid data:", error);
+    
     return [];
   }
 };
@@ -4655,7 +4637,7 @@ export const findDuplicateRunsFirestore = async (): Promise<Array<{ runs: Leader
     
     return duplicateGroups;
   } catch (error) {
-    console.error("Error finding duplicate runs:", error);
+    
     return [];
   }
 };
@@ -4736,7 +4718,7 @@ export const removeDuplicateRunsFirestore = async (duplicateGroups: Array<{ runs
         const batch = affectedPlayerIdsArray.slice(i, i + batchSize);
         await Promise.all(batch.map(playerId => 
           recalculatePlayerPointsFirestore(playerId).catch(error => {
-            console.error(`Error recalculating points for player ${playerId}:`, error);
+            
             result.errors.push(`Failed to recalculate points for player ${playerId}`);
           })
         ));
@@ -4745,7 +4727,7 @@ export const removeDuplicateRunsFirestore = async (duplicateGroups: Array<{ runs
     
     return result;
   } catch (error) {
-    console.error("Error removing duplicate runs:", error);
+    
     result.errors.push(error instanceof Error ? error.message : String(error));
     return result;
   }
@@ -4859,7 +4841,7 @@ export const getUnclaimedImportedRunsFirestore = async (): Promise<LeaderboardEn
     
     return unclaimedRuns;
   } catch (error) {
-    console.error("Error fetching unclaimed imported runs:", error);
+    
     return [];
   }
 };

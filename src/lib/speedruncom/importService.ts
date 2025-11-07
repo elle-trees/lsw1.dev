@@ -145,7 +145,7 @@ export async function createSRCMappings(srcRuns: SRCRun[], gameId: string): Prom
         uniquePlatforms.set(platform.id, { id: platform.id, name });
       }
     } catch (error) {
-      console.warn(`[SRC Mapping] Failed to fetch platform ${platform.id}:`, error);
+      // Platform fetch failed, skip this platform
     }
   });
 
@@ -252,8 +252,7 @@ export async function createSRCMappings(srcRuns: SRCRun[], gameId: string): Prom
         categoryNameMapping.set(fuzzySrcName, ourCat.id);
       }
     } else {
-      // Log unmatched categories for debugging
-      console.warn(`[SRC Mapping] Category "${srcCat.name}" (type: ${srcCategoryType}) not found in local categories`);
+      // Category not found in local categories
     }
   }
 
@@ -301,7 +300,7 @@ export async function createSRCMappings(srcRuns: SRCRun[], gameId: string): Prom
         platformNameMapping.set(fuzzyPlatformName, ourPlatform.id);
       }
     } else {
-      console.warn(`[SRC Mapping] Platform "${platformName}" not found in local platforms`);
+      // Platform not found in local platforms
     }
   }
 
@@ -349,7 +348,7 @@ export async function createSRCMappings(srcRuns: SRCRun[], gameId: string): Prom
     if (ourLevel) {
       levelMapping.set(srcLevel.id, ourLevel.id);
     } else {
-      console.warn(`[SRC Mapping] Level "${levelName}" not found in local levels`);
+      // Level not found in local levels
     }
   }
 
@@ -525,7 +524,6 @@ export async function importSRCRuns(
     try {
       localCategories = await getCategoriesFromFirestore();
     } catch (error) {
-      console.warn(`[Import] Failed to fetch local categories for subcategory mapping:`, error);
       // Continue without subcategory mapping - runs will still import with srcSubcategory
     }
 
@@ -624,9 +622,7 @@ export async function importSRCRuns(
             const fixedTime = secondsToTime(srcRun.times.primary_t);
             if (fixedTime && fixedTime !== '00:00:00') {
               mappedRun.time = fixedTime;
-              console.warn(`[importSRCRuns] Fixed missing time for run ${srcRun.id}: ${fixedTime}`);
             } else {
-              console.error(`[importSRCRuns] Time conversion failed for run ${srcRun.id}: primary_t=${srcRun.times.primary_t}, got ${fixedTime}`);
               result.errors.push(`Run ${srcRun.id}: time conversion failed`);
             }
           } else if (srcRun.times?.primary && srcRun.times.primary.trim() !== '') {
@@ -634,13 +630,10 @@ export async function importSRCRuns(
             const fixedTime = isoDurationToTime(srcRun.times.primary);
             if (fixedTime && fixedTime !== '00:00:00') {
               mappedRun.time = fixedTime;
-              console.warn(`[importSRCRuns] Fixed missing time for run ${srcRun.id} using ISO duration: ${fixedTime}`);
             } else {
-              console.error(`[importSRCRuns] ISO duration conversion failed for run ${srcRun.id}: primary=${srcRun.times.primary}, got ${fixedTime}`);
               result.errors.push(`Run ${srcRun.id}: time conversion failed`);
             }
           } else {
-            console.error(`[importSRCRuns] No time data available for run ${srcRun.id}`);
             result.errors.push(`Run ${srcRun.id}: missing time data in source run`);
           }
         }
@@ -670,9 +663,6 @@ export async function importSRCRuns(
           !err.includes('missing date') &&
           !err.includes('invalid date format')
         );
-        if (warnings.length > 0) {
-          console.warn(`Run ${srcRun.id} has warnings: ${warnings.join(', ')}`);
-        }
 
         // Handle platform - allow empty if SRC name exists
         if (!mappedRun.platform || mappedRun.platform.trim() === '') {
@@ -730,7 +720,6 @@ export async function importSRCRuns(
           result.skipped++;
           const errorMsg = addError?.message || String(addError);
           result.errors.push(`Run ${srcRun.id}: ${errorMsg}`);
-          console.error(`Failed to save run ${srcRun.id}:`, addError);
           onProgress?.({ total: srcRuns.length, imported: result.imported, skipped: result.skipped });
         }
 
@@ -738,7 +727,6 @@ export async function importSRCRuns(
         // Catch any unexpected errors processing this run
         result.skipped++;
         result.errors.push(`Run ${srcRun.id}: ${error instanceof Error ? error.message : String(error)}`);
-        console.error(`Error processing run ${srcRun.id}:`, error);
         onProgress?.({ total: srcRuns.length, imported: result.imported, skipped: result.skipped });
       }
     }
@@ -746,24 +734,19 @@ export async function importSRCRuns(
     // After importing runs, run autoclaiming for all users with SRC usernames
     // This ensures newly imported runs are automatically claimed
     try {
-      console.log("[Import] Running autoclaiming for all users after import...");
       const autoclaimResult = await runAutoclaimingForAllUsers();
       if (autoclaimResult.totalClaimed > 0) {
-        console.log(`[Import] Autoclaimed ${autoclaimResult.totalClaimed} runs for ${autoclaimResult.totalUsers} users`);
       }
       if (autoclaimResult.errors.length > 0) {
-        console.warn(`[Import] Autoclaiming had ${autoclaimResult.errors.length} errors:`, autoclaimResult.errors);
       }
     } catch (autoclaimError) {
       // Don't fail the import if autoclaiming fails
-      console.error("[Import] Error running autoclaiming after import:", autoclaimError);
     }
 
     return result;
   } catch (error) {
     // Catch any unexpected top-level errors
     result.errors.push(`Unexpected error: ${error instanceof Error ? error.message : String(error)}`);
-    console.error("Import error:", error);
     return result;
   }
 }

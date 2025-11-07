@@ -55,11 +55,9 @@ const Live = () => {
           setIsLive(false);
         } else {
           // If response is unexpected, default to offline for safety
-          console.warn('Unexpected stream status response:', trimmedData);
           setIsLive(false);
         }
       } catch (error) {
-        console.error('Error checking stream status:', error);
         // Default to offline on error
         setIsLive(false);
       }
@@ -106,7 +104,6 @@ const Live = () => {
               }
               return null;
             } catch (error) {
-              console.error(`Error checking ${player.twitchUsername}:`, error);
               return null;
             }
           })
@@ -115,7 +112,6 @@ const Live = () => {
         const live = liveStatusChecks.filter((runner): runner is LiveRunner => runner !== null);
         setLiveRunners(live);
       } catch (error) {
-        console.error('Error checking live runners:', error);
         setLiveRunners([]);
       } finally {
         setCheckingRunners(false);

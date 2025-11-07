@@ -172,7 +172,6 @@ const UserSettings = () => {
             photoURL: profilePicture
           });
         } catch (error) {
-          console.error("Failed to update Firebase Auth photoURL:", error);
           // Don't fail the whole update if this fails
         }
       }

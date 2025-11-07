@@ -60,8 +60,7 @@ export function normalizeTime(time: string | undefined | null): string {
     return normalized;
   }
   
-  // If format doesn't match, log warning but don't silently fail
-  console.warn(`[normalizeTime] Invalid time format: "${normalized}". Expected HH:MM:SS or H:MM:SS`);
+  // If format doesn't match, return default
   return "00:00:00";
 }
 

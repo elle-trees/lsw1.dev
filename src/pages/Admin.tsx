@@ -290,7 +290,7 @@ const Admin = () => {
           const importedData = await getImportedSRCRuns();
           setImportedSRCRuns(importedData);
         } catch (error) {
-          console.error("Error fetching imported runs:", error);
+          // Error handled silently
         } finally {
           setLoadingImportedRuns(false);
         }
@@ -355,6 +355,36 @@ const Admin = () => {
               return orderA - orderB;
             });
             setEditingSubcategories(sorted);
+            
+            // Autofill subcategory if run has srcSubcategory and no subcategory is set
+            // This handles both initial load and category changes
+            if (editingImportedRun.srcSubcategory && !editingImportedRunForm.subcategory) {
+              // Try to match by name (case-insensitive)
+              const normalizedSrcSubcategory = editingImportedRun.srcSubcategory.toLowerCase().trim();
+              const matchedSubcategory = sorted.find(
+                sub => sub.name.toLowerCase().trim() === normalizedSrcSubcategory
+              );
+              
+              if (matchedSubcategory) {
+                setEditingImportedRunForm(prev => ({
+                  ...prev,
+                  subcategory: matchedSubcategory.id
+                }));
+              } else if (sorted.length > 0) {
+                // If no match found but subcategories exist, select the first one
+                // This ensures a subcategory is always selected when available
+                setEditingImportedRunForm(prev => ({
+                  ...prev,
+                  subcategory: sorted[0].id
+                }));
+              }
+            } else if (!editingImportedRunForm.subcategory && sorted.length > 0) {
+              // If no srcSubcategory but subcategories exist, select the first one
+              setEditingImportedRunForm(prev => ({
+                ...prev,
+                subcategory: sorted[0].id
+              }));
+            }
           } else {
             setEditingSubcategories([]);
           }
@@ -587,7 +617,6 @@ const Admin = () => {
       setFirestoreCategories(categoriesData);
       setHasFetchedData(true);
     } catch (error) {
-      console.error("Error in fetchAllData:", error);
       toast({
         title: "Error",
         description: "Failed to load data.",
@@ -614,7 +643,7 @@ const Admin = () => {
       // Also refresh recent runs
       await fetchRecentRuns();
     } catch (error) {
-      console.error("Error refreshing run data:", error);
+      // Error handled silently
     }
   };
 
@@ -624,7 +653,6 @@ const Admin = () => {
       const data = await getRecentRuns(50); // Fetch 50 most recent runs
       setRecentRuns(data);
     } catch (error) {
-      console.error("Error fetching recent runs:", error);
       toast({
         title: "Error",
         description: "Failed to load recent runs.",
@@ -703,7 +731,6 @@ const Admin = () => {
         setImportedSRCRuns(importedData);
         setImportedPage(1); // Reset to first page when data changes
       } catch (importError) {
-        console.error("Error fetching imported runs:", importError);
         toast({
           title: "Warning",
           description: "Failed to load imported runs. They may still be processing.",
@@ -711,7 +738,6 @@ const Admin = () => {
         });
       }
     } catch (error) {
-      console.error("Error fetching unverified runs:", error);
       toast({
         title: "Error",
         description: "Failed to load unverified runs.",
@@ -991,11 +1017,10 @@ const Admin = () => {
         // Show first 3 errors in toast, log all errors to console
         const errorPreview = result.errors.slice(0, 3).join('; ');
         const remainingErrors = result.errors.length - 3;
-        console.error(`[Import] ${result.errors.length} errors occurred:`, result.errors);
         
         toast({
           title: "Import Complete with Errors",
-          description: `Imported ${result.imported} runs, skipped ${result.skipped} runs. ${result.errors.length} error(s) occurred.${remainingErrors > 0 ? ` (Showing first 3, check console for all)` : ''} ${errorPreview}`,
+          description: `Imported ${result.imported} runs, skipped ${result.skipped} runs. ${result.errors.length} error(s) occurred.${remainingErrors > 0 ? ` (Showing first 3)` : ''} ${errorPreview}`,
           variant: "destructive",
         });
       } else if (unmatchedCount > 0) {
@@ -1014,7 +1039,6 @@ const Admin = () => {
       // Refresh the runs list
       await refreshAllRunData();
     } catch (error: any) {
-      console.error("Error importing from SRC:", error);
       toast({
         title: "Import Failed",
         description: error.message || "Failed to import runs from speedrun.com.",
@@ -1058,7 +1082,6 @@ const Admin = () => {
       ]);
       setAllCategoriesForSRCLinking([...regularCats, ...ilCats]);
     } catch (error: any) {
-      console.error("Error fetching SRC categories:", error);
       toast({
         title: "Error",
         description: error.message || "Failed to fetch SRC categories.",
@@ -1075,7 +1098,6 @@ const Admin = () => {
       const runs = await getUnclaimedImportedRuns();
       setUnclaimedRuns(runs);
     } catch (error: any) {
-      console.error("Error fetching unclaimed runs:", error);
       toast({
         title: "Error",
         description: error.message || "Failed to fetch unclaimed runs.",
@@ -1133,7 +1155,7 @@ const Admin = () => {
         });
       }
     } catch (error: any) {
-      console.error("Error clearing imported runs:", error);
+      
       const errorMsg = error.message || String(error);
       const isPermissionError = errorMsg.toLowerCase().includes('permission') || 
                                 errorMsg.toLowerCase().includes('insufficient') ||
@@ -1248,23 +1270,20 @@ const Admin = () => {
       } else if (successCount > 0 && errorCount > 0) {
         toast({
           title: "Batch Verification Partial Success",
-          description: `Verified ${successCount} run(s), ${errorCount} error(s). Check console for details.`,
+          description: `Verified ${successCount} run(s), ${errorCount} error(s).`,
           variant: "default",
         });
-        console.error("Batch verify errors:", errors);
       } else {
         toast({
           title: "Batch Verification Failed",
-          description: `Failed to verify all runs. Check console for details.`,
+          description: `Failed to verify all runs.`,
           variant: "destructive",
         });
-        console.error("Batch verify errors:", errors);
       }
 
       // Refresh the runs list
       await refreshAllRunData();
     } catch (error: any) {
-      console.error("Error in batch verify:", error);
       toast({
         title: "Batch Verification Error",
         description: error.message || "An error occurred during batch verification.",
@@ -1382,23 +1401,20 @@ const Admin = () => {
       } else if (successCount > 0 && errorCount > 0) {
         toast({
           title: "Batch Verification Partial Success",
-          description: `Verified ${successCount} run(s), ${errorCount} error(s). Check console for details.`,
+          description: `Verified ${successCount} run(s), ${errorCount} error(s).`,
           variant: "default",
         });
-        console.error("Batch verify all errors:", errors);
       } else {
         toast({
           title: "Batch Verification Failed",
-          description: `Failed to verify all runs. Check console for details.`,
+          description: `Failed to verify all runs.`,
           variant: "destructive",
         });
-        console.error("Batch verify all errors:", errors);
       }
 
       // Refresh the runs list
       await refreshAllRunData();
     } catch (error: any) {
-      console.error("Error in batch verify all:", error);
       toast({
         title: "Batch Verification Error",
         description: error.message || "An error occurred during batch verification.",
@@ -1471,7 +1487,7 @@ const Admin = () => {
         });
       }
     } catch (error: any) {
-      console.error("Error clearing unverified runs:", error);
+      
       const errorMsg = error.message || String(error);
       const isPermissionError = errorMsg.toLowerCase().includes('permission') || 
                                 errorMsg.toLowerCase().includes('insufficient') ||
@@ -1826,7 +1842,6 @@ const Admin = () => {
         setSrcVariables([]);
       }
     } catch (error: any) {
-      console.error("Error fetching SRC variables:", error);
       toast({
         title: "Error",
         description: "Failed to fetch SRC variables. Make sure the category has a linked SRC category ID.",
@@ -2591,7 +2606,6 @@ const Admin = () => {
       const players = await getAllPlayers(playersSortBy, playersSortOrder);
       setAllPlayers(players);
     } catch (error) {
-      console.error("Error fetching players:", error);
       toast({
         title: "Error",
         description: "Failed to load users.",
@@ -2617,7 +2631,6 @@ const Admin = () => {
           const duplicates = await findDuplicateRuns();
           setDuplicateRuns(duplicates);
         } catch (error: any) {
-          console.error("Error auto-checking duplicates:", error);
           // Don't show toast on auto-check, only on manual check
         } finally {
           setLoadingDuplicates(false);
@@ -3317,7 +3330,6 @@ const Admin = () => {
                               });
                               fixed++;
                             } catch (error) {
-                              console.error(`Error fixing run ${run.id}:`, error);
                               errors++;
                             }
                           }
@@ -6890,7 +6902,6 @@ const Admin = () => {
                                     fileName: file.name, // Keep file name
                                     useFileUpload: true // Ensure this is set to true
                                   };
-                                  console.log("Updated state:", updated);
                                   return updated;
                                 });
                                 toast({
@@ -6898,19 +6909,12 @@ const Admin = () => {
                                   description: "File uploaded successfully. You can now click 'Add Download' to save it.",
                                 });
                               } else {
-                                console.error("No file URL found in response:", uploadedFiles);
-                                throw new Error("Upload completed but no file URL found in response. Check console for details.");
+                                throw new Error("Upload completed but no file URL found in response.");
                               }
                             } catch (error: any) {
-                              console.error("Upload error:", error);
-                              console.error("Error details:", {
-                                message: error.message,
-                                stack: error.stack,
-                                name: error.name,
-                              });
                               toast({
                                 title: "Upload Failed",
-                                description: error.message || "Failed to upload file. Check console for details.",
+                                description: error.message || "Failed to upload file.",
                                 variant: "destructive",
                               });
                             }
@@ -7124,7 +7128,10 @@ const Admin = () => {
                       </Label>
                       <Select
                         value={editingImportedRunForm.category ?? editingImportedRun.category ?? ""}
-                        onValueChange={(value) => setEditingImportedRunForm({ ...editingImportedRunForm, category: value, subcategory: "" })}
+                        onValueChange={(value) => {
+                          // Clear subcategory when category changes - it will be autofilled if srcSubcategory exists
+                          setEditingImportedRunForm({ ...editingImportedRunForm, category: value, subcategory: "" });
+                        }}
                       >
                         <SelectTrigger 
                           id="edit-category"
@@ -7201,19 +7208,13 @@ const Admin = () => {
                   <div>
                     <Label className="text-sm font-semibold mb-2 block flex items-center gap-2">
                       <Trophy className="h-3.5 w-3.5 text-[#cba6f7]" />
-                      Subcategory
+                      Subcategory <span className="text-red-500">*</span>
                     </Label>
                     <Tabs 
-                      value={editingImportedRunForm.subcategory || "none"} 
-                      onValueChange={(value) => setEditingImportedRunForm({ ...editingImportedRunForm, subcategory: value === "none" ? "" : value })}
+                      value={editingImportedRunForm.subcategory || editingSubcategories[0]?.id || ""} 
+                      onValueChange={(value) => setEditingImportedRunForm({ ...editingImportedRunForm, subcategory: value })}
                     >
                       <TabsList className="flex w-full p-0.5 gap-1 overflow-x-auto overflow-y-hidden scrollbar-hide rounded-none" style={{ minWidth: 'max-content' }}>
-                        <TabsTrigger 
-                          value="none" 
-                          className="data-[state=active]:bg-[#cba6f7] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#cba6f7]/50 py-1.5 sm:py-2 px-2 sm:px-3 text-xs sm:text-sm whitespace-nowrap rounded-none"
-                        >
-                          None
-                        </TabsTrigger>
                         {editingSubcategories.map((subcategory, index) => (
                           <TabsTrigger 
                             key={subcategory.id} 
@@ -7226,8 +7227,13 @@ const Admin = () => {
                         ))}
                       </TabsList>
                     </Tabs>
+                    {editingImportedRun.srcSubcategory && (
+                      <p className="text-xs text-[hsl(222,15%,60%)] mt-1">
+                        SRC: {editingImportedRun.srcSubcategory}
+                      </p>
+                    )}
                   </div>
-                )}
+                  )}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="edit-runType">Run Type <span className="text-red-500">*</span></Label>

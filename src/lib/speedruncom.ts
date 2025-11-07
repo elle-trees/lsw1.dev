@@ -16,7 +16,6 @@ async function fetchSRCAPI<T>(endpoint: string): Promise<T> {
     }
     return await response.json();
   } catch (error) {
-    console.error(`Error fetching ${endpoint}:`, error);
     throw error;
   }
 }
@@ -165,7 +164,6 @@ export async function getLSWGameId(): Promise<string | null> {
     }
     return null;
   } catch (error) {
-    console.error("Error fetching LSW game ID:", error);
     return null;
   }
 }
@@ -200,10 +198,8 @@ export async function fetchRunsNotOnLeaderboards(
           `/runs?game=${gameId}&status=verified&orderby=submitted&direction=desc&max=${max}&offset=${offset}&embed=players,category.variables,level,platform`
         );
       } catch (error) {
-        console.error(`[SRC API] Error fetching runs at offset ${offset}:`, error);
         // If we have some runs, return what we have; otherwise throw
         if (allRuns.length > 0) {
-          console.warn(`[SRC API] Returning ${allRuns.length} runs despite error`);
           return allRuns.slice(0, limit);
         }
         throw error;
@@ -224,7 +220,6 @@ export async function fetchRunsNotOnLeaderboards(
     
     return allRuns.slice(0, limit);
   } catch (error) {
-    console.error(`[SRC API] Error in fetchRunsNotOnLeaderboards:`, error);
     throw error;
   }
 }
@@ -240,7 +235,6 @@ export async function fetchSRCRunById(runId: string): Promise<SRCRun | null> {
     );
     return data.data || null;
   } catch (error) {
-    console.error(`Error fetching SRC run ${runId}:`, error);
     return null;
   }
 }
@@ -253,7 +247,6 @@ export async function fetchCategories(gameId: string): Promise<SRCCategory[]> {
     const data = await fetchSRCAPI<{ data: SRCCategory[] }>(`/games/${gameId}/categories`);
     return data.data || [];
   } catch (error) {
-    console.error("Error fetching categories:", error);
     return [];
   }
 }
@@ -266,7 +259,6 @@ export async function fetchCategoryVariables(categoryId: string): Promise<SRCCat
     const data = await fetchSRCAPI<{ data: SRCCategory }>(`/categories/${categoryId}?embed=variables`);
     return data.data?.variables || undefined;
   } catch (error) {
-    console.error(`Error fetching variables for category ${categoryId}:`, error);
     return undefined;
   }
 }
@@ -279,7 +271,6 @@ export async function fetchLevels(gameId: string): Promise<SRCLevel[]> {
     const data = await fetchSRCAPI<{ data: SRCLevel[] }>(`/games/${gameId}/levels`);
     return data.data || [];
   } catch (error) {
-    console.error("Error fetching levels:", error);
     return [];
   }
 }
@@ -292,7 +283,6 @@ export async function fetchPlatforms(): Promise<SRCPlatform[]> {
     const data = await fetchSRCAPI<{ data: SRCPlatform[] }>("/platforms");
     return data.data || [];
   } catch (error) {
-    console.error("Error fetching platforms:", error);
     return [];
   }
 }
@@ -309,7 +299,6 @@ export async function fetchPlatformById(platformId: string): Promise<string | nu
     }
     return null;
   } catch (error) {
-    console.error(`Error fetching platform ${platformId}:`, error);
     return null;
   }
 }
@@ -335,7 +324,6 @@ export async function fetchPlayerById(playerId: string): Promise<string | null> 
     // Return the name as-is (same as during import), normalization happens at comparison time
     return name;
   } catch (error) {
-    console.error(`[fetchPlayerById] Error fetching player ${playerId}:`, error);
     return null;
   }
 }
@@ -403,7 +391,6 @@ export async function getPlayerNameAsync(
   playerIdToNameCache?: Map<string, string>
 ): Promise<string> {
   if (!player) {
-    console.warn("[getPlayerNameAsync] No player data provided");
     return "Unknown";
   }
 
@@ -462,7 +449,6 @@ export async function getPlayerNameAsync(
         return name;
       }
     } catch (error) {
-      console.error(`[getPlayerNameAsync] Failed to fetch player ${playerId}:`, error);
     }
     
     // Last resort: return placeholder with ID
@@ -584,7 +570,6 @@ async function extractPlatformNameAsync(
         return name;
       }
     } catch (error) {
-      console.error(`Failed to fetch platform ${platformId}:`, error);
     }
   }
   
@@ -759,7 +744,6 @@ export async function mapSRCRunToLeaderboardEntry(
     leaderboardType = 'individual-level';
     // Ensure we have level data for IL runs
     if (!hasLevel && !levelName) {
-      console.warn(`[mapSRCRunToLeaderboardEntry] Per-level category run ${run.id} missing level data`);
     }
   } else if (categoryType === 'per-game') {
     leaderboardType = 'regular';
@@ -784,13 +768,6 @@ export async function mapSRCRunToLeaderboardEntry(
   
   // Validate time conversion - log if conversion failed or returned 00:00:00 for a real run
   if (time === "00:00:00" && run.times.primary_t && run.times.primary_t > 0) {
-    console.warn(`[mapSRCRunToLeaderboardEntry] Time conversion resulted in 00:00:00 for run ${run.id} with primary_t=${run.times.primary_t}:`, {
-      primary: run.times.primary,
-      primary_t: run.times.primary_t,
-      runType: players.length > 1 ? 'co-op' : 'solo',
-      player1Name: player1Name,
-      player2Name: player2Name,
-    });
   }
   
   // === Convert Date ===

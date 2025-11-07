@@ -55,16 +55,10 @@ export function getErrorMessage(error: unknown, defaultMessage = "An error occur
 
 /**
  * Log error with context for debugging
+ * Note: Logging removed for production cleanup
  */
 export function logError(error: unknown, context?: string): void {
-  const contextMsg = context ? `[${context}] ` : "";
-  
-  if (isFirebaseAuthError(error)) {
-    console.error(`${contextMsg}Firebase Auth Error:`, error.code, error.message);
-  } else if (isError(error)) {
-    console.error(`${contextMsg}Error:`, error.message, error.stack);
-  } else {
-    console.error(`${contextMsg}Unknown error:`, error);
-  }
+  // Error logging removed for production cleanup
+  // Errors are handled via user-facing toasts and error boundaries
 }
 
