@@ -1,12 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Link } from "react-router-dom";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Sparkles, Info } from "lucide-react";
-import { Player } from "@/types/database";
+import { Player, LeaderboardEntry } from "@/types/database";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { Pagination } from "@/components/Pagination";
-import { getPlayersByPoints } from "@/lib/db";
+import { getPlayersByPoints, getPlayerRuns, getCategories, getPlatforms } from "@/lib/db";
+import { calculatePoints, getCategoryName, getPlatformName } from "@/lib/utils";
 import LegoStudIcon from "@/components/icons/LegoStudIcon";
 
 const PointsLeaderboard = () => {
@@ -14,6 +16,12 @@ const PointsLeaderboard = () => {
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 25;
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [playerRuns, setPlayerRuns] = useState<LeaderboardEntry[]>([]);
+  const [loadingRuns, setLoadingRuns] = useState(false);
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [platforms, setPlatforms] = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => {
     const fetchPlayers = async () => {
@@ -93,10 +101,104 @@ const PointsLeaderboard = () => {
     };
 
     fetchPlayers();
+    
+    // Fetch categories and platforms for breakdown
+    Promise.all([
+      getCategories(),
+      getPlatforms()
+    ]).then(([cats, plats]) => {
+      setCategories(cats);
+      setPlatforms(plats);
+    });
   }, []);
+
+  // Fetch player runs when dialog opens
+  useEffect(() => {
+    if (dialogOpen && selectedPlayer?.uid) {
+      setLoadingRuns(true);
+      getPlayerRuns(selectedPlayer.uid)
+        .then((runs) => {
+          setPlayerRuns(runs);
+        })
+        .catch(() => {
+          setPlayerRuns([]);
+        })
+        .finally(() => {
+          setLoadingRuns(false);
+        });
+    }
+  }, [dialogOpen, selectedPlayer?.uid]);
 
   const formatPoints = (points: number) => {
     return new Intl.NumberFormat().format(points);
+  };
+
+  // Calculate studs breakdown
+  const studsBreakdown = useMemo(() => {
+    if (!playerRuns.length) return null;
+
+    const breakdown = {
+      byLeaderboardType: new Map<string, { studs: number; runs: number }>(),
+      byCategory: new Map<string, { studs: number; runs: number }>(),
+      byPlatform: new Map<string, { studs: number; runs: number }>(),
+      byRunType: new Map<string, { studs: number; runs: number }>(),
+      total: 0,
+      totalRuns: playerRuns.length
+    };
+
+    playerRuns.forEach((run) => {
+      const categoryName = getCategoryName(run.category, categories, run.srcCategoryName);
+      const platformName = getPlatformName(run.platform, platforms);
+      const runType = run.runType === 'co-op' ? 'Co-op' : 'Solo';
+      const leaderboardType = run.leaderboardType === 'individual-level' ? 'Individual Levels' 
+        : run.leaderboardType === 'community-golds' ? 'Community Golds' 
+        : 'Full Game';
+
+      const studs = run.points || calculatePoints(
+        run.time,
+        categoryName,
+        platformName,
+        run.category,
+        run.platform,
+        run.rank,
+        run.runType as 'solo' | 'co-op',
+        run.leaderboardType,
+        run.isObsolete
+      );
+
+      breakdown.total += studs;
+
+      // By leaderboard type
+      const lbTypeData = breakdown.byLeaderboardType.get(leaderboardType) || { studs: 0, runs: 0 };
+      lbTypeData.studs += studs;
+      lbTypeData.runs += 1;
+      breakdown.byLeaderboardType.set(leaderboardType, lbTypeData);
+
+      // By category
+      const catData = breakdown.byCategory.get(categoryName) || { studs: 0, runs: 0 };
+      catData.studs += studs;
+      catData.runs += 1;
+      breakdown.byCategory.set(categoryName, catData);
+
+      // By platform
+      const platData = breakdown.byPlatform.get(platformName) || { studs: 0, runs: 0 };
+      platData.studs += studs;
+      platData.runs += 1;
+      breakdown.byPlatform.set(platformName, platData);
+
+      // By run type
+      const rtData = breakdown.byRunType.get(runType) || { studs: 0, runs: 0 };
+      rtData.studs += studs;
+      rtData.runs += 1;
+      breakdown.byRunType.set(runType, rtData);
+    });
+
+    return breakdown;
+  }, [playerRuns, categories, platforms]);
+
+  const handlePlayerClick = (player: Player) => {
+    setSelectedPlayer(player);
+    setDialogOpen(true);
   };
 
   return (
@@ -141,10 +243,10 @@ const PointsLeaderboard = () => {
                   const displayName = player.displayName || player.email?.split('@')[0] || "Unknown Player";
                   
                   return (
-                    <Link
+                    <div
                       key={player.uid}
-                      to={`/player/${player.uid}`}
-                      className="block group"
+                      onClick={() => handlePlayerClick(player)}
+                      className="block group cursor-pointer"
                     >
                       <div
                         className={`relative overflow-hidden transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl animate-fade-in ${
@@ -222,7 +324,7 @@ const PointsLeaderboard = () => {
                           </div>
                         </div>
                       </div>
-                    </Link>
+                    </div>
                   );
                 })}
               </div>
@@ -315,6 +417,174 @@ const PointsLeaderboard = () => {
             </AccordionItem>
           </Accordion>
         </div>
+
+        {/* Studs Breakdown Dialog */}
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-[#1e1e2e] border-[hsl(235,13%,30%)]">
+            <DialogHeader>
+              <DialogTitle className="text-2xl text-[#fab387] flex items-center gap-2">
+                <LegoStudIcon size={28} color="#fab387" />
+                {selectedPlayer?.displayName || "Unknown Player"}'s Studs Breakdown
+              </DialogTitle>
+              <DialogDescription className="text-ctp-subtext1">
+                Total: {formatPoints(selectedPlayer?.totalPoints || 0)} studs from {selectedPlayer?.totalRuns || 0} verified run{selectedPlayer?.totalRuns !== 1 ? 's' : ''}
+              </DialogDescription>
+            </DialogHeader>
+            
+            {loadingRuns ? (
+              <div className="py-12">
+                <LoadingSpinner size="sm" />
+              </div>
+            ) : studsBreakdown ? (
+              <div className="space-y-6 mt-4">
+                {/* By Leaderboard Type */}
+                <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)]">
+                  <CardHeader>
+                    <CardTitle className="text-lg text-[#fab387]">By Leaderboard Type</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-[hsl(235,13%,30%)]">
+                          <TableHead className="text-ctp-text">Type</TableHead>
+                          <TableHead className="text-ctp-text text-right">Studs</TableHead>
+                          <TableHead className="text-ctp-text text-right">Runs</TableHead>
+                          <TableHead className="text-ctp-text text-right">%</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {Array.from(studsBreakdown.byLeaderboardType.entries())
+                          .sort((a, b) => b[1].studs - a[1].studs)
+                          .map(([type, data]) => (
+                            <TableRow key={type} className="border-[hsl(235,13%,30%)]">
+                              <TableCell className="font-medium text-ctp-text">{type}</TableCell>
+                              <TableCell className="text-right text-[#fab387] font-semibold">
+                                {formatPoints(data.studs)}
+                              </TableCell>
+                              <TableCell className="text-right text-ctp-subtext1">{data.runs}</TableCell>
+                              <TableCell className="text-right text-ctp-subtext1">
+                                {((data.studs / studsBreakdown.total) * 100).toFixed(1)}%
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+
+                {/* By Category */}
+                <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)]">
+                  <CardHeader>
+                    <CardTitle className="text-lg text-[#fab387]">By Category</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-[hsl(235,13%,30%)]">
+                          <TableHead className="text-ctp-text">Category</TableHead>
+                          <TableHead className="text-ctp-text text-right">Studs</TableHead>
+                          <TableHead className="text-ctp-text text-right">Runs</TableHead>
+                          <TableHead className="text-ctp-text text-right">%</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {Array.from(studsBreakdown.byCategory.entries())
+                          .sort((a, b) => b[1].studs - a[1].studs)
+                          .slice(0, 10)
+                          .map(([category, data]) => (
+                            <TableRow key={category} className="border-[hsl(235,13%,30%)]">
+                              <TableCell className="font-medium text-ctp-text">{category}</TableCell>
+                              <TableCell className="text-right text-[#fab387] font-semibold">
+                                {formatPoints(data.studs)}
+                              </TableCell>
+                              <TableCell className="text-right text-ctp-subtext1">{data.runs}</TableCell>
+                              <TableCell className="text-right text-ctp-subtext1">
+                                {((data.studs / studsBreakdown.total) * 100).toFixed(1)}%
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+
+                {/* By Platform */}
+                <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)]">
+                  <CardHeader>
+                    <CardTitle className="text-lg text-[#fab387]">By Platform</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-[hsl(235,13%,30%)]">
+                          <TableHead className="text-ctp-text">Platform</TableHead>
+                          <TableHead className="text-ctp-text text-right">Studs</TableHead>
+                          <TableHead className="text-ctp-text text-right">Runs</TableHead>
+                          <TableHead className="text-ctp-text text-right">%</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {Array.from(studsBreakdown.byPlatform.entries())
+                          .sort((a, b) => b[1].studs - a[1].studs)
+                          .map(([platform, data]) => (
+                            <TableRow key={platform} className="border-[hsl(235,13%,30%)]">
+                              <TableCell className="font-medium text-ctp-text">{platform}</TableCell>
+                              <TableCell className="text-right text-[#fab387] font-semibold">
+                                {formatPoints(data.studs)}
+                              </TableCell>
+                              <TableCell className="text-right text-ctp-subtext1">{data.runs}</TableCell>
+                              <TableCell className="text-right text-ctp-subtext1">
+                                {((data.studs / studsBreakdown.total) * 100).toFixed(1)}%
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+
+                {/* By Run Type */}
+                <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)]">
+                  <CardHeader>
+                    <CardTitle className="text-lg text-[#fab387]">By Run Type</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-[hsl(235,13%,30%)]">
+                          <TableHead className="text-ctp-text">Type</TableHead>
+                          <TableHead className="text-ctp-text text-right">Studs</TableHead>
+                          <TableHead className="text-ctp-text text-right">Runs</TableHead>
+                          <TableHead className="text-ctp-text text-right">%</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {Array.from(studsBreakdown.byRunType.entries())
+                          .sort((a, b) => b[1].studs - a[1].studs)
+                          .map(([type, data]) => (
+                            <TableRow key={type} className="border-[hsl(235,13%,30%)]">
+                              <TableCell className="font-medium text-ctp-text">{type}</TableCell>
+                              <TableCell className="text-right text-[#fab387] font-semibold">
+                                {formatPoints(data.studs)}
+                              </TableCell>
+                              <TableCell className="text-right text-ctp-subtext1">{data.runs}</TableCell>
+                              <TableCell className="text-right text-ctp-subtext1">
+                                {((data.studs / studsBreakdown.total) * 100).toFixed(1)}%
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              </div>
+            ) : (
+              <div className="text-center py-12 text-ctp-subtext1">
+                No runs found for this player.
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
       
       <style>{`
