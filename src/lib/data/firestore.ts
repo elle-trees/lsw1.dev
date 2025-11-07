@@ -177,6 +177,11 @@ export const getLeaderboardEntriesFirestore = async (
     constraints.push(firestoreLimit(fetchLimit));
     const querySnapshot = await getDocs(query(collection(db, "leaderboardEntries"), ...constraints));
     
+    // Debug logging for IL queries
+    if (leaderboardType === 'individual-level') {
+      logger.debug(`[getLeaderboardEntriesFirestore] IL query found ${querySnapshot.size} documents before filtering`);
+    }
+    
     // Normalize and validate entries
     let entries: LeaderboardEntry[] = querySnapshot.docs
       .map(doc => {
@@ -222,11 +227,13 @@ export const getLeaderboardEntriesFirestore = async (
         if (leaderboardType === 'individual-level') {
           // Must have leaderboardType === 'individual-level'
           if (entry.leaderboardType !== 'individual-level') {
+            logger.debug(`[getLeaderboardEntriesFirestore] Filtering out IL run ${entry.id}: leaderboardType='${entry.leaderboardType}' (expected 'individual-level')`);
             return false;
           }
           
           // IL runs must have a level field
           if (!entry.level || entry.level.trim() === '') {
+            logger.debug(`[getLeaderboardEntriesFirestore] Filtering out IL run ${entry.id}: missing level field`);
             return false;
           }
         }
@@ -487,8 +494,11 @@ export const addLeaderboardEntryFirestore = async (entry: Omit<LeaderboardEntry,
       logger.debug("[addLeaderboardEntry] After normalization:", {
         category: normalized.category,
         platform: normalized.platform,
+        leaderboardType: normalized.leaderboardType,
+        level: normalized.level,
         srcCategoryName: normalized.srcCategoryName,
         srcPlatformName: normalized.srcPlatformName,
+        srcLevelName: normalized.srcLevelName,
         importedFromSRC: normalized.importedFromSRC,
         playerName: normalized.playerName,
         time: normalized.time,
@@ -536,6 +546,11 @@ export const addLeaderboardEntryFirestore = async (entry: Omit<LeaderboardEntry,
     }
     
     const newDocRef = doc(collection(db, "leaderboardEntries"));
+    // CRITICAL: Preserve leaderboardType from normalized entry
+    // normalizeLeaderboardType always returns a valid value, so this should never be undefined
+    // But we use the normalized value directly to ensure it's preserved correctly
+    const finalLeaderboardType = normalized.leaderboardType || 'regular';
+    
     const newEntry: Partial<LeaderboardEntry> & DocumentData = { 
       id: newDocRef.id, 
       playerId: normalized.playerId || entry.playerId,
@@ -544,12 +559,17 @@ export const addLeaderboardEntryFirestore = async (entry: Omit<LeaderboardEntry,
       category: normalized.category !== undefined ? normalized.category : "",
       platform: normalized.platform !== undefined ? normalized.platform : "",
       runType: normalized.runType || 'solo',
-      leaderboardType: normalized.leaderboardType || 'regular',
+      leaderboardType: finalLeaderboardType,
       time: normalized.time,
       date: normalized.date,
       verified: normalized.verified ?? false, 
       isObsolete: false,
     };
+    
+    // Log leaderboardType for IL runs to debug
+    if (finalLeaderboardType === 'individual-level') {
+      logger.debug(`[addLeaderboardEntry] Saving IL run with leaderboardType='individual-level', level='${normalized.level || 'none'}'`);
+    }
     
     // Only include optional fields if they have values
     if (normalized.player2Name) {
