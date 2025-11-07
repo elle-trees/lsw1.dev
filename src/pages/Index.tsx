@@ -11,6 +11,26 @@ import { RecentRuns } from "@/components/RecentRuns";
 import TwitchEmbed from "@/components/TwitchEmbed";
 import { parseTimeToSeconds, formatSecondsToTime } from "@/lib/utils";
 
+// Format seconds into days, hours, minutes, seconds with "days" as text
+const formatTimeWithDays = (totalSeconds: number): string => {
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  
+  const parts: string[] = [];
+  
+  if (days > 0) {
+    parts.push(`${days} day${days !== 1 ? 's' : ''}`);
+  }
+  
+  // Always show hours:minutes:seconds format
+  const timeString = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  parts.push(timeString);
+  
+  return parts.join(' ');
+};
+
 const Index = () => {
   const [recentRunsData, setRecentRunsData] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,7 +82,7 @@ const Index = () => {
         const totalSeconds = verifiedRuns.reduce((sum, run) => {
           return sum + parseTimeToSeconds(run.time);
         }, 0);
-        setTotalTime(formatSecondsToTime(totalSeconds));
+        setTotalTime(formatTimeWithDays(totalSeconds));
       } catch (error) {
         // Silent fail
       } finally {
