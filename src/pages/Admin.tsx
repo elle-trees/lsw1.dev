@@ -3937,6 +3937,20 @@ const Admin = () => {
                                           size="sm" 
                                           onClick={() => {
                                             setEditingImportedRun(run);
+                                            setEditingImportedRunForm({
+                                              playerName: run.playerName,
+                                              player2Name: run.player2Name,
+                                              category: run.category,
+                                              subcategory: run.subcategory,
+                                              platform: run.platform,
+                                              level: run.level,
+                                              runType: run.runType,
+                                              leaderboardType: run.leaderboardType,
+                                              time: run.time,
+                                              date: run.date,
+                                              videoUrl: run.videoUrl,
+                                              comment: run.comment,
+                                            });
                                           }}
                                           className="text-blue-500 hover:bg-blue-900/20 transition-all duration-300 hover:scale-110 hover:shadow-md"
                                         >
