@@ -20,8 +20,8 @@ import {
   Filter,
   TrendingUp
 } from "lucide-react";
-import { getAllVerifiedRuns, getCategories, getPlatforms, getLevels, runTypes } from "@/lib/db";
-import { LeaderboardEntry } from "@/types/database";
+import { getAllVerifiedRuns, getCategories, getPlatforms, getLevels, runTypes, getPlayersByPoints } from "@/lib/db";
+import { LeaderboardEntry, Player } from "@/types/database";
 import { formatTime, parseTimeToSeconds, formatSecondsToTime } from "@/lib/utils";
 import { getCategoryName, getPlatformName, getLevelName } from "@/lib/dataValidation";
 import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
@@ -393,234 +393,158 @@ const Stats = () => {
       .slice(0, 10);
   }, [stats, platforms]);
 
-  // Calculate rankings based on total days holding world records
-  const eloRankings = useMemo(() => {
-    if (!stats || !stats.allVerifiedRuns) return [];
+  // Calculate Elo rankings based on player studs (totalPoints)
+  const [eloRankings, setEloRankings] = useState<Array<{
+    playerId: string;
+    playerName: string;
+    elo: number;
+    totalRuns: number;
+    worldRecords: number;
+    bestTime: number;
+    bestTimeString: string;
+    rank: number;
+  }>>([]);
 
-    // Only include verified, non-obsolete runs
-    const verifiedRuns = stats.allVerifiedRuns.filter(run => run.verified && !run.isObsolete && run.date);
-
-    // Initialize player stats
-    const playerStats = new Map<string, {
-      name: string;
-      playerId: string;
-      totalRuns: number;
-      worldRecords: number;
-      bestTime: number;
-      bestTimeString: string;
-      totalDaysHoldingWR: number;
-    }>();
-
-    const now = new Date();
-    const nowDateStr = now.toISOString().split('T')[0];
-
-    // Group all verified runs by their leaderboard group
-    const runsByGroup = new Map<string, LeaderboardEntry[]>();
-    
-    verifiedRuns.forEach(run => {
-      if (!run.date) return;
-      
-      const leaderboardType = run.leaderboardType || 'regular';
-      const category = run.category || '';
-      const platform = run.platform || '';
-      const runType = run.runType || 'solo';
-      const level = run.level || '';
-      const groupKey = `${leaderboardType}_${category}_${platform}_${runType}_${level}`;
-      
-      if (!runsByGroup.has(groupKey)) {
-        runsByGroup.set(groupKey, []);
+  useEffect(() => {
+    const fetchEloRankings = async () => {
+      if (!stats || !stats.allVerifiedRuns) {
+        setEloRankings([]);
+        return;
       }
-      runsByGroup.get(groupKey)!.push(run);
-    });
 
-    // Track WR holders by group over time
-    const wrHoldersByGroup = new Map<string, Array<{ playerId: string; playerName: string; date: string; endDate?: string }>>();
+      try {
+        // Fetch players sorted by totalPoints (studs)
+        const players = await getPlayersByPoints(100);
 
-    // For each group, track WR progression chronologically
-    runsByGroup.forEach((runs, groupKey) => {
-      // Sort by time (fastest first) to find best times
-      runs.sort((a, b) => {
-        const timeA = parseTimeToSeconds(a.time) || Infinity;
-        const timeB = parseTimeToSeconds(b.time) || Infinity;
-        return timeA - timeB;
-      });
+        // Filter out invalid players
+        const validPlayers = players.filter(p => 
+          p.uid && 
+          p.displayName && 
+          p.displayName.toLowerCase() !== 'unknown' &&
+          !p.uid.startsWith('unclaimed_') &&
+          !p.uid.startsWith('unlinked_') &&
+          p.uid !== 'imported' &&
+          (p.totalPoints || 0) > 0
+        );
 
-      // Sort runs by date to track chronological WR progression
-      const runsByDate = [...runs].sort((a, b) => {
-        const dateA = new Date(a.date!).getTime();
-        const dateB = new Date(b.date!).getTime();
-        return dateA - dateB;
-      });
+        // Create a map of player stats from runs
+        const playerStatsMap = new Map<string, {
+          totalRuns: number;
+          worldRecords: number;
+          bestTime: number;
+          bestTimeString: string;
+        }>();
 
-      // Track the current WR holder over time
-      const holders: Array<{ playerId: string; playerName: string; date: string; endDate?: string }> = [];
-      let currentWR: LeaderboardEntry | null = null;
-      let currentWRDate: string | null = null;
+        // Group runs by leaderboard group to find world records
+        const runsByGroup = new Map<string, LeaderboardEntry[]>();
+        
+        stats.allVerifiedRuns.forEach(run => {
+          if (!run.verified || run.isObsolete) return;
+          
+          const leaderboardType = run.leaderboardType || 'regular';
+          const category = run.category || '';
+          const platform = run.platform || '';
+          const runType = run.runType || 'solo';
+          const level = run.level || '';
+          const groupKey = `${leaderboardType}_${category}_${platform}_${runType}_${level}`;
+          
+          if (!runsByGroup.has(groupKey)) {
+            runsByGroup.set(groupKey, []);
+          }
+          runsByGroup.get(groupKey)!.push(run);
+        });
 
-      // Process runs chronologically
-      runsByDate.forEach(run => {
-        const runTime = parseTimeToSeconds(run.time) || Infinity;
-        const currentWRTime = currentWR ? (parseTimeToSeconds(currentWR.time) || Infinity) : Infinity;
+        // Count world records and other stats
+        runsByGroup.forEach((runs, groupKey) => {
+          // Get unique players with their best times
+          const playerTimes = new Map<string, { time: number; run: LeaderboardEntry }>();
+          
+          runs.forEach(run => {
+            const playerId = run.playerId || run.playerName;
+            if (!playerId) return;
+            
+            const runTime = parseTimeToSeconds(run.time) || Infinity;
+            const existing = playerTimes.get(playerId);
+            
+            if (!existing || runTime < existing.time) {
+              playerTimes.set(playerId, { time: runTime, run });
+            }
+          });
 
-        // If this run is faster than current WR, it becomes the new WR
-        if (runTime < currentWRTime) {
-          // If there was a previous WR holder, record when their WR ended
-          if (currentWR && currentWRDate) {
-            const lastHolder = holders[holders.length - 1];
-            const prevPlayerId = currentWR.playerId || currentWR.playerName || 'Unknown';
-            if (lastHolder && lastHolder.playerId === prevPlayerId && !lastHolder.endDate) {
-              lastHolder.endDate = run.date!;
-            } else {
-              holders.push({
-                playerId: prevPlayerId,
-                playerName: currentWR.playerName || 'Unknown',
-                date: currentWRDate,
-                endDate: run.date!,
+          // Sort by time to find WR holder
+          const sortedPlayers = Array.from(playerTimes.entries())
+            .map(([playerId, data]) => ({ playerId, time: data.time, run: data.run }))
+            .sort((a, b) => a.time - b.time);
+
+          if (sortedPlayers.length > 0) {
+            const wrPlayerId = sortedPlayers[0].playerId;
+            if (!playerStatsMap.has(wrPlayerId)) {
+              playerStatsMap.set(wrPlayerId, {
+                totalRuns: 0,
+                worldRecords: 0,
+                bestTime: Infinity,
+                bestTimeString: '',
               });
             }
+            playerStatsMap.get(wrPlayerId)!.worldRecords++;
+          }
+        });
+
+        // Count total runs and find best times
+        stats.allVerifiedRuns.forEach(run => {
+          if (!run.verified || run.isObsolete) return;
+          
+          const playerId = run.playerId || run.playerName;
+          if (!playerId) return;
+
+          if (!playerStatsMap.has(playerId)) {
+            playerStatsMap.set(playerId, {
+              totalRuns: 0,
+              worldRecords: 0,
+              bestTime: Infinity,
+              bestTimeString: '',
+            });
           }
 
-          // Set new WR holder
-          currentWR = run;
-          currentWRDate = run.date!;
-          const playerId = run.playerId || run.playerName || 'Unknown';
-          holders.push({
-            playerId: playerId,
-            playerName: run.playerName || 'Unknown',
-            date: run.date!,
-            endDate: undefined, // Will be set when broken or at end
-          });
-        }
-      });
+          const playerStat = playerStatsMap.get(playerId)!;
+          playerStat.totalRuns++;
 
-      // Set end date for current WR holder (if still holding)
-      if (holders.length > 0) {
-        const lastHolder = holders[holders.length - 1];
-        if (!lastHolder.endDate) {
-          lastHolder.endDate = nowDateStr;
-        }
-      }
-
-      wrHoldersByGroup.set(groupKey, holders);
-    });
-
-    // Calculate total days each player has held WRs (across all groups)
-    const playerWRDays = new Map<string, number>();
-    const playerInfo = new Map<string, { name: string; playerId: string }>();
-
-    wrHoldersByGroup.forEach(holders => {
-      holders.forEach(holder => {
-        const startDate = new Date(holder.date);
-        const endDate = new Date(holder.endDate || nowDateStr);
-        const days = Math.max(0, Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
-
-        // Sum up days for this player across all groups
-        const currentDays = playerWRDays.get(holder.playerId) || 0;
-        playerWRDays.set(holder.playerId, currentDays + days);
-
-        // Store player info
-        if (!playerInfo.has(holder.playerId)) {
-          playerInfo.set(holder.playerId, {
-            name: holder.playerName,
-            playerId: holder.playerId,
-          });
-        }
-      });
-    });
-
-    // Count world records and other stats
-    verifiedRuns.forEach(run => {
-      const playerId = run.playerId || run.playerName;
-      if (!playerId) return;
-
-      if (!playerStats.has(playerId)) {
-        playerStats.set(playerId, {
-          name: run.playerName || 'Unknown',
-          playerId: playerId,
-          totalRuns: 0,
-          worldRecords: 0,
-          bestTime: Infinity,
-          bestTimeString: '',
-          totalDaysHoldingWR: 0,
+          const runTime = parseTimeToSeconds(run.time) || Infinity;
+          if (runTime < playerStat.bestTime) {
+            playerStat.bestTime = runTime;
+            playerStat.bestTimeString = run.time;
+          }
         });
-      }
 
-      const playerStat = playerStats.get(playerId)!;
-      playerStat.totalRuns++;
+        // Combine player data with stats
+        const rankings = validPlayers.map((player, index) => {
+          const stats = playerStatsMap.get(player.uid) || {
+            totalRuns: player.totalRuns || 0,
+            worldRecords: 0,
+            bestTime: Infinity,
+            bestTimeString: '',
+          };
 
-      const runTime = parseTimeToSeconds(run.time) || Infinity;
-      if (runTime < playerStat.bestTime) {
-        playerStat.bestTime = runTime;
-        playerStat.bestTimeString = run.time;
-      }
-    });
-
-    // Count world records (rank 1 in each group)
-    runsByGroup.forEach((runs, groupKey) => {
-      // Get unique players with their best times
-      const playerTimes = new Map<string, { time: number; run: LeaderboardEntry }>();
-      
-      runs.forEach(run => {
-        const playerId = run.playerId || run.playerName;
-        if (!playerId) return;
-        
-        const runTime = parseTimeToSeconds(run.time) || Infinity;
-        const existing = playerTimes.get(playerId);
-        
-        if (!existing || runTime < existing.time) {
-          playerTimes.set(playerId, { time: runTime, run });
-        }
-      });
-
-      // Sort by time to find WR holder
-      const sortedPlayers = Array.from(playerTimes.entries())
-        .map(([playerId, data]) => ({ playerId, time: data.time, run: data.run }))
-        .sort((a, b) => a.time - b.time);
-
-      if (sortedPlayers.length > 0) {
-        const wrPlayerId = sortedPlayers[0].playerId;
-        if (playerStats.has(wrPlayerId)) {
-          playerStats.get(wrPlayerId)!.worldRecords++;
-        }
-      }
-    });
-
-    // Add WR holding days to player stats
-    playerWRDays.forEach((days, playerId) => {
-      if (playerStats.has(playerId)) {
-        playerStats.get(playerId)!.totalDaysHoldingWR = days;
-      } else {
-        // Create entry for players who only have WR days but no other runs
-        const info = playerInfo.get(playerId);
-        playerStats.set(playerId, {
-          name: info?.name || 'Unknown',
-          playerId: playerId,
-          totalRuns: 0,
-          worldRecords: 0,
-          bestTime: Infinity,
-          bestTimeString: '',
-          totalDaysHoldingWR: days,
+          return {
+            playerId: player.uid,
+            playerName: player.displayName,
+            elo: player.totalPoints || 0, // Use totalPoints as Elo rating
+            totalRuns: stats.totalRuns,
+            worldRecords: stats.worldRecords,
+            bestTime: stats.bestTime,
+            bestTimeString: stats.bestTimeString,
+            rank: index + 1,
+          };
         });
-      }
-    });
 
-    // Convert to array and sort by total days holding WR (highest first)
-    return Array.from(playerStats.entries())
-      .filter(([_, stat]) => stat.totalDaysHoldingWR > 0) // Only include players who have held WRs
-      .map(([playerId, stat]) => ({
-        playerId,
-        playerName: stat.name,
-        elo: stat.totalDaysHoldingWR, // Using "elo" field name for compatibility with existing UI
-        totalRuns: stat.totalRuns,
-        worldRecords: stat.worldRecords,
-        bestTime: stat.bestTime,
-        bestTimeString: stat.bestTimeString,
-      }))
-      .sort((a, b) => b.elo - a.elo)
-      .map((player, index) => ({
-        ...player,
-        rank: index + 1,
-      }));
+        setEloRankings(rankings);
+      } catch (error) {
+        console.error("Error fetching Elo rankings:", error);
+        setEloRankings([]);
+      }
+    };
+
+    fetchEloRankings();
   }, [stats]);
 
   // Calculate filtered WR time progression
@@ -1368,16 +1292,16 @@ const Stats = () => {
                 Elo Rankings
               </CardTitle>
               <CardDescription>
-                Player rankings based on total days holding world records
+                Player rankings based on total studs (points) earned from verified runs
               </CardDescription>
             </CardHeader>
             <CardContent>
               {eloRankings.length > 0 ? (
                 <div className="space-y-4">
                   <div className="text-sm text-muted-foreground">
-                    Players are ranked by the total number of days they have held world records across all categories. 
-                    The system tracks WR progression chronologically - when a player sets a WR and when it gets broken. 
-                    Players who have held WRs the longest rank highest.
+                    Players are ranked by their total studs (points) earned from all verified runs. 
+                    Studs are awarded based on run performance, rank bonuses, and leaderboard type. 
+                    Players with the most studs rank highest.
                   </div>
                   <div className="rounded-md border">
                     <Table>
@@ -1385,7 +1309,7 @@ const Stats = () => {
                         <TableRow>
                           <TableHead className="w-16">Rank</TableHead>
                           <TableHead>Player</TableHead>
-                          <TableHead className="text-right">Days Holding WR</TableHead>
+                          <TableHead className="text-right">Elo (Studs)</TableHead>
                           <TableHead className="text-right">World Records</TableHead>
                           <TableHead className="text-right">Total Runs</TableHead>
                           <TableHead className="text-right">Best Time</TableHead>
@@ -1413,21 +1337,18 @@ const Stats = () => {
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex items-center justify-end gap-2">
-                                <span className="font-bold text-lg">{player.elo}</span>
-                                <span className="text-xs text-muted-foreground">
-                                  {player.elo === 1 ? 'day' : 'days'}
-                                </span>
-                                {player.elo >= 365 && (
+                                <span className="font-bold text-lg">{player.elo.toLocaleString()}</span>
+                                {player.elo >= 10000 && (
                                   <Badge variant="default" className="bg-yellow-500">
                                     Legend
                                   </Badge>
                                 )}
-                                {player.elo >= 180 && player.elo < 365 && (
+                                {player.elo >= 5000 && player.elo < 10000 && (
                                   <Badge variant="secondary">
                                     Master
                                   </Badge>
                                 )}
-                                {player.elo < 180 && player.elo >= 90 && (
+                                {player.elo < 5000 && player.elo >= 2000 && (
                                   <Badge variant="outline">
                                     Expert
                                   </Badge>
