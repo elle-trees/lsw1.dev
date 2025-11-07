@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Link } from "react-router-dom";
-import { User, Users, ExternalLink, Trophy, Clock, MapPin } from "lucide-react";
+import { User, Users, ExternalLink, Trophy, Clock, MapPin, Check } from "lucide-react";
 import { LeaderboardEntry } from "@/types/database";
 import LegoStudIcon from "@/components/icons/LegoStudIcon";
 import { formatTime } from "@/lib/utils";
@@ -93,7 +93,7 @@ export function LeaderboardTable({ data, platforms = [], categories = [], levels
                   const isUnclaimed = !entry.playerId || entry.playerId.trim() === "";
                   
                   if (isUnclaimed) {
-                    // For unclaimed runs, show name without link and add "Unclaimed" badge
+                    // For unclaimed runs, show name without link
                     return (
                       <>
                         <div className="flex items-center gap-2 flex-wrap">
@@ -106,37 +106,37 @@ export function LeaderboardTable({ data, platforms = [], categories = [], levels
                               </span>
                             </>
                           )}
-                          <Badge variant="outline" className="border-yellow-600/50 bg-yellow-600/10 text-yellow-400 text-xs px-1.5 py-0.5 border">
-                            Unclaimed
-                          </Badge>
                         </div>
                       </>
                     );
                   } else {
-                    // For claimed runs, show with link
+                    // For claimed runs, show with link and check icon
                     return (
                       <>
-                        <Link 
-                          to={`/player/${entry.playerId}`} 
-                          className="hover:opacity-80 transition-all group-hover:scale-105 inline-block"
-                          style={{ color: entry.nameColor || '#cba6f7' }}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <span className="font-semibold text-sm sm:text-base whitespace-nowrap">{entry.playerName}</span>
-                        </Link>
-                        {entry.player2Name && (
-                          <>
-                            <span className="text-ctp-overlay0 text-xs sm:text-sm"> & </span>
-                            <Link 
-                              to={`/player/${entry.player2Id || entry.playerId}`} 
-                              className="hover:opacity-80 transition-all inline-block"
-                              style={{ color: entry.player2Color || '#cba6f7' }}
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <span className="font-semibold text-sm sm:text-base whitespace-nowrap">{entry.player2Name}</span>
-                            </Link>
-                          </>
-                        )}
+                        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                          <Link 
+                            to={`/player/${entry.playerId}`} 
+                            className="hover:opacity-80 transition-all group-hover:scale-105 inline-block"
+                            style={{ color: entry.nameColor || '#cba6f7' }}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <span className="font-semibold text-sm sm:text-base whitespace-nowrap">{entry.playerName}</span>
+                          </Link>
+                          {entry.player2Name && (
+                            <>
+                              <span className="text-ctp-overlay0 text-xs sm:text-sm"> & </span>
+                              <Link 
+                                to={`/player/${entry.player2Id || entry.playerId}`} 
+                                className="hover:opacity-80 transition-all inline-block"
+                                style={{ color: entry.player2Color || '#cba6f7' }}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <span className="font-semibold text-sm sm:text-base whitespace-nowrap">{entry.player2Name}</span>
+                              </Link>
+                            </>
+                          )}
+                          <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-500 flex-shrink-0" />
+                        </div>
                       </>
                     );
                   }
