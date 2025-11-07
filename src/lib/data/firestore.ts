@@ -4987,21 +4987,18 @@ export const deleteAllUnclaimedImportedRunsFirestore = async (onProgress?: (dele
   
   const result = { deleted: 0, errors: [] as string[] };
   
-  try {
-    // Query for all imported runs without playerId
-    // Use cursor-based pagination to fetch all batches
+  // Helper function to delete unclaimed runs from a query
+  const deleteUnclaimedFromQuery = async (
+    baseConstraints: QueryConstraint[],
+    description: string
+  ): Promise<number> => {
     let lastDoc: any = null;
     let totalDeleted = 0;
     const batchSize = 500;
     
-    // Delete in batches until no more runs
     while (true) {
       // Build query with pagination
-      const constraints: QueryConstraint[] = [
-        where("importedFromSRC", "==", true),
-        orderBy("__name__"), // Order by document ID for consistent pagination
-        firestoreLimit(batchSize)
-      ];
+      const constraints: QueryConstraint[] = [...baseConstraints];
       
       // Add cursor for pagination if we have a last document
       if (lastDoc) {
@@ -5047,10 +5044,10 @@ export const deleteAllUnclaimedImportedRunsFirestore = async (onProgress?: (dele
           await batch.commit();
           totalDeleted += currentBatchSize;
           result.deleted += currentBatchSize;
-          onProgress?.(totalDeleted);
+          onProgress?.(result.deleted);
         } catch (batchError) {
           const errorMsg = batchError instanceof Error ? batchError.message : String(batchError);
-          result.errors.push(`Failed to delete batch: ${errorMsg}`);
+          result.errors.push(`Failed to delete ${description} batch: ${errorMsg}`);
         }
       }
       
@@ -5062,6 +5059,32 @@ export const deleteAllUnclaimedImportedRunsFirestore = async (onProgress?: (dele
         break;
       }
     }
+    
+    return totalDeleted;
+  };
+  
+  try {
+    // Delete unclaimed verified imported runs
+    await deleteUnclaimedFromQuery(
+      [
+        where("verified", "==", true),
+        where("importedFromSRC", "==", true),
+        orderBy("__name__"),
+        firestoreLimit(500)
+      ],
+      "verified"
+    );
+    
+    // Delete unclaimed unverified imported runs
+    await deleteUnclaimedFromQuery(
+      [
+        where("verified", "==", false),
+        where("importedFromSRC", "==", true),
+        orderBy("__name__"),
+        firestoreLimit(500)
+      ],
+      "unverified"
+    );
     
     return result;
   } catch (error) {
