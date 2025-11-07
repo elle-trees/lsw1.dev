@@ -453,6 +453,7 @@ export async function importSRCRuns(
     const BATCH_SIZE = 200;
     const MAX_TOTAL_FETCH = 5000; // Safety limit: stop after fetching 5000 runs total
     
+    let srcRuns: SRCRun[] = [];
     let unlinkedRuns: SRCRun[] = [];
     let currentOffset = 0;
     let totalFetched = 0;
@@ -489,7 +490,7 @@ export async function importSRCRuns(
       }
       
       // Take only the first 200 unlinked runs (most recent ones)
-      const srcRuns = unlinkedRuns.slice(0, TARGET_UNLINKED_COUNT);
+      srcRuns = unlinkedRuns.slice(0, TARGET_UNLINKED_COUNT);
       
       if (srcRuns.length === 0) {
         result.errors.push(`No new runs to import - checked ${totalFetched} recent runs and all are already linked on the boards`);
