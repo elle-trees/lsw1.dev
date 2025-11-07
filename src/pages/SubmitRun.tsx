@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { Upload, Gamepad2, Timer, User, Users, FileText, Sparkles, CheckCircle, Calendar, ChevronDown, ChevronUp, Trophy, Star, Gem, BookOpen } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -40,10 +42,13 @@ const SubmitRun = () => {
   });
   
   const [loading, setLoading] = useState(false);
+  const [loadingData, setLoadingData] = useState(true);
+  const [loadingSubcategories, setLoadingSubcategories] = useState(false);
   const [guidelinesOpen, setGuidelinesOpen] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
+      setLoadingData(true);
       try {
         // For Individual Level: fetch Story/Free Play categories
         // For Community Golds: fetch community-golds categories (now configurable)
@@ -70,6 +75,8 @@ const SubmitRun = () => {
         }
       } catch (error) {
         // Silent fail
+      } finally {
+        setLoadingData(false);
       }
     };
     
@@ -80,6 +87,7 @@ const SubmitRun = () => {
   useEffect(() => {
     const fetchSubcategories = async () => {
       if (leaderboardType === 'regular' && formData.category) {
+        setLoadingSubcategories(true);
         try {
           const categories = await getCategoriesFromFirestore('regular');
           const category = categories.find(c => c.id === formData.category);
@@ -100,6 +108,8 @@ const SubmitRun = () => {
         } catch (error) {
           setAvailableSubcategories([]);
           setFormData(prev => ({ ...prev, subcategory: "" }));
+        } finally {
+          setLoadingSubcategories(false);
         }
       } else {
         setAvailableSubcategories([]);
@@ -337,8 +347,38 @@ const SubmitRun = () => {
               </Button>
             </CardContent>
           </Card>
-        ) : (
+        ) : loadingData ? (
           <div className="space-y-6 max-w-6xl mx-auto">
+            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
+              <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)] py-4">
+                <CardTitle className="flex items-center gap-2 text-xl text-[#eba0ac]">
+                  <span>Run Details</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-center py-8">
+                    <LoadingSpinner size="lg" />
+                  </div>
+                  <div className="space-y-4">
+                    <Skeleton className="h-10 w-full" />
+                    <div className="grid grid-cols-2 gap-4">
+                      <Skeleton className="h-10 w-full" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <Skeleton className="h-10 w-full" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-24 w-full" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        ) : (
+          <div className="space-y-6 max-w-6xl mx-auto animate-fade-in">
             {/* Main Form */}
             <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
                 <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)] py-4">
@@ -432,22 +472,31 @@ const SubmitRun = () => {
                     </div>
                   </div>
                   <div>
-                    <Label htmlFor="runType" className="text-sm font-semibold mb-1.5">Run Type *</Label>
-                    <Select value={formData.runType} onValueChange={(value) => handleSelectChange("runType", value)}>
-                      <SelectTrigger className="bg-[hsl(240,21%,18%)] border-[hsl(235,13%,30%)] h-10 text-sm hover:border-[hsl(var(--mocha-mauve))] transition-colors">
-                        <SelectValue placeholder="Select run type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {runTypes.map((type) => (
-                          <SelectItem key={type.id} value={type.id} className="text-sm">
-                            <div className="flex items-center gap-2">
-                              {type.id === 'solo' ? <User className="h-4 w-4" /> : <Users className="h-4 w-4" />}
-                              {type.name}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {loadingData ? (
+                      <div className="animate-fade-in">
+                        <Skeleton className="h-5 w-24 mb-2" />
+                        <Skeleton className="h-10 w-full" />
+                      </div>
+                    ) : (
+                      <div className="animate-fade-in">
+                        <Label htmlFor="runType" className="text-sm font-semibold mb-1.5">Run Type *</Label>
+                        <Select value={formData.runType} onValueChange={(value) => handleSelectChange("runType", value)}>
+                          <SelectTrigger className="bg-[hsl(240,21%,18%)] border-[hsl(235,13%,30%)] h-10 text-sm hover:border-[hsl(var(--mocha-mauve))] transition-colors">
+                            <SelectValue placeholder="Select run type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {runTypes.map((type) => (
+                              <SelectItem key={type.id} value={type.id} className="text-sm">
+                                <div className="flex items-center gap-2">
+                                  {type.id === 'solo' ? <User className="h-4 w-4" /> : <Users className="h-4 w-4" />}
+                                  {type.name}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                   </div>
                 </div>
                 {formData.runType === 'co-op' && (
@@ -466,8 +515,18 @@ const SubmitRun = () => {
                 )}
 
                 {/* Category Selection - Tabs for all types */}
-                {availableCategories.length > 0 && (
-                  <div>
+                {loadingData ? (
+                  <div className="animate-fade-in">
+                    <Skeleton className="h-5 w-32 mb-2" />
+                    <div className="flex gap-2 overflow-x-auto">
+                      <Skeleton className="h-10 w-24 flex-shrink-0" />
+                      <Skeleton className="h-10 w-24 flex-shrink-0" />
+                      <Skeleton className="h-10 w-24 flex-shrink-0" />
+                      <Skeleton className="h-10 w-24 flex-shrink-0" />
+                    </div>
+                  </div>
+                ) : availableCategories.length > 0 ? (
+                  <div className="animate-fade-in">
                     <Label className="text-sm font-semibold mb-2 block flex items-center gap-2">
                       {leaderboardType === 'individual-level' ? (
                         <>
@@ -511,83 +570,114 @@ const SubmitRun = () => {
                       </p>
                     )}
                   </div>
-                )}
+                ) : null}
 
                 {/* Subcategory Selection (only for regular leaderboard type) */}
-                {leaderboardType === 'regular' && availableSubcategories.length > 0 && (
+                {leaderboardType === 'regular' && (
                   <div>
-                    <Label className="text-sm font-semibold mb-2 block flex items-center gap-2">
-                      <Trophy className="h-3.5 w-3.5 text-[#cba6f7]" />
-                      Subcategory *
-                    </Label>
-                    <Tabs 
-                      value={formData.subcategory || ""} 
-                      onValueChange={(value) => handleSelectChange("subcategory", value)}
-                    >
-                      <TabsList className="flex w-full p-0.5 gap-1 overflow-x-auto overflow-y-hidden scrollbar-hide" style={{ minWidth: 'max-content' }}>
-                        {availableSubcategories.map((subcategory, index) => (
-                          <TabsTrigger 
-                            key={subcategory.id} 
-                            value={subcategory.id} 
-                            className="data-[state=active]:bg-[#cba6f7] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#cba6f7]/50 py-1.5 sm:py-2 px-2 sm:px-3 text-xs sm:text-sm whitespace-nowrap"
-                            style={{ animationDelay: `${index * 50}ms` }}
-                          >
-                            {subcategory.name}
-                          </TabsTrigger>
-                        ))}
-                      </TabsList>
-                    </Tabs>
-                    <p className="text-xs text-[hsl(222,15%,60%)] mt-1">
-                      Select a subcategory for this run (e.g., Glitchless, No Major Glitches)
-                    </p>
+                    {loadingSubcategories ? (
+                      <div className="animate-fade-in">
+                        <Skeleton className="h-5 w-32 mb-2" />
+                        <div className="flex gap-2 overflow-x-auto">
+                          <Skeleton className="h-9 w-28 flex-shrink-0" />
+                          <Skeleton className="h-9 w-28 flex-shrink-0" />
+                          <Skeleton className="h-9 w-28 flex-shrink-0" />
+                        </div>
+                      </div>
+                    ) : availableSubcategories.length > 0 ? (
+                      <div className="animate-fade-in">
+                        <Label className="text-sm font-semibold mb-2 block flex items-center gap-2">
+                          <Trophy className="h-3.5 w-3.5 text-[#cba6f7]" />
+                          Subcategory *
+                        </Label>
+                        <Tabs 
+                          value={formData.subcategory || ""} 
+                          onValueChange={(value) => handleSelectChange("subcategory", value)}
+                        >
+                          <TabsList className="flex w-full p-0.5 gap-1 overflow-x-auto overflow-y-hidden scrollbar-hide" style={{ minWidth: 'max-content' }}>
+                            {availableSubcategories.map((subcategory, index) => (
+                              <TabsTrigger 
+                                key={subcategory.id} 
+                                value={subcategory.id} 
+                                className="data-[state=active]:bg-[#cba6f7] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#cba6f7]/50 py-1.5 sm:py-2 px-2 sm:px-3 text-xs sm:text-sm whitespace-nowrap"
+                                style={{ animationDelay: `${index * 50}ms` }}
+                              >
+                                {subcategory.name}
+                              </TabsTrigger>
+                            ))}
+                          </TabsList>
+                        </Tabs>
+                        <p className="text-xs text-[hsl(222,15%,60%)] mt-1">
+                          Select a subcategory for this run (e.g., Glitchless, No Major Glitches)
+                        </p>
+                      </div>
+                    ) : null}
                   </div>
                 )}
 
                 {/* Level Selection for ILs and Community Golds */}
                 {(leaderboardType === 'individual-level' || leaderboardType === 'community-golds') && (
                   <div>
-                    <Label htmlFor="level" className="text-sm font-semibold mb-1.5 flex items-center gap-2">
-                      <Sparkles className="h-3.5 w-3.5 text-[#cba6f7]" />
-                      Level *
-                    </Label>
-                    <Select value={formData.level} onValueChange={(value) => handleSelectChange("level", value)}>
-                      <SelectTrigger className="bg-gradient-to-br from-[hsl(240,21%,18%)] to-[hsl(240,21%,16%)] border-[hsl(235,13%,30%)] h-10 text-sm hover:border-[#cba6f7] hover:bg-gradient-to-br hover:from-[hsl(240,21%,20%)] hover:to-[hsl(240,21%,18%)] transition-all duration-300 hover:shadow-lg hover:shadow-[#cba6f7]/20">
-                        <SelectValue placeholder="Select level" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableLevels.map((level) => (
-                          <SelectItem key={level.id} value={level.id} className="text-sm">
-                            {level.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-[hsl(222,15%,60%)] mt-1">
-                      {leaderboardType === 'individual-level' 
-                        ? "Select the level for this Individual Level run"
-                        : "Select the level for this Community Gold run"}
-                    </p>
+                    {loadingData ? (
+                      <div className="animate-fade-in">
+                        <Skeleton className="h-5 w-24 mb-2" />
+                        <Skeleton className="h-10 w-full" />
+                      </div>
+                    ) : (
+                      <div className="animate-fade-in">
+                        <Label htmlFor="level" className="text-sm font-semibold mb-1.5 flex items-center gap-2">
+                          <Sparkles className="h-3.5 w-3.5 text-[#cba6f7]" />
+                          Level *
+                        </Label>
+                        <Select value={formData.level} onValueChange={(value) => handleSelectChange("level", value)}>
+                          <SelectTrigger className="bg-gradient-to-br from-[hsl(240,21%,18%)] to-[hsl(240,21%,16%)] border-[hsl(235,13%,30%)] h-10 text-sm hover:border-[#cba6f7] hover:bg-gradient-to-br hover:from-[hsl(240,21%,20%)] hover:to-[hsl(240,21%,18%)] transition-all duration-300 hover:shadow-lg hover:shadow-[#cba6f7]/20">
+                            <SelectValue placeholder="Select level" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableLevels.map((level) => (
+                              <SelectItem key={level.id} value={level.id} className="text-sm">
+                                {level.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-[hsl(222,15%,60%)] mt-1">
+                          {leaderboardType === 'individual-level' 
+                            ? "Select the level for this Individual Level run"
+                            : "Select the level for this Community Gold run"}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="platform" className="text-sm font-semibold mb-1.5">Platform *</Label>
-                    <Select value={formData.platform} onValueChange={(value) => handleSelectChange("platform", value)}>
-                      <SelectTrigger className="bg-[hsl(240,21%,18%)] border-[hsl(235,13%,30%)] h-10 text-sm hover:border-[hsl(var(--mocha-mauve))] transition-colors">
-                        <SelectValue placeholder="Select platform" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availablePlatforms.map((platform) => (
-                          <SelectItem key={platform.id} value={platform.id} className="text-sm">
-                            <div className="flex items-center gap-2">
-                              <Gamepad2 className="h-4 w-4" />
-                              {platform.name}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {loadingData ? (
+                      <div className="animate-fade-in">
+                        <Skeleton className="h-5 w-20 mb-2" />
+                        <Skeleton className="h-10 w-full" />
+                      </div>
+                    ) : (
+                      <div className="animate-fade-in">
+                        <Label htmlFor="platform" className="text-sm font-semibold mb-1.5">Platform *</Label>
+                        <Select value={formData.platform} onValueChange={(value) => handleSelectChange("platform", value)}>
+                          <SelectTrigger className="bg-[hsl(240,21%,18%)] border-[hsl(235,13%,30%)] h-10 text-sm hover:border-[hsl(var(--mocha-mauve))] transition-colors">
+                            <SelectValue placeholder="Select platform" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availablePlatforms.map((platform) => (
+                              <SelectItem key={platform.id} value={platform.id} className="text-sm">
+                                <div className="flex items-center gap-2">
+                                  <Gamepad2 className="h-4 w-4" />
+                                  {platform.name}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -759,6 +849,22 @@ const SubmitRun = () => {
           </div>
         )}
       </div>
+      
+      <style>{`
+        @keyframes fade-in {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .animate-fade-in {
+          animation: fade-in 0.4s ease-out forwards;
+        }
+      `}</style>
     </div>
   );
 };

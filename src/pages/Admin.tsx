@@ -66,8 +66,6 @@ import {
   deletePlayer,
   getIlRunsToFix,
   wipeAllImportedSRCRuns,
-  getUnclaimedImportedRuns,
-  deleteAllUnclaimedImportedRuns,
 } from "@/lib/db";
 import { importSRCRuns, type ImportResult } from "@/lib/speedruncom/importService";
 import { fetchCategoryVariables, getLSWGameId, fetchCategories as fetchSRCCategories, type SRCCategory } from "@/lib/speedruncom";
@@ -117,11 +115,6 @@ const Admin = () => {
   const [deletingRunId, setDeletingRunId] = useState<string | null>(null);
   const [wipingImportedRuns, setWipingImportedRuns] = useState(false);
   const [wipingProgress, setWipingProgress] = useState(0);
-  // Unclaimed runs state
-  const [unclaimedRuns, setUnclaimedRuns] = useState<LeaderboardEntry[]>([]);
-  const [loadingUnclaimedRuns, setLoadingUnclaimedRuns] = useState(false);
-  const [deletingUnclaimedRuns, setDeletingUnclaimedRuns] = useState(false);
-  const [deletingUnclaimedProgress, setDeletingUnclaimedProgress] = useState(0);
   const itemsPerPage = 25;
   // SRC categories with variables
   const [srcCategoriesWithVars, setSrcCategoriesWithVars] = useState<Array<SRCCategory & { variablesData?: Array<{ id: string; name: string; values: { values: Record<string, { label: string }> } }> }>>([]);
@@ -297,8 +290,6 @@ const Admin = () => {
       };
       fetchImportedRuns();
       
-      // Also fetch unclaimed runs when switching to SRC Tools tab
-      fetchUnclaimedRuns();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, importedRunsLeaderboardType]);
@@ -1092,21 +1083,6 @@ const Admin = () => {
     }
   };
 
-  const fetchUnclaimedRuns = async () => {
-    setLoadingUnclaimedRuns(true);
-    try {
-      const runs = await getUnclaimedImportedRuns();
-      setUnclaimedRuns(runs);
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to fetch unclaimed runs.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingUnclaimedRuns(false);
-    }
-  };
 
   const handleClearImportedRuns = async () => {
     if (!window.confirm("Are you sure you want to delete all imported runs from speedrun.com? This action cannot be undone.")) {
@@ -4686,154 +4662,6 @@ const Admin = () => {
               </CardContent>
             </Card>
 
-            {/* Unclaimed Runs Card */}
-            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
-              <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2 text-xl text-[#f2cdcd]">
-                    <UserX className="h-5 w-5" />
-                    <span>Unclaimed Runs</span>
-                    {unclaimedRuns.length > 0 && (
-                      <Badge variant="secondary" className="ml-2">
-                        {unclaimedRuns.length}
-                      </Badge>
-                    )}
-                  </CardTitle>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={fetchUnclaimedRuns}
-                      disabled={loadingUnclaimedRuns}
-                      className="border-[hsl(235,13%,30%)] hover:bg-[hsl(235,19%,13%)]"
-                    >
-                      <RefreshCw className={`h-4 w-4 mr-2 ${loadingUnclaimedRuns ? 'animate-spin' : ''}`} />
-                      {loadingUnclaimedRuns ? 'Loading...' : 'Refresh'}
-                    </Button>
-                    {unclaimedRuns.length > 0 && (
-                      <Button
-                        onClick={async () => {
-                          if (!window.confirm(
-                            `WARNING: This will delete ${unclaimedRuns.length} unclaimed imported run(s).\n\n` +
-                            "Unclaimed runs are imported runs that haven't been claimed by a user yet.\n\n" +
-                            "This action cannot be undone. Are you absolutely sure you want to continue?"
-                          )) {
-                            return;
-                          }
-                          
-                          setDeletingUnclaimedRuns(true);
-                          setDeletingUnclaimedProgress(0);
-                          try {
-                            const result = await deleteAllUnclaimedImportedRuns((deleted) => {
-                              setDeletingUnclaimedProgress(deleted);
-                            });
-                            
-                            if (result.errors.length > 0) {
-                              toast({
-                                title: "Delete Complete with Errors",
-                                description: `Deleted ${result.deleted} unclaimed run(s). ${result.errors.length} error(s) occurred.`,
-                                variant: "destructive",
-                              });
-                            } else {
-                              toast({
-                                title: "All Unclaimed Runs Deleted",
-                                description: `Successfully deleted ${result.deleted} unclaimed run(s) from the leaderboards.`,
-                              });
-                            }
-                            
-                            // Refresh unclaimed runs list
-                            await fetchUnclaimedRuns();
-                            await refreshAllRunData();
-                          } catch (error: any) {
-                            toast({
-                              title: "Error",
-                              description: error.message || "Failed to delete unclaimed runs.",
-                              variant: "destructive",
-                            });
-                          } finally {
-                            setDeletingUnclaimedRuns(false);
-                            setDeletingUnclaimedProgress(0);
-                          }
-                        }}
-                        disabled={deletingUnclaimedRuns}
-                        variant="destructive"
-                        size="sm"
-                        className="bg-red-600/20 hover:bg-red-600/30 text-red-400 border-red-600/50"
-                      >
-                        {deletingUnclaimedRuns ? (
-                          <>
-                            <LoadingSpinner size="sm" className="mr-2" />
-                            Deleting... {deletingUnclaimedProgress > 0 && `${deletingUnclaimedProgress} deleted`}
-                          </>
-                        ) : (
-                          <>
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete All ({unclaimedRuns.length})
-                          </>
-                        )}
-                      </Button>
-                    )}
-                  </div>
-                </div>
-                <p className="text-sm text-[hsl(222,15%,60%)] mt-2">
-                  Runs imported from Speedrun.com that haven't been claimed by a user yet (missing playerId field).
-                </p>
-              </CardHeader>
-              <CardContent className="pt-6">
-                {loadingUnclaimedRuns ? (
-                  <div className="text-center py-8">
-                    <LoadingSpinner />
-                  </div>
-                ) : unclaimedRuns.length === 0 ? (
-                  <p className="text-[hsl(222,15%,60%)] text-center py-8">
-                    No unclaimed runs found. Click "Refresh" to check for unclaimed runs.
-                  </p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="border-b border-[hsl(235,13%,30%)] hover:bg-transparent">
-                          <TableHead className="py-3 px-4 text-left">Player(s)</TableHead>
-                          <TableHead className="py-3 px-4 text-left">Category</TableHead>
-                          <TableHead className="py-3 px-4 text-left">Time</TableHead>
-                          <TableHead className="py-3 px-4 text-left">Platform</TableHead>
-                          <TableHead className="py-3 px-4 text-left">Type</TableHead>
-                          <TableHead className="py-3 px-4 text-left">Status</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {unclaimedRuns.map((run) => (
-                          <TableRow key={run.id} className="border-b border-[hsl(235,13%,30%)] hover:bg-[hsl(235,19%,13%)] transition-all duration-200">
-                            <TableCell className="py-3 px-4 font-medium">
-                              <span style={{ color: run.nameColor || 'inherit' }}>{run.playerName}</span>
-                              {run.player2Name && (
-                                <>
-                                  <span className="text-muted-foreground"> & </span>
-                                  <span style={{ color: run.player2Color || 'inherit' }}>{run.player2Name}</span>
-                                </>
-                              )}
-                            </TableCell>
-                            <TableCell className="py-3 px-4">
-                              {getCategoryName(run.category, firestoreCategories) || run.srcCategoryName || "Unknown"}
-                            </TableCell>
-                            <TableCell className="py-3 px-4 font-mono">{formatTime(run.time || '00:00:00')}</TableCell>
-                            <TableCell className="py-3 px-4">
-                              {getPlatformName(run.platform, firestorePlatforms) || run.srcPlatformName || "Unknown"}
-                            </TableCell>
-                            <TableCell className="py-3 px-4">{run.runType?.charAt(0).toUpperCase() + run.runType?.slice(1) || "Solo"}</TableCell>
-                            <TableCell className="py-3 px-4">
-                              <Badge variant={run.verified ? "default" : "secondary"}>
-                                {run.verified ? "Verified" : "Unverified"}
-                              </Badge>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
           </TabsContent>
 
         {/* Unverified Runs Section */}
