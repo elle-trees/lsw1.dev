@@ -9,6 +9,7 @@ import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { Pagination } from "@/components/Pagination";
 import { getPlayersByPoints, getPlayerRuns, getCategories, getPlatforms } from "@/lib/db";
 import { getCategoryName, getPlatformName } from "@/lib/dataValidation";
+import { calculatePoints } from "@/lib/utils";
 import LegoStudIcon from "@/components/icons/LegoStudIcon";
 
 const PointsLeaderboard = () => {
@@ -22,6 +23,7 @@ const PointsLeaderboard = () => {
   const [loadingRuns, setLoadingRuns] = useState(false);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [platforms, setPlatforms] = useState<{ id: string; name: string }[]>([]);
+  const [recalculatedPoints, setRecalculatedPoints] = useState<Map<string, number>>(new Map());
 
   useEffect(() => {
     const fetchPlayers = async () => {
@@ -126,16 +128,58 @@ const PointsLeaderboard = () => {
         .finally(() => {
           setLoadingRuns(false);
         });
+    } else {
+      setPlayerRuns([]);
+      setRecalculatedPoints(new Map());
     }
   }, [dialogOpen, selectedPlayer?.uid]);
+
+  // Recalculate points for all runs using current configuration
+  useEffect(() => {
+    if (!playerRuns.length || !categories.length || !platforms.length) {
+      setRecalculatedPoints(new Map());
+      return;
+    }
+
+    const recalculate = async () => {
+      const pointsMap = new Map<string, number>();
+      
+      for (const run of playerRuns) {
+        if (!run.verified) {
+          pointsMap.set(run.id, 0);
+          continue;
+        }
+
+        const category = categories.find((c) => c.id === run.category);
+        const platform = platforms.find((p) => p.id === run.platform);
+        
+        const calculated = await calculatePoints(
+          run.time,
+          category?.name || "Unknown",
+          platform?.name || "Unknown",
+          run.category,
+          run.platform,
+          run.rank,
+          run.runType as 'solo' | 'co-op' | undefined,
+          run.leaderboardType,
+          run.isObsolete
+        );
+        pointsMap.set(run.id, calculated);
+      }
+      
+      setRecalculatedPoints(pointsMap);
+    };
+
+    recalculate();
+  }, [playerRuns, categories, platforms]);
 
   const formatPoints = (points: number) => {
     return new Intl.NumberFormat().format(points);
   };
 
-  // Calculate studs breakdown
+  // Calculate studs breakdown using recalculated points
   const studsBreakdown = useMemo(() => {
-    if (!playerRuns.length) return null;
+    if (!playerRuns.length || recalculatedPoints.size === 0) return null;
 
     const breakdown = {
       byLeaderboardType: new Map<string, { studs: number; runs: number }>(),
@@ -154,8 +198,8 @@ const PointsLeaderboard = () => {
         : run.leaderboardType === 'community-golds' ? 'Community Golds' 
         : 'Full Game';
 
-      // Use stored points if available, otherwise calculate (points should already be stored)
-      const studs = run.points || 0;
+      // Use recalculated points from current configuration
+      const studs = recalculatedPoints.get(run.id) || 0;
 
       breakdown.total += studs;
 
@@ -185,7 +229,7 @@ const PointsLeaderboard = () => {
     });
 
     return breakdown;
-  }, [playerRuns, categories, platforms]);
+  }, [playerRuns, categories, platforms, recalculatedPoints]);
 
   const handlePlayerClick = (player: Player) => {
     setSelectedPlayer(player);
@@ -418,7 +462,7 @@ const PointsLeaderboard = () => {
               </DialogDescription>
             </DialogHeader>
             
-            {loadingRuns ? (
+            {loadingRuns || (playerRuns.length > 0 && recalculatedPoints.size === 0) ? (
               <div className="py-12">
                 <LoadingSpinner size="sm" />
               </div>
