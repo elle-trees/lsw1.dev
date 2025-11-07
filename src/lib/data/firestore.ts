@@ -1,6 +1,6 @@
 import { db } from "@/lib/firebase";
 import { collection, doc, getDoc, setDoc, updateDoc, deleteDoc, getDocs, query, where, orderBy, limit as firestoreLimit, deleteField, writeBatch, getDocsFromCache, getDocsFromServer, QueryConstraint, UpdateData, DocumentData, startAfter } from "firebase/firestore";
-import { Player, LeaderboardEntry, DownloadEntry, Category, Platform, Level } from "@/types/database";
+import { Player, LeaderboardEntry, DownloadEntry, Category, Platform, Level, PointsConfig } from "@/types/database";
 import { calculatePoints, parseTimeToSeconds } from "@/lib/utils";
 import { 
   normalizeLeaderboardEntry, 
@@ -1796,7 +1796,7 @@ export const updateRunVerificationStatusFirestore = async (runId: string, verifi
       // For solo runs: points are full value
       // The returned points value is already split for co-op runs and reduced for ILs/community golds
       const runType = (runData.runType || 'solo') as 'solo' | 'co-op';
-      const points = calculatePoints(
+      const points = await calculatePoints(
         runData.time, 
         categoryName, 
         platformName,
@@ -2134,7 +2134,7 @@ export const recalculatePlayerPointsFirestore = async (playerId: string): Promis
       // Ensure runType is properly set (default to 'solo' if missing)
       const runType = (runData.runType || 'solo') as 'solo' | 'co-op';
       const leaderboardType = runData.leaderboardType || 'regular';
-      const points = calculatePoints(
+      const points = await calculatePoints(
         runData.time, 
         categoryName, 
         platformName,
@@ -5135,5 +5135,121 @@ export const wipeAllImportedSRCRunsFirestore = async (onProgress?: (deleted: num
     const errorMsg = error instanceof Error ? error.message : String(error);
     result.errors.push(`Delete error: ${errorMsg}`);
     return result;
+  }
+};
+
+/**
+ * Get the points configuration from Firestore
+ * Returns default configuration if not found
+ */
+export const getPointsConfigFirestore = async (): Promise<PointsConfig> => {
+  if (!db) {
+    // Return default config if Firestore is not initialized
+    return {
+      id: "default",
+      basePoints: 10,
+      rank1Bonus: 50,
+      rank2Bonus: 30,
+      rank3Bonus: 20,
+      coOpMultiplier: 0.5,
+      ilMultiplier: 1.0,
+      communityGoldsMultiplier: 1.0,
+      obsoleteMultiplier: 0.5,
+      applyRankBonusesToIL: false,
+      applyRankBonusesToCommunityGolds: false,
+    };
+  }
+
+  try {
+    const configDocRef = doc(db, "pointsConfig", "default");
+    const configDocSnap = await getDoc(configDocRef);
+    
+    if (configDocSnap.exists()) {
+      const data = configDocSnap.data();
+      return {
+        id: configDocSnap.id,
+        basePoints: data.basePoints ?? 10,
+        rank1Bonus: data.rank1Bonus ?? 50,
+        rank2Bonus: data.rank2Bonus ?? 30,
+        rank3Bonus: data.rank3Bonus ?? 20,
+        coOpMultiplier: data.coOpMultiplier ?? 0.5,
+        ilMultiplier: data.ilMultiplier ?? 1.0,
+        communityGoldsMultiplier: data.communityGoldsMultiplier ?? 1.0,
+        obsoleteMultiplier: data.obsoleteMultiplier ?? 0.5,
+        applyRankBonusesToIL: data.applyRankBonusesToIL ?? false,
+        applyRankBonusesToCommunityGolds: data.applyRankBonusesToCommunityGolds ?? false,
+      };
+    } else {
+      // Return default config if document doesn't exist
+      return {
+        id: "default",
+        basePoints: 10,
+        rank1Bonus: 50,
+        rank2Bonus: 30,
+        rank3Bonus: 20,
+        coOpMultiplier: 0.5,
+        ilMultiplier: 1.0,
+        communityGoldsMultiplier: 1.0,
+        obsoleteMultiplier: 0.5,
+        applyRankBonusesToIL: false,
+        applyRankBonusesToCommunityGolds: false,
+      };
+    }
+  } catch (error) {
+    // Return default config on error
+    return {
+      id: "default",
+      basePoints: 10,
+      rank1Bonus: 50,
+      rank2Bonus: 30,
+      rank3Bonus: 20,
+      coOpMultiplier: 0.5,
+      ilMultiplier: 1.0,
+      communityGoldsMultiplier: 1.0,
+      obsoleteMultiplier: 0.5,
+      applyRankBonusesToIL: false,
+      applyRankBonusesToCommunityGolds: false,
+    };
+  }
+};
+
+/**
+ * Update the points configuration in Firestore
+ */
+export const updatePointsConfigFirestore = async (config: Partial<PointsConfig>): Promise<boolean> => {
+  if (!db) return false;
+
+  try {
+    const configDocRef = doc(db, "pointsConfig", "default");
+    const configDocSnap = await getDoc(configDocRef);
+    
+    const updateData: Partial<PointsConfig> = {
+      ...config,
+    };
+    // Remove id from update data as it's the document ID
+    delete updateData.id;
+    
+    if (configDocSnap.exists()) {
+      await updateDoc(configDocRef, updateData);
+    } else {
+      // Create new document with default values
+      const defaultConfig: Omit<PointsConfig, 'id'> = {
+        basePoints: config.basePoints ?? 10,
+        rank1Bonus: config.rank1Bonus ?? 50,
+        rank2Bonus: config.rank2Bonus ?? 30,
+        rank3Bonus: config.rank3Bonus ?? 20,
+        coOpMultiplier: config.coOpMultiplier ?? 0.5,
+        ilMultiplier: config.ilMultiplier ?? 1.0,
+        communityGoldsMultiplier: config.communityGoldsMultiplier ?? 1.0,
+        obsoleteMultiplier: config.obsoleteMultiplier ?? 0.5,
+        applyRankBonusesToIL: config.applyRankBonusesToIL ?? false,
+        applyRankBonusesToCommunityGolds: config.applyRankBonusesToCommunityGolds ?? false,
+      };
+      await setDoc(configDocRef, defaultConfig);
+    }
+    
+    return true;
+  } catch (error) {
+    return false;
   }
 };

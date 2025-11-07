@@ -70,6 +70,8 @@ import {
   wipeAllImportedSRCRunsFirestore,
   getUnclaimedImportedRunsFirestore,
   deleteAllUnclaimedImportedRunsFirestore,
+  getPointsConfigFirestore,
+  updatePointsConfigFirestore,
 } from "./data/firestore";
 
 const defaultCategories = [
@@ -254,6 +256,9 @@ export const updatePlayer = updatePlayerFirestore;
 export const deletePlayer = deletePlayerFirestore;
 export const getPlayersWithSRCUsernames = getPlayersWithSRCUsernamesFirestore;
 export const runAutoclaimingForAllUsers = runAutoclaimingForAllUsersFirestore;
+
+export const getPointsConfig = getPointsConfigFirestore;
+export const updatePointsConfig = updatePointsConfigFirestore;
 
 export const backfillPointsForAllRuns = async () => {
   const { backfillPointsForAllRunsFirestore } = await import("./data/firestore");

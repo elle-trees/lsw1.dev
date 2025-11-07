@@ -85,58 +85,69 @@ export function formatTime(timeString: string): string {
   return trimmed;
 }
 
+import type { PointsConfig } from "@/types/database";
+
+// Cache for points config to avoid repeated Firestore reads
+let cachedPointsConfig: PointsConfig | null = null;
+let configCacheTime: number = 0;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 /**
- * Calculate studs for a run using simple flat rates
- * Studs are awarded for:
- * - All verified runs (full game, individual levels, and community golds)
- * - All platforms
- * - All categories
- * - Both solo and co-op runs are eligible
- * 
- * Studs calculation:
- * - Base studs: 10 studs for all verified runs (runs that aren't top 3 receive 10 base studs)
- * - Top 3 bonus: additional bonus studs for Full Game runs ranked 1st, 2nd, or 3rd (NOT applied to ILs, Community Golds, or obsolete runs)
- * - IL/Community Gold: Individual Levels and Community Golds only receive base studs (no rank bonuses)
- * - Co-op split: Co-op runs split studs equally between both players (0.5x multiplier)
- * - Obsolete runs: Only receive half base studs (5 studs), but still subject to co-op split
- * 
- * Full Game Solo runs:
- * - Rank 1: 10 + 50 = 60 studs
- * - Rank 2: 10 + 30 = 40 studs
- * - Rank 3: 10 + 20 = 30 studs
- * - All others: 10 studs
- * 
- * Full Game Co-op runs:
- * - Studs are split equally between both players
- * - Rank 1: (10 + 50) / 2 = 30 studs per player
- * - Rank 2: (10 + 30) / 2 = 20 studs per player
- * - Rank 3: (10 + 20) / 2 = 15 studs per player
- * - All others: 10 / 2 = 5 studs per player
- * 
- * IL/Community Gold Solo runs (base studs only, no rank bonuses):
- * - All ranks: 10 studs
- * 
- * IL/Community Gold Co-op runs (base studs only, then split):
- * - All ranks: 10 / 2 = 5 studs per player
- * 
- * Obsolete Solo runs (half base studs, no rank bonuses):
- * - All ranks: 5 studs
- * 
- * Obsolete Co-op runs (half base studs, then split):
- * - All ranks: 5 / 2 = 2.5 → 3 studs per player (rounded)
+ * Get points configuration (with caching)
+ */
+async function getPointsConfigCached(): Promise<PointsConfig> {
+  const now = Date.now();
+  if (cachedPointsConfig && (now - configCacheTime) < CACHE_DURATION) {
+    return cachedPointsConfig;
+  }
+
+  try {
+    const { getPointsConfig } = await import("@/lib/db");
+    cachedPointsConfig = await getPointsConfig();
+    configCacheTime = now;
+    return cachedPointsConfig;
+  } catch (error) {
+    // Return default config on error
+    return {
+      id: "default",
+      basePoints: 10,
+      rank1Bonus: 50,
+      rank2Bonus: 30,
+      rank3Bonus: 20,
+      coOpMultiplier: 0.5,
+      ilMultiplier: 1.0,
+      communityGoldsMultiplier: 1.0,
+      obsoleteMultiplier: 0.5,
+      applyRankBonusesToIL: false,
+      applyRankBonusesToCommunityGolds: false,
+    };
+  }
+}
+
+/**
+ * Clear the points config cache (useful after updating config)
+ */
+export function clearPointsConfigCache(): void {
+  cachedPointsConfig = null;
+  configCacheTime = 0;
+}
+
+/**
+ * Calculate studs for a run using configurable rates
  * 
  * @param timeString - Time string in HH:MM:SS format (not used but kept for compatibility)
  * @param categoryName - Name of the category (not used but kept for compatibility)
  * @param platformName - Name of the platform (not used but kept for compatibility)
  * @param categoryId - Optional category ID (not used but kept for compatibility)
  * @param platformId - Optional platform ID (not used but kept for compatibility)
- * @param rank - Optional rank of the run in its category (1-3 for bonus studs, only for Full Game)
- * @param runType - Optional run type ('solo' or 'co-op'). If 'co-op', studs are split in half
- * @param leaderboardType - Optional leaderboard type ('regular', 'individual-level', or 'community-golds'). ILs and community golds receive base studs only
- * @param isObsolete - Optional flag indicating if the run is obsolete. Obsolete runs receive half base studs (5 studs)
+ * @param rank - Optional rank of the run in its category (1-3 for bonus studs)
+ * @param runType - Optional run type ('solo' or 'co-op')
+ * @param leaderboardType - Optional leaderboard type ('regular', 'individual-level', or 'community-golds')
+ * @param isObsolete - Optional flag indicating if the run is obsolete
+ * @param config - Optional points configuration (if not provided, will fetch from Firestore)
  * @returns Studs awarded for the run (already split for co-op runs)
  */
-export function calculatePoints(
+export async function calculatePoints(
   timeString: string, 
   categoryName: string, 
   platformName?: string,
@@ -145,51 +156,38 @@ export function calculatePoints(
   rank?: number,
   runType?: 'solo' | 'co-op',
   leaderboardType?: 'regular' | 'individual-level' | 'community-golds',
-  isObsolete?: boolean
-): number {
-  // Base studs for all verified runs
-  const basePoints = 10;
+  isObsolete?: boolean,
+  config?: PointsConfig
+): Promise<number> {
+  // Get config if not provided
+  const pointsConfig = config || await getPointsConfigCached();
   
   // Check if this is an IL or Community Gold
-  const isILOrCommunityGold = leaderboardType === 'individual-level' || leaderboardType === 'community-golds';
+  const isIL = leaderboardType === 'individual-level';
+  const isCommunityGold = leaderboardType === 'community-golds';
+  const isILOrCommunityGold = isIL || isCommunityGold;
   
-  // Obsolete runs get half base studs (5 studs)
+  // Check if co-op
+  const isCoOp = runType === 'co-op' || 
+                 (typeof runType === 'string' && runType.toLowerCase().includes('co-op')) ||
+                 (typeof runType === 'string' && runType.toLowerCase() === 'coop');
+  
+  // Start with base points
+  let points = pointsConfig.basePoints;
+  
+  // Apply obsolete multiplier if obsolete
   if (isObsolete === true) {
-    let points = basePoints * 0.5; // Half base points = 5 studs
-    
-    // CRITICAL: For co-op runs, ALWAYS split studs equally between both players
-    const isCoOp = runType === 'co-op' || 
-                   (typeof runType === 'string' && runType.toLowerCase().includes('co-op')) ||
-                   (typeof runType === 'string' && runType.toLowerCase() === 'coop');
-    
-    if (isCoOp) {
-      points = points / 2;
+    points = points * pointsConfig.obsoleteMultiplier;
+  } else {
+    // Apply IL/Community Gold multiplier if applicable
+    if (isIL) {
+      points = points * pointsConfig.ilMultiplier;
+    } else if (isCommunityGold) {
+      points = points * pointsConfig.communityGoldsMultiplier;
     }
-    
-    // Round to nearest integer to avoid floating point issues
-    return Math.round(points);
   }
   
-  // ILs and Community Golds only get base studs (no rank bonuses)
-  if (isILOrCommunityGold) {
-    let points = basePoints;
-    
-    // CRITICAL: For co-op runs, ALWAYS split studs equally between both players
-    const isCoOp = runType === 'co-op' || 
-                   (typeof runType === 'string' && runType.toLowerCase().includes('co-op')) ||
-                   (typeof runType === 'string' && runType.toLowerCase() === 'coop');
-    
-    if (isCoOp) {
-      points = points / 2;
-    }
-    
-    // Round to nearest integer to avoid floating point issues
-    return Math.round(points);
-  }
-  
-  // For Full Game runs, apply rank bonuses
-  // Ensure rank is a number for comparison
-  // Handle null, undefined, and non-number values
+  // Apply rank bonuses if applicable
   let numericRank: number | undefined = undefined;
   if (rank !== undefined && rank !== null) {
     if (typeof rank === 'number' && !isNaN(rank)) {
@@ -202,33 +200,30 @@ export function calculatePoints(
     }
   }
   
-  // Start with base studs
-  let points = basePoints;
-
-  // Add top 3 bonus if applicable (only for Full Game runs)
-  // Only apply bonus if rank is exactly 1, 2, or 3
-  if (numericRank !== undefined && numericRank >= 1 && numericRank <= 3 && Number.isInteger(numericRank)) {
-    if (numericRank === 1) {
-      points += 50; // 1st place bonus
-    } else if (numericRank === 2) {
-      points += 30; // 2nd place bonus
-    } else if (numericRank === 3) {
-      points += 20; // 3rd place bonus
+  // Add rank bonuses if applicable
+  if (numericRank !== undefined && numericRank >= 1 && numericRank <= 3 && Number.isInteger(numericRank) && !isObsolete) {
+    // Check if rank bonuses apply to this leaderboard type
+    const canApplyRankBonus = 
+      leaderboardType === 'regular' || 
+      (isIL && pointsConfig.applyRankBonusesToIL) ||
+      (isCommunityGold && pointsConfig.applyRankBonusesToCommunityGolds);
+    
+    if (canApplyRankBonus) {
+      if (numericRank === 1) {
+        points += pointsConfig.rank1Bonus;
+      } else if (numericRank === 2) {
+        points += pointsConfig.rank2Bonus;
+      } else if (numericRank === 3) {
+        points += pointsConfig.rank3Bonus;
+      }
     }
   }
-
-  // CRITICAL: For co-op runs, ALWAYS split studs equally between both players
-  // This ensures both players get half the studs for co-op runs
-  // Studs are already split here, so each player gets the returned value
-  // Safeguard: Check for 'co-op' or 'coop' (case-insensitive) to handle any variations
-  const isCoOp = runType === 'co-op' || 
-                 (typeof runType === 'string' && runType.toLowerCase().includes('co-op')) ||
-                 (typeof runType === 'string' && runType.toLowerCase() === 'coop');
   
+  // Apply co-op multiplier
   if (isCoOp) {
-    points = points / 2;
+    points = points * pointsConfig.coOpMultiplier;
   }
-
+  
   // Round to nearest integer to avoid floating point issues
   return Math.round(points);
 }

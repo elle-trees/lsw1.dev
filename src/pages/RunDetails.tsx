@@ -468,7 +468,7 @@ const RunDetails = () => {
       const category = categories.find((c) => c.id === run.category);
       const platform = platforms.find((p) => p.id === run.platform);
       
-      const calculated = calculatePoints(
+      const calculated = await calculatePoints(
         run.time,
         category?.name || "Unknown",
         platform?.name || "Unknown",

@@ -107,3 +107,21 @@ import { User as FirebaseAuthUser } from "firebase/auth";
 export interface CustomUser extends FirebaseAuthUser {
   isAdmin?: boolean;
 }
+
+export interface PointsConfig {
+  id: string;
+  // Base points for all verified runs
+  basePoints: number;
+  // Rank bonuses (only for Full Game runs)
+  rank1Bonus: number;
+  rank2Bonus: number;
+  rank3Bonus: number;
+  // Multipliers
+  coOpMultiplier: number; // Multiplier for co-op runs (typically 0.5 to split between players)
+  ilMultiplier: number; // Multiplier for Individual Level runs (typically 1.0 for same as base)
+  communityGoldsMultiplier: number; // Multiplier for Community Golds runs (typically 1.0 for same as base)
+  obsoleteMultiplier: number; // Multiplier for obsolete runs (typically 0.5 for half points)
+  // Whether rank bonuses apply to ILs and Community Golds
+  applyRankBonusesToIL: boolean;
+  applyRankBonusesToCommunityGolds: boolean;
+}

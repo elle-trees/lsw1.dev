@@ -8,7 +8,7 @@ import { Player, LeaderboardEntry } from "@/types/database";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { Pagination } from "@/components/Pagination";
 import { getPlayersByPoints, getPlayerRuns, getCategories, getPlatforms } from "@/lib/db";
-import { calculatePoints, getCategoryName, getPlatformName } from "@/lib/utils";
+import { getCategoryName, getPlatformName } from "@/lib/dataValidation";
 import LegoStudIcon from "@/components/icons/LegoStudIcon";
 
 const PointsLeaderboard = () => {
@@ -154,17 +154,8 @@ const PointsLeaderboard = () => {
         : run.leaderboardType === 'community-golds' ? 'Community Golds' 
         : 'Full Game';
 
-      const studs = run.points || calculatePoints(
-        run.time,
-        categoryName,
-        platformName,
-        run.category,
-        run.platform,
-        run.rank,
-        run.runType as 'solo' | 'co-op',
-        run.leaderboardType,
-        run.isObsolete
-      );
+      // Use stored points if available, otherwise calculate (points should already be stored)
+      const studs = run.points || 0;
 
       breakdown.total += studs;
 

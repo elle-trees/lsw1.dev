@@ -9,9 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, XCircle, ShieldAlert, ExternalLink, Download, PlusCircle, Trash2, Wrench, Edit2, FolderTree, Play, ArrowUp, ArrowDown, Gamepad2, UserPlus, UserMinus, Trophy, Upload, Star, Gem, RefreshCw, X, AlertTriangle, Users, Search, Save, UserX } from "lucide-react";
+import { CheckCircle, XCircle, ShieldAlert, ExternalLink, Download, PlusCircle, Trash2, Wrench, Edit2, FolderTree, Play, ArrowUp, ArrowDown, Gamepad2, UserPlus, UserMinus, Trophy, Upload, Star, Gem, RefreshCw, X, AlertTriangle, Users, Search, Save, UserX, Coins } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
 import { Pagination } from "@/components/Pagination";
 import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
@@ -66,11 +67,13 @@ import {
   deletePlayer,
   getIlRunsToFix,
   wipeAllImportedSRCRuns,
+  getPointsConfig,
+  updatePointsConfig,
 } from "@/lib/db";
 import { importSRCRuns, type ImportResult } from "@/lib/speedruncom/importService";
 import { fetchCategoryVariables, getLSWGameId, fetchCategories as fetchSRCCategories, type SRCCategory } from "@/lib/speedruncom";
 import { useUploadThing } from "@/lib/uploadthing";
-import { LeaderboardEntry, DownloadEntry, Category, Level, Subcategory } from "@/types/database";
+import { LeaderboardEntry, DownloadEntry, Category, Level, Subcategory, PointsConfig } from "@/types/database";
 import { useNavigate } from "react-router-dom";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { formatTime } from "@/lib/utils";
@@ -227,6 +230,12 @@ const Admin = () => {
   const [showDeletePlayerDialog, setShowDeletePlayerDialog] = useState(false);
   const [playerToDelete, setPlayerToDelete] = useState<{ id: string; displayName: string } | null>(null);
   const [deletePlayerRuns, setDeletePlayerRuns] = useState(false);
+  
+  // Points configuration state
+  const [pointsConfig, setPointsConfig] = useState<PointsConfig | null>(null);
+  const [loadingPointsConfig, setLoadingPointsConfig] = useState(false);
+  const [savingPointsConfig, setSavingPointsConfig] = useState(false);
+  const [pointsConfigForm, setPointsConfigForm] = useState<Partial<PointsConfig>>({});
 
   useEffect(() => {
     fetchPlatforms();
@@ -293,6 +302,63 @@ const Admin = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, importedRunsLeaderboardType]);
+
+  // Load points config when switching to points tab
+  useEffect(() => {
+    if (activeTab === "points") {
+      const loadPointsConfig = async () => {
+        setLoadingPointsConfig(true);
+        try {
+          const config = await getPointsConfig();
+          setPointsConfig(config);
+          setPointsConfigForm(config);
+        } catch (error) {
+          toast({
+            title: "Error",
+            description: "Failed to load points configuration.",
+            variant: "destructive",
+          });
+        } finally {
+          setLoadingPointsConfig(false);
+        }
+      };
+      loadPointsConfig();
+    }
+  }, [activeTab, toast]);
+
+  const handleSavePointsConfig = async () => {
+    if (!pointsConfig) return;
+    
+    setSavingPointsConfig(true);
+    try {
+      const success = await updatePointsConfig(pointsConfigForm);
+      if (success) {
+        // Reload config to get updated values
+        const updatedConfig = await getPointsConfig();
+        setPointsConfig(updatedConfig);
+        setPointsConfigForm(updatedConfig);
+        
+        // Clear cache so new config is used immediately
+        const { clearPointsConfigCache } = await import("@/lib/utils");
+        clearPointsConfigCache();
+        
+        toast({
+          title: "Success",
+          description: "Points configuration saved successfully.",
+        });
+      } else {
+        throw new Error("Failed to save configuration");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save points configuration.",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingPointsConfig(false);
+    }
+  };
 
   // Fetch categories for level management when levelLeaderboardType changes
   useEffect(() => {
@@ -2881,6 +2947,13 @@ const Admin = () => {
               className="data-[state=active]:bg-[#f9e2af] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#f9e2af]/50 text-xs sm:text-sm py-1.5 sm:py-2 px-2 sm:px-3 whitespace-nowrap"
             >
               Users
+            </TabsTrigger>
+            <TabsTrigger 
+              value="points" 
+              className="data-[state=active]:bg-[#f9e2af] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#f9e2af]/50 text-xs sm:text-sm py-1.5 sm:py-2 px-2 sm:px-3 whitespace-nowrap"
+            >
+              <Coins className="h-4 w-4 mr-1.5" />
+              Points
             </TabsTrigger>
             <TabsTrigger 
               value="src" 
@@ -6613,6 +6686,219 @@ const Admin = () => {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+          </TabsContent>
+
+          {/* Points Configuration Section */}
+          <TabsContent value="points" className="space-y-4 animate-fade-in">
+            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
+              <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
+                <CardTitle className="flex items-center gap-2 text-xl text-[#fab387]">
+                  <Coins className="h-5 w-5" />
+                  Points Configuration
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                {loadingPointsConfig ? (
+                  <div className="py-12">
+                    <LoadingSpinner size="sm" />
+                  </div>
+                ) : pointsConfig ? (
+                  <div className="space-y-6">
+                    {/* Base Points */}
+                    <div className="space-y-2">
+                      <Label htmlFor="basePoints" className="text-base font-semibold">
+                        Base Points
+                      </Label>
+                      <Input
+                        id="basePoints"
+                        type="number"
+                        min="0"
+                        value={pointsConfigForm.basePoints ?? pointsConfig.basePoints ?? 10}
+                        onChange={(e) => setPointsConfigForm({ ...pointsConfigForm, basePoints: parseInt(e.target.value) || 0 })}
+                        className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                      />
+                      <p className="text-sm text-[hsl(222,15%,60%)]">
+                        Base points awarded for all verified runs.
+                      </p>
+                    </div>
+
+                    {/* Rank Bonuses */}
+                    <div className="space-y-4">
+                      <Label className="text-base font-semibold">Rank Bonuses</Label>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="rank1Bonus">Rank 1 Bonus</Label>
+                          <Input
+                            id="rank1Bonus"
+                            type="number"
+                            min="0"
+                            value={pointsConfigForm.rank1Bonus ?? pointsConfig.rank1Bonus ?? 50}
+                            onChange={(e) => setPointsConfigForm({ ...pointsConfigForm, rank1Bonus: parseInt(e.target.value) || 0 })}
+                            className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="rank2Bonus">Rank 2 Bonus</Label>
+                          <Input
+                            id="rank2Bonus"
+                            type="number"
+                            min="0"
+                            value={pointsConfigForm.rank2Bonus ?? pointsConfig.rank2Bonus ?? 30}
+                            onChange={(e) => setPointsConfigForm({ ...pointsConfigForm, rank2Bonus: parseInt(e.target.value) || 0 })}
+                            className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="rank3Bonus">Rank 3 Bonus</Label>
+                          <Input
+                            id="rank3Bonus"
+                            type="number"
+                            min="0"
+                            value={pointsConfigForm.rank3Bonus ?? pointsConfig.rank3Bonus ?? 20}
+                            onChange={(e) => setPointsConfigForm({ ...pointsConfigForm, rank3Bonus: parseInt(e.target.value) || 0 })}
+                            className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                          />
+                        </div>
+                      </div>
+                      <p className="text-sm text-[hsl(222,15%,60%)]">
+                        Additional bonus points for top 3 ranks (only applies to Full Game runs unless enabled below).
+                      </p>
+                    </div>
+
+                    {/* Multipliers */}
+                    <div className="space-y-4">
+                      <Label className="text-base font-semibold">Multipliers</Label>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="coOpMultiplier">Co-op Multiplier</Label>
+                          <Input
+                            id="coOpMultiplier"
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            max="1"
+                            value={pointsConfigForm.coOpMultiplier ?? pointsConfig.coOpMultiplier ?? 0.5}
+                            onChange={(e) => setPointsConfigForm({ ...pointsConfigForm, coOpMultiplier: parseFloat(e.target.value) || 0 })}
+                            className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                          />
+                          <p className="text-xs text-[hsl(222,15%,60%)]">
+                            Typically 0.5 to split points between players.
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="obsoleteMultiplier">Obsolete Multiplier</Label>
+                          <Input
+                            id="obsoleteMultiplier"
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            max="1"
+                            value={pointsConfigForm.obsoleteMultiplier ?? pointsConfig.obsoleteMultiplier ?? 0.5}
+                            onChange={(e) => setPointsConfigForm({ ...pointsConfigForm, obsoleteMultiplier: parseFloat(e.target.value) || 0 })}
+                            className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                          />
+                          <p className="text-xs text-[hsl(222,15%,60%)]">
+                            Multiplier for obsolete runs (typically 0.5 for half points).
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="ilMultiplier">Individual Level Multiplier</Label>
+                          <Input
+                            id="ilMultiplier"
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            value={pointsConfigForm.ilMultiplier ?? pointsConfig.ilMultiplier ?? 1.0}
+                            onChange={(e) => setPointsConfigForm({ ...pointsConfigForm, ilMultiplier: parseFloat(e.target.value) || 0 })}
+                            className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                          />
+                          <p className="text-xs text-[hsl(222,15%,60%)]">
+                            Multiplier for Individual Level runs (typically 1.0).
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="communityGoldsMultiplier">Community Golds Multiplier</Label>
+                          <Input
+                            id="communityGoldsMultiplier"
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            value={pointsConfigForm.communityGoldsMultiplier ?? pointsConfig.communityGoldsMultiplier ?? 1.0}
+                            onChange={(e) => setPointsConfigForm({ ...pointsConfigForm, communityGoldsMultiplier: parseFloat(e.target.value) || 0 })}
+                            className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                          />
+                          <p className="text-xs text-[hsl(222,15%,60%)]">
+                            Multiplier for Community Golds runs (typically 1.0).
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Rank Bonus Options */}
+                    <div className="space-y-4">
+                      <Label className="text-base font-semibold">Rank Bonus Options</Label>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between p-4 bg-[hsl(240,21%,15%)] border border-[hsl(235,13%,30%)] rounded">
+                          <div className="space-y-0.5">
+                            <Label htmlFor="applyRankBonusesToIL" className="text-base">
+                              Apply Rank Bonuses to Individual Levels
+                            </Label>
+                            <p className="text-sm text-[hsl(222,15%,60%)]">
+                              Enable rank bonuses for Individual Level runs.
+                            </p>
+                          </div>
+                          <Switch
+                            id="applyRankBonusesToIL"
+                            checked={pointsConfigForm.applyRankBonusesToIL ?? pointsConfig.applyRankBonusesToIL ?? false}
+                            onCheckedChange={(checked) => setPointsConfigForm({ ...pointsConfigForm, applyRankBonusesToIL: checked })}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between p-4 bg-[hsl(240,21%,15%)] border border-[hsl(235,13%,30%)] rounded">
+                          <div className="space-y-0.5">
+                            <Label htmlFor="applyRankBonusesToCommunityGolds" className="text-base">
+                              Apply Rank Bonuses to Community Golds
+                            </Label>
+                            <p className="text-sm text-[hsl(222,15%,60%)]">
+                              Enable rank bonuses for Community Golds runs.
+                            </p>
+                          </div>
+                          <Switch
+                            id="applyRankBonusesToCommunityGolds"
+                            checked={pointsConfigForm.applyRankBonusesToCommunityGolds ?? pointsConfig.applyRankBonusesToCommunityGolds ?? false}
+                            onCheckedChange={(checked) => setPointsConfigForm({ ...pointsConfigForm, applyRankBonusesToCommunityGolds: checked })}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Save Button */}
+                    <div className="flex justify-end pt-4 border-t border-[hsl(235,13%,30%)]">
+                      <Button
+                        onClick={handleSavePointsConfig}
+                        disabled={savingPointsConfig}
+                        className="bg-gradient-to-r from-[#fab387] to-[#f9e2af] hover:from-[#f9e2af] hover:to-[#fab387] text-[hsl(240,21%,15%)] font-bold"
+                      >
+                        {savingPointsConfig ? (
+                          <>
+                            <LoadingSpinner size="sm" className="mr-2" />
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="h-4 w-4 mr-2" />
+                            Save Configuration
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-[hsl(222,15%,60%)]">
+                    Failed to load points configuration.
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
         {/* Manage Downloads Section */}
