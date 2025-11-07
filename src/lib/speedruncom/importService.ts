@@ -586,7 +586,12 @@ export async function importSRCRuns(
 
         // Ensure required fields have defaults
         if (!mappedRun.runType) mappedRun.runType = 'solo';
-        if (!mappedRun.leaderboardType) mappedRun.leaderboardType = 'regular';
+        // CRITICAL: Don't override leaderboardType - mapSRCRunToLeaderboardEntry already sets it correctly
+        // Only set default if it's truly undefined/null (shouldn't happen, but safety check)
+        if (mappedRun.leaderboardType === undefined || mappedRun.leaderboardType === null) {
+          // If leaderboardType is missing, infer from level field
+          mappedRun.leaderboardType = mappedRun.level ? 'individual-level' : 'regular';
+        }
         if (!mappedRun.playerName || mappedRun.playerName.trim() === '') {
           mappedRun.playerName = 'Unknown';
         }

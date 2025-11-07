@@ -295,8 +295,8 @@ export const getLeaderboardEntriesFirestore = async (
         // For individual-level queries: ensure entry is actually an IL run
         // A run is an IL run if:
         // 1. It has leaderboardType === 'individual-level' (after normalization), OR
-        // 2. It has a level field but leaderboardType was undefined/null (before normalization)
-        // This handles backward compatibility with runs that have a level but no leaderboardType set
+        // 2. It has a level field but leaderboardType was undefined/null/'regular' (before normalization)
+        // This handles backward compatibility and fixes runs that were incorrectly saved with leaderboardType='regular'
         if (leaderboardType === 'individual-level') {
           // Check original leaderboardType before normalization
           const originalLeaderboardType = (entry as any)._originalLeaderboardType;
@@ -304,11 +304,19 @@ export const getLeaderboardEntriesFirestore = async (
           
           // IL run if:
           // - leaderboardType is 'individual-level' (normalized or original), OR
-          // - has a level field and leaderboardType was undefined/null/not set
+          // - has a level field and (leaderboardType was undefined/null/not set OR was incorrectly set to 'regular')
+          // The second condition handles:
+          //   - Old runs without leaderboardType set
+          //   - Runs incorrectly saved with leaderboardType='regular' but have a level (bug fix)
+          const hasLevel = (originalLevel && originalLevel.trim() !== '') || (entry.level && entry.level.trim() !== '');
           const isILRun = 
             entry.leaderboardType === 'individual-level' ||
-            (originalLeaderboardType === undefined || originalLeaderboardType === null || originalLeaderboardType === '') &&
-            (originalLevel && originalLevel.trim() !== '');
+            (hasLevel && (
+              originalLeaderboardType === undefined || 
+              originalLeaderboardType === null || 
+              originalLeaderboardType === '' ||
+              originalLeaderboardType === 'regular' // Handle incorrectly saved IL runs
+            ));
           
           if (!isILRun) {
             return false;
