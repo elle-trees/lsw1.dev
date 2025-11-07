@@ -187,24 +187,25 @@ export const getLeaderboardEntriesFirestore = async (
       addSharedFilters(constraints1);
       constraints1.push(firestoreLimit(fetchLimit));
       
-      // Query 2: Runs with level field but no leaderboardType set to 'individual-level'
+      // Query 2: Runs with level field but leaderboardType is NOT 'individual-level'
       // This catches older IL runs that have a level but leaderboardType is undefined/null/regular
-      // We'll fetch verified runs with a level field and filter client-side to exclude
-      // runs that explicitly have leaderboardType === 'regular'
+      // We need to exclude runs that explicitly have leaderboardType === 'individual-level' (already in query 1)
+      // and runs that explicitly have leaderboardType === 'regular' (those are regular runs, not IL)
+      // Since Firestore doesn't support != queries easily, we'll fetch runs with level field
+      // and filter client-side to exclude regular runs
       const constraints2: QueryConstraint[] = [
         where("verified", "==", true),
       ];
-      // Always filter by level field existence - IL runs must have a level
+      // Always filter by level field - IL runs must have a level
       // If a specific level is selected, filter by that level
       if (normalizedLevelId) {
         constraints2.push(where("level", "==", normalizedLevelId));
-      } else {
-        // If no level is selected, we still need to filter to only runs with a level field
-        // However, Firestore doesn't support "field exists" queries directly
-        // So we'll fetch all verified runs and filter client-side
-        // The level filter will be applied client-side in the filter function
       }
-      // Add other filters (category, platform, runType)
+      // Note: When no level is selected, we can't filter by level in the query
+      // We'll fetch all verified runs and filter client-side for runs with a level field
+      // This is less efficient but necessary for backward compatibility
+      
+      // Add other filters (category, platform, runType) - these help narrow down results
       if (normalizedCategoryId) {
         constraints2.push(where("category", "==", normalizedCategoryId));
       }
@@ -250,16 +251,23 @@ export const getLeaderboardEntriesFirestore = async (
     let entries: LeaderboardEntry[] = querySnapshot.docs
       .map(doc => {
         const data = doc.data();
+        // Store original leaderboardType before normalization (for IL run detection)
+        const originalLeaderboardType = data.leaderboardType;
+        const originalLevel = data.level;
+        
         // Normalize the entry data
         const normalized = normalizeLeaderboardEntry({ 
           id: doc.id, 
           ...data 
         } as LeaderboardEntry);
-        // Ensure id is always present
+        // Ensure id is always present and preserve original data for filtering
         return {
           ...normalized,
           id: doc.id,
-        } as LeaderboardEntry;
+          // Store original values for filtering logic
+          _originalLeaderboardType: originalLeaderboardType,
+          _originalLevel: originalLevel,
+        } as LeaderboardEntry & { _originalLeaderboardType?: string; _originalLevel?: string };
       })
       .filter(entry => {
         // Validate entry
@@ -285,13 +293,27 @@ export const getLeaderboardEntriesFirestore = async (
         }
         
         // For individual-level queries: ensure entry is actually an IL run
-        // A run is an IL run if it has leaderboardType === 'individual-level' OR has a level field set
-        // (for backward compatibility with runs that might not have leaderboardType set)
+        // A run is an IL run if:
+        // 1. It has leaderboardType === 'individual-level' (after normalization), OR
+        // 2. It has a level field but leaderboardType was undefined/null (before normalization)
+        // This handles backward compatibility with runs that have a level but no leaderboardType set
         if (leaderboardType === 'individual-level') {
-          const entryLeaderboardType = entry.leaderboardType || (entry.level ? 'individual-level' : 'regular');
-          if (entryLeaderboardType !== 'individual-level') {
+          // Check original leaderboardType before normalization
+          const originalLeaderboardType = (entry as any)._originalLeaderboardType;
+          const originalLevel = (entry as any)._originalLevel;
+          
+          // IL run if:
+          // - leaderboardType is 'individual-level' (normalized or original), OR
+          // - has a level field and leaderboardType was undefined/null/not set
+          const isILRun = 
+            entry.leaderboardType === 'individual-level' ||
+            (originalLeaderboardType === undefined || originalLeaderboardType === null || originalLeaderboardType === '') &&
+            (originalLevel && originalLevel.trim() !== '');
+          
+          if (!isILRun) {
             return false;
           }
+          
           // IL runs must have a level field
           if (!entry.level || entry.level.trim() === '') {
             return false;
@@ -401,6 +423,12 @@ export const getLeaderboardEntriesFirestore = async (
     const sortedNonObsolete = sortByTime(nonObsoleteEntries);
     const sortedObsolete = sortByTime(obsoleteEntries);
     
+    // Clean up temporary fields used for filtering
+    const cleanupEntry = (entry: any): LeaderboardEntry => {
+      const { _originalLeaderboardType, _originalLevel, ...cleanedEntry } = entry;
+      return cleanedEntry as LeaderboardEntry;
+    };
+    
     // Assign ranks: non-obsolete runs get sequential ranks starting from 1
     // Obsolete runs get ranks that continue from non-obsolete runs
     sortedNonObsolete.forEach((entry, index) => {
@@ -415,6 +443,9 @@ export const getLeaderboardEntriesFirestore = async (
     entries = includeObsolete 
       ? [...sortedNonObsolete, ...sortedObsolete].slice(0, 200)
       : sortedNonObsolete.slice(0, 200);
+    
+    // Clean up temporary fields before returning
+    entries = entries.map(cleanupEntry);
 
     // Batch fetch all unique player IDs to avoid N+1 queries
     // Only fetch players for claimed runs (not imported/unclaimed)
