@@ -3000,61 +3000,59 @@ export const getUnassignedRunsFirestore = async (limit: number = 500): Promise<L
 export const getUnclaimedRunsBySRCUsernameFirestore = async (srcUsername: string, currentUserId?: string): Promise<LeaderboardEntry[]> => {
   if (!db || !srcUsername || !srcUsername.trim()) return [];
   try {
-    // Only get verified runs - unverified imported runs must be verified first
-    const q = query(
-      collection(db, "leaderboardEntries"),
-      where("verified", "==", true),
-      firestoreLimit(500)
-    );
+    // Try to query with importedFromSRC filter first (requires composite index)
+    // If that fails, fall back to fetching all verified runs and filtering in memory
+    let verifiedSnapshot;
+    try {
+      const qWithImported = query(
+        collection(db, "leaderboardEntries"),
+        where("verified", "==", true),
+        where("importedFromSRC", "==", true),
+        firestoreLimit(1000)
+      );
+      verifiedSnapshot = await getDocs(qWithImported);
+    } catch (error: any) {
+      // If composite index doesn't exist, fall back to querying all verified runs
+      // This matches the approach used in autoClaimRunsBySRCUsernameFirestore
+      const q = query(
+        collection(db, "leaderboardEntries"),
+        where("verified", "==", true),
+        firestoreLimit(1000)
+      );
+      verifiedSnapshot = await getDocs(q);
+    }
     
-    const verifiedSnapshot = await getDocs(q);
     const allRuns = verifiedSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LeaderboardEntry));
     
-    // First, try to find the SRC player ID from the username
-    // We'll need to fetch from SRC API to get the player ID
-    const { fetchPlayerById, getLSWGameId } = await import("../speedruncom");
+    // Use the same normalization function as import and claiming for consistency
+    const { normalizeSRCUsername } = await import("@/lib/speedruncom");
+    const normalizedSrcUsername = normalizeSRCUsername(srcUsername);
     
-    // Try to find runs by matching SRC player ID
-    // We need to fetch player ID from SRC username first
-    const srcPlayerId: string | null = null;
-    try {
-      // SRC API doesn't have a direct username lookup, so we'll search by name
-      // For now, we'll match by display name and srcPlayerId
-      // Users should enter their exact SRC username
+    // Filter runs where srcPlayerName or srcPlayer2Name matches SRC username
+    // Only match by SRC username, not display name
+    const matchingRuns = allRuns.filter(run => {
+      // Only process imported runs
+      if (!run.importedFromSRC) return false;
+      
       // Use the same normalization function as import and claiming for consistency
-      const { normalizeSRCUsername } = await import("@/lib/speedruncom");
-      const normalizedSrcUsername = normalizeSRCUsername(srcUsername);
+      const runSRCPlayerName = normalizeSRCUsername(run.srcPlayerName);
+      const runSRCPlayer2Name = normalizeSRCUsername(run.srcPlayer2Name);
       
-      // Filter runs where srcPlayerName or srcPlayer2Name matches SRC username
-      // Only match by SRC username, not display name
-      const matchingRuns = allRuns.filter(run => {
-        if (!run.importedFromSRC) return false;
-        
-        // Use the same normalization function as import and claiming for consistency
-        const runSRCPlayerName = normalizeSRCUsername(run.srcPlayerName);
-        const runSRCPlayer2Name = normalizeSRCUsername(run.srcPlayer2Name);
-        
-        // Match by SRC username only
-        const nameMatches = runSRCPlayerName === normalizedSrcUsername ||
-                          (runSRCPlayer2Name && runSRCPlayer2Name === normalizedSrcUsername);
-        
-        if (nameMatches) {
-          // Check if already assigned
-          const playerId = run.playerId || "";
-          if (currentUserId && playerId === currentUserId) return false;
-          
-          // Only return unassigned runs (empty/null playerId)
-          return !playerId || playerId.trim() === "";
-        }
-        
-        return false;
-      });
+      // Match by SRC username only
+      const nameMatches = runSRCPlayerName === normalizedSrcUsername ||
+                        (runSRCPlayer2Name && runSRCPlayer2Name === normalizedSrcUsername);
       
-      return matchingRuns;
-    } catch (error) {
+      if (!nameMatches) return false;
       
-      return [];
-    }
+      // Check if already assigned
+      const playerId = run.playerId || "";
+      if (currentUserId && playerId === currentUserId) return false;
+      
+      // Only return unassigned runs (empty/null playerId)
+      return !playerId || playerId.trim() === "";
+    });
+    
+    return matchingRuns;
   } catch (error) {
     
     return [];
