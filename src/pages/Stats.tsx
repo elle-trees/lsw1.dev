@@ -29,8 +29,8 @@ import { Link } from "react-router-dom";
 
 // Category name overrides for stats page
 const CATEGORY_NAME_OVERRIDES: Record<string, string> = {
-  'GdR0b0zs2ZFVVvjsglIL': 'Story',
-  'zRhqEIO8iXYUiHoW5qIp': 'Free Play',
+  'GdR0b0zs2ZFVVvjsglIL': 'Story IL',
+  'zRhqEIO8iXYUiHoW5qIp': 'Free Play IL',
 };
 
 // Helper function to get category name with overrides
