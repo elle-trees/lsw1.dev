@@ -188,6 +188,7 @@ export async function calculatePoints(
   }
   
   // Apply rank bonuses if applicable
+  // CRITICAL: Rank bonuses are NEVER applied to obsolete runs
   let numericRank: number | undefined = undefined;
   if (rank !== undefined && rank !== null) {
     if (typeof rank === 'number' && !isNaN(rank)) {
@@ -201,7 +202,8 @@ export async function calculatePoints(
   }
   
   // Add rank bonuses if applicable
-  if (numericRank !== undefined && numericRank >= 1 && numericRank <= 3 && Number.isInteger(numericRank) && !isObsolete) {
+  // CRITICAL: Obsolete runs never receive rank bonuses, only base points (with obsolete multiplier)
+  if (numericRank !== undefined && numericRank >= 1 && numericRank <= 3 && Number.isInteger(numericRank) && isObsolete !== true) {
     // Check if rank bonuses apply to this leaderboard type
     const canApplyRankBonus = 
       leaderboardType === 'regular' || 
