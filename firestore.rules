@@ -24,8 +24,10 @@ service cloud.firestore {
       allow read: if isOwner(playerId);
       // Anyone can read player data (needed for leaderboards)
       allow read: if true;
-      // Users can create their own player document (including isAdmin on creation)
-      allow create: if isOwner(playerId);
+      // Users can create their own player document, but cannot set isAdmin to true
+      // Security: Prevent users from elevating themselves to admin during account creation
+      allow create: if isOwner(playerId) && 
+                       (!('isAdmin' in request.resource.data) || request.resource.data.isAdmin == false);
       // Admins can create player documents (needed when recalculating points for players who don't exist yet)
       allow create: if isAdmin();
       // Users can update their own player data (except isAdmin field)
@@ -36,11 +38,8 @@ service cloud.firestore {
       allow update: if isAdmin() && 
                        (resource == null || !('isAdmin' in request.resource.data.diff(resource.data).affectedKeys()));
       // Only admins can update admin status (when changing from true to false or vice versa)
+      // Security: Only existing admins can grant or revoke admin privileges
       allow update: if isAdmin() && 'isAdmin' in request.resource.data.diff(resource.data).affectedKeys();
-      // Allow users to set their own isAdmin to true if it's currently false/undefined (initial admin setup)
-      allow update: if isOwner(playerId) && 
-                       request.resource.data.isAdmin == true &&
-                       (!resource.data.hasAny(['isAdmin']) || resource.data.isAdmin == false);
       // Only admins can delete player documents
       allow delete: if isAdmin();
     }

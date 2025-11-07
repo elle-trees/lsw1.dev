@@ -90,24 +90,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 };
               });
             } else {
+              // Player document doesn't exist - create it in Firestore
+              // Use Firebase Auth data as fallback, but prefer Firestore as source of truth
               const today = new Date().toISOString().split('T')[0];
+              const finalDisplayName = user.displayName || user.email?.split('@')[0] || "Player";
               
-              // Check localStorage for display name and SRC username (set during signup)
-              const storedDisplayName = localStorage.getItem(`displayName_${user.uid}`);
-              const storedSRCUsername = localStorage.getItem(`srcUsername_${user.uid}`);
-              
-              // Use stored display name if available, otherwise fall back to Firebase Auth or email
-              const finalDisplayName = storedDisplayName || user.displayName || user.email?.split('@')[0] || "Player";
-              const srcUsername = storedSRCUsername || "";
-              
-              // Clear localStorage after reading
-              if (storedDisplayName) {
-                localStorage.removeItem(`displayName_${user.uid}`);
-              }
-              if (storedSRCUsername) {
-                localStorage.removeItem(`srcUsername_${user.uid}`);
-              }
-              
+              // Create player document in Firestore - all user data stored securely here
               const newPlayer = {
                 uid: user.uid,
                 displayName: finalDisplayName,
@@ -119,7 +107,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 favoritePlatform: null,
                 nameColor: "#cba6f7",
                 isAdmin: false,
-                srcUsername: srcUsername || undefined,
+                // srcUsername will be set by user in settings if needed
               };
               createPlayer(newPlayer).catch(() => {});
             }

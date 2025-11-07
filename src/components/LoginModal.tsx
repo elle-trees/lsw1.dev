@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, updateProfile } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { isDisplayNameAvailable } from "@/lib/db";
+import { isDisplayNameAvailable, createPlayer } from "@/lib/db";
 import { getErrorMessage, logError } from "@/lib/errorUtils";
 
 interface LoginModalProps {
@@ -160,7 +160,8 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
         clearTimeout(timeoutId);
       }
 
-      // If signup, update profile with display name and store SRC username
+      // If signup, create player document in Firestore immediately
+      // This ensures all user data is stored securely in Firestore, not in localStorage
       if (!isLogin && userCredential && 'user' in userCredential) {
         const user = userCredential.user;
         
@@ -169,11 +170,26 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
           await updateProfile(user, { displayName: displayName.trim() });
         }
         
-        // Store display name and SRC username in localStorage temporarily (AuthProvider will read it)
-        // This ensures we have the correct values even if Firebase Auth hasn't updated yet
-        localStorage.setItem(`displayName_${user.uid}`, displayName.trim());
-        if (srcUsername.trim()) {
-          localStorage.setItem(`srcUsername_${user.uid}`, srcUsername.trim());
+        // Create player document in Firestore immediately
+        // This is the secure, dynamic way to store user data
+        const today = new Date().toISOString().split('T')[0];
+        try {
+          await createPlayer({
+            uid: user.uid,
+            displayName: displayName.trim(),
+            email: user.email || "",
+            joinDate: today,
+            totalRuns: 0,
+            bestRank: null,
+            favoriteCategory: null,
+            favoritePlatform: null,
+            nameColor: "#cba6f7",
+            isAdmin: false,
+            srcUsername: srcUsername.trim() || undefined,
+          });
+        } catch (error) {
+          // Log error but don't block signup - AuthProvider will handle creation if this fails
+          logError(error, "LoginModal.createPlayer");
         }
       }
       
