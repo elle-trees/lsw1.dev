@@ -94,11 +94,11 @@ export function formatTime(timeString: string): string {
  * - Both solo and co-op runs are eligible
  * 
  * Studs calculation:
- * - Base studs: 10 studs for all verified runs
+ * - Base studs: 10 studs for all verified runs (runs that aren't top 3 receive 10 base studs)
  * - Top 3 bonus: additional bonus studs for Full Game runs ranked 1st, 2nd, or 3rd (NOT applied to ILs, Community Golds, or obsolete runs)
  * - IL/Community Gold: Individual Levels and Community Golds only receive base studs (no rank bonuses)
  * - Co-op split: Co-op runs split studs equally between both players (0.5x multiplier)
- * - Obsolete runs: Only receive base studs (no rank bonuses), but still subject to co-op split
+ * - Obsolete runs: Only receive half base studs (5 studs), but still subject to co-op split
  * 
  * Full Game Solo runs:
  * - Rank 1: 10 + 50 = 60 studs
@@ -119,6 +119,12 @@ export function formatTime(timeString: string): string {
  * IL/Community Gold Co-op runs (base studs only, then split):
  * - All ranks: 10 / 2 = 5 studs per player
  * 
+ * Obsolete Solo runs (half base studs, no rank bonuses):
+ * - All ranks: 5 studs
+ * 
+ * Obsolete Co-op runs (half base studs, then split):
+ * - All ranks: 5 / 2 = 2.5 → 3 studs per player (rounded)
+ * 
  * @param timeString - Time string in HH:MM:SS format (not used but kept for compatibility)
  * @param categoryName - Name of the category (not used but kept for compatibility)
  * @param platformName - Name of the platform (not used but kept for compatibility)
@@ -127,7 +133,7 @@ export function formatTime(timeString: string): string {
  * @param rank - Optional rank of the run in its category (1-3 for bonus studs, only for Full Game)
  * @param runType - Optional run type ('solo' or 'co-op'). If 'co-op', studs are split in half
  * @param leaderboardType - Optional leaderboard type ('regular', 'individual-level', or 'community-golds'). ILs and community golds receive base studs only
- * @param isObsolete - Optional flag indicating if the run is obsolete. Obsolete runs only receive base studs (no rank bonuses)
+ * @param isObsolete - Optional flag indicating if the run is obsolete. Obsolete runs receive half base studs (5 studs)
  * @returns Studs awarded for the run (already split for co-op runs)
  */
 export function calculatePoints(
@@ -147,8 +153,25 @@ export function calculatePoints(
   // Check if this is an IL or Community Gold
   const isILOrCommunityGold = leaderboardType === 'individual-level' || leaderboardType === 'community-golds';
   
-  // ILs, Community Golds, and obsolete runs only get base studs (no rank bonuses)
-  if (isObsolete === true || isILOrCommunityGold) {
+  // Obsolete runs get half base studs (5 studs)
+  if (isObsolete === true) {
+    let points = basePoints * 0.5; // Half base points = 5 studs
+    
+    // CRITICAL: For co-op runs, ALWAYS split studs equally between both players
+    const isCoOp = runType === 'co-op' || 
+                   (typeof runType === 'string' && runType.toLowerCase().includes('co-op')) ||
+                   (typeof runType === 'string' && runType.toLowerCase() === 'coop');
+    
+    if (isCoOp) {
+      points = points / 2;
+    }
+    
+    // Round to nearest integer to avoid floating point issues
+    return Math.round(points);
+  }
+  
+  // ILs and Community Golds only get base studs (no rank bonuses)
+  if (isILOrCommunityGold) {
     let points = basePoints;
     
     // CRITICAL: For co-op runs, ALWAYS split studs equally between both players

@@ -306,8 +306,8 @@ const PointsLeaderboard = () => {
                   <div className="bg-[hsl(240,21%,18%)] border border-[hsl(235,13%,30%)] p-4 rounded">
                     <p className="text-sm text-ctp-text leading-relaxed">
                       <strong className="text-[#fab387]">Note:</strong> Only verified runs count toward studs. 
-                      Obsolete runs receive base studs only (no rank bonus). Studs are automatically calculated 
-                      and updated when runs are verified.
+                      Runs that aren't top 3 receive 10 base studs. Obsolete runs receive half base studs (5 studs for solo, 3 studs for co-op). 
+                      Studs are automatically calculated and updated when runs are verified.
                     </p>
                   </div>
                 </div>
