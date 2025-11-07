@@ -176,13 +176,17 @@ export async function getLSWGameId(): Promise<string | null> {
  * Note: This function does NOT filter out runs already on leaderboards - that filtering
  * happens in the import service. This just fetches the most recent verified runs.
  * Uses pagination to fetch up to the specified limit (default 500)
+ * @param gameId - The Speedrun.com game ID
+ * @param limit - Maximum number of runs to fetch
+ * @param startOffset - Optional offset to start fetching from (for pagination)
  */
 export async function fetchRunsNotOnLeaderboards(
   gameId: string, 
-  limit: number = 500
+  limit: number = 500,
+  startOffset: number = 0
 ): Promise<SRCRun[]> {
   const allRuns: SRCRun[] = [];
-  let offset = 0;
+  let offset = startOffset;
   const max = 200; // SRC API max per request
   
   try {

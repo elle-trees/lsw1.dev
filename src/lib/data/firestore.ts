@@ -140,11 +140,16 @@ export const getLeaderboardEntriesFirestore = async (
     // Helper function to add shared filters to a constraint list
     const addSharedFilters = (constraintList: QueryConstraint[]) => {
       // Add leaderboardType filter for non-regular types (required for composite indexes)
-      if (leaderboardType && leaderboardType !== 'regular') {
+      // NOTE: For individual-level queries, we don't filter by leaderboardType in the query
+      // because some IL runs might not have the field set. We'll filter client-side instead.
+      // This ensures backward compatibility with runs that have a level but no leaderboardType field.
+      if (leaderboardType && leaderboardType !== 'regular' && leaderboardType !== 'individual-level') {
         constraintList.push(where("leaderboardType", "==", leaderboardType));
       }
 
       // Add level filter for ILs and Community Golds (must come after leaderboardType for index)
+      // For individual-level, we can filter by level if provided, but we'll also include runs
+      // without leaderboardType set (they'll be filtered client-side based on having a level)
       if (normalizedLevelId && (leaderboardType === 'individual-level' || leaderboardType === 'community-golds')) {
         constraintList.push(where("level", "==", normalizedLevelId));
       }
@@ -213,6 +218,32 @@ export const getLeaderboardEntriesFirestore = async (
         if (!leaderboardType || leaderboardType === 'regular') {
           const entryLeaderboardType = entry.leaderboardType || 'regular';
           if (entryLeaderboardType !== 'regular') {
+            return false;
+          }
+        }
+        
+        // For individual-level queries: ensure entry is actually an IL run
+        // A run is an IL run if it has leaderboardType === 'individual-level' OR has a level field set
+        // (for backward compatibility with runs that might not have leaderboardType set)
+        if (leaderboardType === 'individual-level') {
+          const entryLeaderboardType = entry.leaderboardType || (entry.level ? 'individual-level' : 'regular');
+          if (entryLeaderboardType !== 'individual-level') {
+            return false;
+          }
+          // IL runs must have a level field
+          if (!entry.level || entry.level.trim() === '') {
+            return false;
+          }
+        }
+        
+        // For community-golds queries: ensure entry is actually a community-golds run
+        if (leaderboardType === 'community-golds') {
+          const entryLeaderboardType = entry.leaderboardType || 'regular';
+          if (entryLeaderboardType !== 'community-golds') {
+            return false;
+          }
+          // Community-golds runs must have a level field
+          if (!entry.level || entry.level.trim() === '') {
             return false;
           }
         }

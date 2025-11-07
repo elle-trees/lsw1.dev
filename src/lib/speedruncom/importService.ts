@@ -446,29 +446,57 @@ export async function importSRCRuns(
       return result;
     }
 
-    // Step 3: Fetch runs from SRC - fetch a larger batch to ensure we get 200 unlinked runs
-    // We'll fetch up to 1000 runs, filter out already-linked ones, then take the first 200 unlinked
-    let allSrcRuns: SRCRun[];
+    // Step 3: Fetch runs from SRC progressively until we find 200 unlinked runs
+    // We'll fetch in batches of 200, filtering out already-linked ones, and continue
+    // fetching until we have 200 unlinked runs or exhaust all available runs
+    const TARGET_UNLINKED_COUNT = 200;
+    const BATCH_SIZE = 200;
+    const MAX_TOTAL_FETCH = 5000; // Safety limit: stop after fetching 5000 runs total
+    
+    let unlinkedRuns: SRCRun[] = [];
+    let currentOffset = 0;
+    let totalFetched = 0;
+    
     try {
-      // Fetch a larger batch to account for runs that are already linked
-      allSrcRuns = await fetchRunsNotOnLeaderboards(gameId, 1000);
+      // Keep fetching batches until we have enough unlinked runs or hit limits
+      while (unlinkedRuns.length < TARGET_UNLINKED_COUNT && totalFetched < MAX_TOTAL_FETCH) {
+        // Fetch the next batch of 200 runs
+        const batchRuns = await fetchRunsNotOnLeaderboards(gameId, BATCH_SIZE, currentOffset);
+        
+        if (batchRuns.length === 0) {
+          // No more runs available from SRC
+          break;
+        }
+        
+        totalFetched += batchRuns.length;
+        
+        // Filter out already-linked runs from this batch
+        const unlinkedInBatch = batchRuns.filter(run => !existingSRCRunIds.has(run.id));
+        unlinkedRuns.push(...unlinkedInBatch);
+        
+        // Update offset for next batch
+        currentOffset += batchRuns.length;
+        
+        // If we got fewer runs than requested, we've reached the end
+        if (batchRuns.length < BATCH_SIZE) {
+          break;
+        }
+      }
+      
+      if (totalFetched === 0) {
+        result.errors.push("No runs found to import");
+        return result;
+      }
+      
+      // Take only the first 200 unlinked runs (most recent ones)
+      const srcRuns = unlinkedRuns.slice(0, TARGET_UNLINKED_COUNT);
+      
+      if (srcRuns.length === 0) {
+        result.errors.push(`No new runs to import - checked ${totalFetched} recent runs and all are already linked on the boards`);
+        return result;
+      }
     } catch (error) {
       result.errors.push(`Failed to fetch runs: ${error instanceof Error ? error.message : String(error)}`);
-      return result;
-    }
-
-    if (allSrcRuns.length === 0) {
-      result.errors.push("No runs found to import");
-      return result;
-    }
-
-    // Filter out runs that are already linked on the boards
-    // Keep only the most recent 200 runs that aren't already linked
-    const unlinkedRuns = allSrcRuns.filter(run => !existingSRCRunIds.has(run.id));
-    const srcRuns = unlinkedRuns.slice(0, 200);
-
-    if (srcRuns.length === 0) {
-      result.errors.push("No new runs to import - all recent runs are already linked on the boards");
       return result;
     }
 
