@@ -17,7 +17,8 @@ import {
   Award,
   Star,
   Gem,
-  Filter
+  Filter,
+  TrendingUp
 } from "lucide-react";
 import { getAllVerifiedRuns, getCategories, getPlatforms, getLevels, runTypes } from "@/lib/db";
 import { LeaderboardEntry } from "@/types/database";
@@ -392,6 +393,156 @@ const Stats = () => {
       .slice(0, 10);
   }, [stats, platforms]);
 
+  // Calculate Elo ratings for players based on their times
+  const eloRankings = useMemo(() => {
+    if (!stats || !stats.allVerifiedRuns) return [];
+
+    // Initialize Elo ratings for all players (start at 1500)
+    const playerElo = new Map<string, number>();
+    const playerStats = new Map<string, {
+      name: string;
+      totalRuns: number;
+      worldRecords: number;
+      bestTime: number;
+      bestTimeString: string;
+    }>();
+
+    // Track all unique players and their best times
+    stats.allVerifiedRuns.forEach(run => {
+      const playerId = run.playerId || run.playerName;
+      if (!playerId) return;
+
+      if (!playerElo.has(playerId)) {
+        playerElo.set(playerId, 1500);
+        playerStats.set(playerId, {
+          name: run.playerName || 'Unknown',
+          totalRuns: 0,
+          worldRecords: 0,
+          bestTime: Infinity,
+          bestTimeString: '',
+        });
+      }
+
+      const playerStat = playerStats.get(playerId)!;
+      playerStat.totalRuns++;
+      
+      const runTime = parseTimeToSeconds(run.time) || Infinity;
+      if (runTime < playerStat.bestTime) {
+        playerStat.bestTime = runTime;
+        playerStat.bestTimeString = run.time;
+      }
+    });
+
+    // Group runs by leaderboard group (category/platform/runType/level)
+    const runsByGroup = new Map<string, LeaderboardEntry[]>();
+    
+    stats.allVerifiedRuns.forEach(run => {
+      const leaderboardType = run.leaderboardType || 'regular';
+      const category = run.category || '';
+      const platform = run.platform || '';
+      const runType = run.runType || 'solo';
+      const level = run.level || '';
+      const groupKey = `${leaderboardType}_${category}_${platform}_${runType}_${level}`;
+      
+      if (!runsByGroup.has(groupKey)) {
+        runsByGroup.set(groupKey, []);
+      }
+      runsByGroup.get(groupKey)!.push(run);
+    });
+
+    // Calculate Elo for each group
+    // For each group, compare all players' times
+    runsByGroup.forEach((runs, groupKey) => {
+      // Get unique players in this group with their best times
+      const playerTimes = new Map<string, { time: number; run: LeaderboardEntry }>();
+      
+      runs.forEach(run => {
+        const playerId = run.playerId || run.playerName;
+        if (!playerId) return;
+        
+        const runTime = parseTimeToSeconds(run.time) || Infinity;
+        const existing = playerTimes.get(playerId);
+        
+        if (!existing || runTime < existing.time) {
+          playerTimes.set(playerId, { time: runTime, run });
+        }
+      });
+
+      // Convert to array and sort by time (fastest first)
+      const sortedPlayers = Array.from(playerTimes.entries())
+        .map(([playerId, data]) => ({ playerId, time: data.time, run: data.run }))
+        .sort((a, b) => a.time - b.time);
+
+      // Calculate Elo changes by comparing each player with all others
+      // Players with faster times "win" against players with slower times
+      const K_FACTOR = 32; // Standard Elo K-factor
+      
+      sortedPlayers.forEach((playerA, indexA) => {
+        const eloA = playerElo.get(playerA.playerId) || 1500;
+        let totalEloChange = 0;
+
+        sortedPlayers.forEach((playerB, indexB) => {
+          if (indexA === indexB) return;
+
+          const eloB = playerElo.get(playerB.playerId) || 1500;
+          
+          // Calculate expected score (probability of winning)
+          const expectedA = 1 / (1 + Math.pow(10, (eloB - eloA) / 400));
+          
+          // Determine actual outcome: playerA wins if they have a faster time
+          const actualA = playerA.time < playerB.time ? 1 : 0;
+          
+          // Calculate Elo change
+          // Adjust K-factor based on time difference (bigger gap = more confidence)
+          const timeDiff = Math.abs(playerA.time - playerB.time);
+          const maxTime = Math.max(playerA.time, playerB.time);
+          const timeRatio = maxTime > 0 ? timeDiff / maxTime : 0;
+          const adjustedK = K_FACTOR * (1 + timeRatio * 0.5); // Up to 50% more for big gaps
+          
+          const eloChange = adjustedK * (actualA - expectedA);
+          totalEloChange += eloChange;
+        });
+
+        // Update player's Elo
+        const newElo = Math.max(100, Math.round(eloA + totalEloChange));
+        playerElo.set(playerA.playerId, newElo);
+      });
+
+      // Count world records for players in this group
+      if (sortedPlayers.length > 0) {
+        const wrTime = sortedPlayers[0].time;
+        sortedPlayers.forEach((player, index) => {
+          if (player.time === wrTime && index === 0) {
+            const playerStat = playerStats.get(player.playerId);
+            if (playerStat) {
+              playerStat.worldRecords++;
+            }
+          }
+        });
+      }
+    });
+
+    // Convert to array and sort by Elo (highest first)
+    return Array.from(playerElo.entries())
+      .map(([playerId, elo]) => {
+        const playerStat = playerStats.get(playerId);
+        return {
+          playerId,
+          playerName: playerStat?.name || 'Unknown',
+          elo: Math.round(elo),
+          totalRuns: playerStat?.totalRuns || 0,
+          worldRecords: playerStat?.worldRecords || 0,
+          bestTime: playerStat?.bestTime || Infinity,
+          bestTimeString: playerStat?.bestTimeString || '',
+        };
+      })
+      .sort((a, b) => b.elo - a.elo)
+      .map((player, index) => ({
+        ...player,
+        rank: index + 1,
+      }));
+  }, [stats]);
+
   // Calculate filtered WR time progression
   const filteredWRTimeProgression = useMemo(() => {
     if (!stats || !stats.allWorldRecords) return [];
@@ -625,6 +776,7 @@ const Stats = () => {
           <TabsTrigger value="progression">World Record Progression</TabsTrigger>
           <TabsTrigger value="breakdown">Breakdown</TabsTrigger>
           <TabsTrigger value="recent">Recent World Records</TabsTrigger>
+          <TabsTrigger value="elo">Elo Rankings</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
@@ -1122,6 +1274,104 @@ const Stats = () => {
               ) : (
                 <p className="text-center text-muted-foreground py-8">
                   No recent world records found
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="elo" className="space-y-4">
+          <Card className="animate-slide-up-delay">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Elo Rankings
+              </CardTitle>
+              <CardDescription>
+                Player rankings based on an Elo rating system comparing times across all categories
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {eloRankings.length > 0 ? (
+                <div className="space-y-4">
+                  <div className="text-sm text-muted-foreground">
+                    Players are ranked using an Elo system where faster times result in higher ratings. 
+                    All players start at 1500 Elo. Rankings are calculated by comparing players' best times 
+                    within each category/platform/level combination.
+                  </div>
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-16">Rank</TableHead>
+                          <TableHead>Player</TableHead>
+                          <TableHead className="text-right">Elo Rating</TableHead>
+                          <TableHead className="text-right">World Records</TableHead>
+                          <TableHead className="text-right">Total Runs</TableHead>
+                          <TableHead className="text-right">Best Time</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {eloRankings.map((player) => (
+                          <TableRow key={player.playerId}>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {player.rank === 1 && <Trophy className="h-4 w-4 text-yellow-500" />}
+                                {player.rank === 2 && <Award className="h-4 w-4 text-gray-400" />}
+                                {player.rank === 3 && <Award className="h-4 w-4 text-amber-600" />}
+                                <span className="font-semibold">#{player.rank}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Link 
+                                to={`/player/${player.playerId}`}
+                                className="text-primary hover:underline font-medium"
+                                style={{ color: player.playerName === 'Unknown' ? 'inherit' : undefined }}
+                              >
+                                {player.playerName}
+                              </Link>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <span className="font-bold text-lg">{player.elo}</span>
+                                {player.elo >= 1800 && (
+                                  <Badge variant="default" className="bg-yellow-500">
+                                    Master
+                                  </Badge>
+                                )}
+                                {player.elo >= 1600 && player.elo < 1800 && (
+                                  <Badge variant="secondary">
+                                    Expert
+                                  </Badge>
+                                )}
+                                {player.elo < 1600 && player.elo >= 1400 && (
+                                  <Badge variant="outline">
+                                    Advanced
+                                  </Badge>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <Trophy className="h-4 w-4 text-yellow-500" />
+                                <span className="font-semibold">{player.worldRecords}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <span className="text-muted-foreground">{player.totalRuns}</span>
+                            </TableCell>
+                            <TableCell className="text-right font-mono">
+                              {player.bestTime !== Infinity ? formatTime(player.bestTimeString) : 'N/A'}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-center text-muted-foreground py-8">
+                  No player data available for Elo rankings
                 </p>
               )}
             </CardContent>
