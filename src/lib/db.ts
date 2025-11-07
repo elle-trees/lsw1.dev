@@ -68,6 +68,8 @@ import {
   runAutoclaimingForAllUsersFirestore,
   getIlRunsToFixFirestore,
   wipeAllImportedSRCRunsFirestore,
+  getUnlinkedImportedRunsFirestore,
+  deleteAllUnlinkedImportedRunsFirestore,
 } from "./data/firestore";
 
 const defaultCategories = [
@@ -241,6 +243,8 @@ export const wipeAllImportedSRCRuns = wipeAllImportedSRCRunsFirestore;
 export const getVerifiedRunsWithInvalidData = getVerifiedRunsWithInvalidDataFirestore;
 export const getIlRunsToFix = getIlRunsToFixFirestore;
 export const getExistingSRCRunIds = getExistingSRCRunIdsFirestore;
+export const getUnlinkedImportedRuns = getUnlinkedImportedRunsFirestore;
+export const deleteAllUnlinkedImportedRuns = deleteAllUnlinkedImportedRunsFirestore;
 export const findDuplicateRuns = findDuplicateRunsFirestore;
 export const removeDuplicateRuns = removeDuplicateRunsFirestore;
 export const autoClaimRunsBySRCUsername = autoClaimRunsBySRCUsernameFirestore;

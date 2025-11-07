@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, XCircle, ShieldAlert, ExternalLink, Download, PlusCircle, Trash2, Wrench, Edit2, FolderTree, Play, ArrowUp, ArrowDown, Gamepad2, UserPlus, UserMinus, Trophy, Upload, Star, Gem, RefreshCw, X, AlertTriangle, Users, Search, Save } from "lucide-react";
+import { CheckCircle, XCircle, ShieldAlert, ExternalLink, Download, PlusCircle, Trash2, Wrench, Edit2, FolderTree, Play, ArrowUp, ArrowDown, Gamepad2, UserPlus, UserMinus, Trophy, Upload, Star, Gem, RefreshCw, X, AlertTriangle, Users, Search, Save, Unlink } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Pagination } from "@/components/Pagination";
@@ -66,6 +66,8 @@ import {
   deletePlayer,
   getIlRunsToFix,
   wipeAllImportedSRCRuns,
+  getUnlinkedImportedRuns,
+  deleteAllUnlinkedImportedRuns,
 } from "@/lib/db";
 import { importSRCRuns, type ImportResult } from "@/lib/speedruncom/importService";
 import { fetchCategoryVariables, getLSWGameId, fetchCategories as fetchSRCCategories, type SRCCategory } from "@/lib/speedruncom";
@@ -113,6 +115,11 @@ const Admin = () => {
   const [deletingRunId, setDeletingRunId] = useState<string | null>(null);
   const [wipingImportedRuns, setWipingImportedRuns] = useState(false);
   const [wipingProgress, setWipingProgress] = useState(0);
+  // Unlinked runs state
+  const [unlinkedRuns, setUnlinkedRuns] = useState<LeaderboardEntry[]>([]);
+  const [loadingUnlinkedRuns, setLoadingUnlinkedRuns] = useState(false);
+  const [deletingUnlinkedRuns, setDeletingUnlinkedRuns] = useState(false);
+  const [deletingUnlinkedProgress, setDeletingUnlinkedProgress] = useState(0);
   const itemsPerPage = 25;
   // SRC categories with variables
   const [srcCategoriesWithVars, setSrcCategoriesWithVars] = useState<Array<SRCCategory & { variablesData?: Array<{ id: string; name: string; values: { values: Record<string, { label: string }> } }> }>>([]);
@@ -1037,6 +1044,23 @@ const Admin = () => {
       });
     } finally {
       setLoadingSRCCategories(false);
+    }
+  };
+
+  const fetchUnlinkedRuns = async () => {
+    setLoadingUnlinkedRuns(true);
+    try {
+      const runs = await getUnlinkedImportedRuns();
+      setUnlinkedRuns(runs);
+    } catch (error: any) {
+      console.error("Error fetching unlinked runs:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to fetch unlinked runs.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingUnlinkedRuns(false);
     }
   };
 
@@ -4568,6 +4592,157 @@ const Admin = () => {
                           </TableRow>
                           );
                         })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Unlinked Runs Card */}
+            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
+              <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2 text-xl text-[#f2cdcd]">
+                    <Unlink className="h-5 w-5" />
+                    <span>Unlinked Runs</span>
+                    {unlinkedRuns.length > 0 && (
+                      <Badge variant="secondary" className="ml-2">
+                        {unlinkedRuns.length}
+                      </Badge>
+                    )}
+                  </CardTitle>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={fetchUnlinkedRuns}
+                      disabled={loadingUnlinkedRuns}
+                      className="border-[hsl(235,13%,30%)] hover:bg-[hsl(235,19%,13%)]"
+                    >
+                      <RefreshCw className={`h-4 w-4 mr-2 ${loadingUnlinkedRuns ? 'animate-spin' : ''}`} />
+                      {loadingUnlinkedRuns ? 'Loading...' : 'Refresh'}
+                    </Button>
+                    {unlinkedRuns.length > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          if (!window.confirm(
+                            `WARNING: This will delete ${unlinkedRuns.length} unlinked imported run(s).\n\n` +
+                            "Unlinked runs are imported runs that don't have a link back to Speedrun.com.\n\n" +
+                            "This action cannot be undone. Are you absolutely sure you want to continue?"
+                          )) {
+                            return;
+                          }
+                          
+                          setDeletingUnlinkedRuns(true);
+                          setDeletingUnlinkedProgress(0);
+                          try {
+                            const result = await deleteAllUnlinkedImportedRuns((deleted) => {
+                              setDeletingUnlinkedProgress(deleted);
+                            });
+                            
+                            if (result.errors.length > 0) {
+                              toast({
+                                title: "Delete Complete with Errors",
+                                description: `Deleted ${result.deleted} unlinked run(s). ${result.errors.length} error(s) occurred.`,
+                                variant: "destructive",
+                              });
+                            } else {
+                              toast({
+                                title: "All Unlinked Runs Deleted",
+                                description: `Successfully deleted ${result.deleted} unlinked run(s) from the leaderboards.`,
+                              });
+                            }
+                            
+                            // Refresh unlinked runs list
+                            await fetchUnlinkedRuns();
+                            await refreshAllRunData();
+                          } catch (error: any) {
+                            toast({
+                              title: "Error",
+                              description: error.message || "Failed to delete unlinked runs.",
+                              variant: "destructive",
+                            });
+                          } finally {
+                            setDeletingUnlinkedRuns(false);
+                            setDeletingUnlinkedProgress(0);
+                          }
+                        }}
+                        disabled={deletingUnlinkedRuns}
+                        variant="destructive"
+                        size="sm"
+                        className="bg-red-600/20 hover:bg-red-600/30 text-red-400 border-red-600/50"
+                      >
+                        {deletingUnlinkedRuns ? (
+                          <>
+                            <LoadingSpinner size="sm" className="mr-2" />
+                            Deleting... {deletingUnlinkedProgress > 0 && `${deletingUnlinkedProgress} deleted`}
+                          </>
+                        ) : (
+                          <>
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete All ({unlinkedRuns.length})
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <p className="text-sm text-[hsl(222,15%,60%)] mt-2">
+                  Runs imported from Speedrun.com that don't have a link back to SRC (missing srcRunId field).
+                </p>
+              </CardHeader>
+              <CardContent className="pt-6">
+                {loadingUnlinkedRuns ? (
+                  <div className="text-center py-8">
+                    <LoadingSpinner />
+                  </div>
+                ) : unlinkedRuns.length === 0 ? (
+                  <p className="text-[hsl(222,15%,60%)] text-center py-8">
+                    No unlinked runs found. Click "Refresh" to check for unlinked runs.
+                  </p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-b border-[hsl(235,13%,30%)] hover:bg-transparent">
+                          <TableHead className="py-3 px-4 text-left">Player(s)</TableHead>
+                          <TableHead className="py-3 px-4 text-left">Category</TableHead>
+                          <TableHead className="py-3 px-4 text-left">Time</TableHead>
+                          <TableHead className="py-3 px-4 text-left">Platform</TableHead>
+                          <TableHead className="py-3 px-4 text-left">Type</TableHead>
+                          <TableHead className="py-3 px-4 text-left">Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {unlinkedRuns.map((run) => (
+                          <TableRow key={run.id} className="border-b border-[hsl(235,13%,30%)] hover:bg-[hsl(235,19%,13%)] transition-all duration-200">
+                            <TableCell className="py-3 px-4 font-medium">
+                              <span style={{ color: run.nameColor || 'inherit' }}>{run.playerName}</span>
+                              {run.player2Name && (
+                                <>
+                                  <span className="text-muted-foreground"> & </span>
+                                  <span style={{ color: run.player2Color || 'inherit' }}>{run.player2Name}</span>
+                                </>
+                              )}
+                            </TableCell>
+                            <TableCell className="py-3 px-4">
+                              {getCategoryName(run.category, firestoreCategories) || run.srcCategoryName || "Unknown"}
+                            </TableCell>
+                            <TableCell className="py-3 px-4 font-mono">{formatTime(run.time || '00:00:00')}</TableCell>
+                            <TableCell className="py-3 px-4">
+                              {getPlatformName(run.platform, firestorePlatforms) || run.srcPlatformName || "Unknown"}
+                            </TableCell>
+                            <TableCell className="py-3 px-4">{run.runType?.charAt(0).toUpperCase() + run.runType?.slice(1) || "Solo"}</TableCell>
+                            <TableCell className="py-3 px-4">
+                              <Badge variant={run.verified ? "default" : "secondary"}>
+                                {run.verified ? "Verified" : "Unverified"}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
                       </TableBody>
                     </Table>
                   </div>

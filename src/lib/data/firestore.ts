@@ -1,5 +1,5 @@
 import { db } from "@/lib/firebase";
-import { collection, doc, getDoc, setDoc, updateDoc, deleteDoc, getDocs, query, where, orderBy, limit as firestoreLimit, deleteField, writeBatch, getDocsFromCache, getDocsFromServer, QueryConstraint, UpdateData, DocumentData } from "firebase/firestore";
+import { collection, doc, getDoc, setDoc, updateDoc, deleteDoc, getDocs, query, where, orderBy, limit as firestoreLimit, deleteField, writeBatch, getDocsFromCache, getDocsFromServer, QueryConstraint, UpdateData, DocumentData, startAfter } from "firebase/firestore";
 import { Player, LeaderboardEntry, DownloadEntry, Category, Platform, Level } from "@/types/database";
 import { calculatePoints, parseTimeToSeconds } from "@/lib/utils";
 import { 
@@ -4930,54 +4930,63 @@ export const wipeAllImportedSRCRunsFirestore = async (onProgress?: (deleted: num
   
   try {
     // Query: get ALL imported runs (both verified and unverified)
-    // Note: We can't use both verified and importedFromSRC in a single query efficiently,
-    // so we'll query for importedFromSRC and filter client-side if needed
-    const q = query(
-      collection(db, "leaderboardEntries"),
-      where("importedFromSRC", "==", true),
-      firestoreLimit(500)
-    );
-    
-    let hasMore = true;
+    // Use cursor-based pagination to fetch all batches
+    let lastDoc: any = null;
     let totalDeleted = 0;
+    const batchSize = 500;
     
     // Delete in batches until no more runs
-    while (hasMore) {
+    while (true) {
+      // Build query with pagination
+      const constraints: QueryConstraint[] = [
+        where("importedFromSRC", "==", true),
+        orderBy("__name__"), // Order by document ID for consistent pagination
+        firestoreLimit(batchSize)
+      ];
+      
+      // Add cursor for pagination if we have a last document
+      if (lastDoc) {
+        constraints.push(startAfter(lastDoc));
+      }
+      
+      const q = query(collection(db, "leaderboardEntries"), ...constraints);
       const querySnapshot = await getDocs(q);
       
       if (querySnapshot.empty) {
-        hasMore = false;
-        break;
+        break; // No more documents
       }
       
       // Delete in batches (Firestore limit is 500 per batch)
       const batch = writeBatch(db);
-      let batchSize = 0;
+      let currentBatchSize = 0;
       
       querySnapshot.docs.forEach((docSnapshot) => {
-        if (batchSize < 500) {
+        if (currentBatchSize < batchSize) {
           batch.delete(docSnapshot.ref);
-          batchSize++;
+          currentBatchSize++;
         }
       });
       
-      if (batchSize > 0) {
+      if (currentBatchSize > 0) {
         try {
           await batch.commit();
-          totalDeleted += batchSize;
-          result.deleted += batchSize;
+          totalDeleted += currentBatchSize;
+          result.deleted += currentBatchSize;
           onProgress?.(totalDeleted);
         } catch (batchError) {
           const errorMsg = batchError instanceof Error ? batchError.message : String(batchError);
           result.errors.push(`Failed to delete batch: ${errorMsg}`);
         }
         
-        // Check if we've processed all documents
-        if (querySnapshot.docs.length < 500) {
-          hasMore = false;
+        // Set last document for next iteration (use the last document from this batch)
+        lastDoc = querySnapshot.docs[querySnapshot.docs.length - 1];
+        
+        // If we got fewer documents than the limit, we're done
+        if (querySnapshot.docs.length < batchSize) {
+          break;
         }
       } else {
-        hasMore = false;
+        break; // No documents to delete
       }
     }
     
