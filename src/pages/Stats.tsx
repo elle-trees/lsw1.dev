@@ -407,8 +407,11 @@ const Stats = () => {
       bestTimeString: string;
     }>();
 
-    // Track all unique players and their best times
+    // Track all unique players and their best times (excluding IL runs)
     stats.allVerifiedRuns.forEach(run => {
+      // Exclude Individual Level runs from Elo calculation
+      if (run.leaderboardType === 'individual-level') return;
+      
       const playerId = run.playerId || run.playerName;
       if (!playerId) return;
 
@@ -434,9 +437,13 @@ const Stats = () => {
     });
 
     // Group runs by leaderboard group (category/platform/runType/level)
+    // Exclude Individual Level runs from Elo calculation
     const runsByGroup = new Map<string, LeaderboardEntry[]>();
     
     stats.allVerifiedRuns.forEach(run => {
+      // Exclude Individual Level runs from Elo calculation
+      if (run.leaderboardType === 'individual-level') return;
+      
       const leaderboardType = run.leaderboardType || 'regular';
       const category = run.category || '';
       const platform = run.platform || '';
@@ -473,6 +480,13 @@ const Stats = () => {
         .map(([playerId, data]) => ({ playerId, time: data.time, run: data.run }))
         .sort((a, b) => a.time - b.time);
 
+      // Calculate average time for this group to normalize comparisons
+      // This accounts for different time scales (short vs long runs)
+      const avgTime = sortedPlayers.reduce((sum, p) => sum + p.time, 0) / sortedPlayers.length;
+      const minTime = sortedPlayers[0]?.time || 1;
+      const maxTime = sortedPlayers[sortedPlayers.length - 1]?.time || 1;
+      const timeScale = Math.max(avgTime, minTime, 1); // Use average as scale reference
+
       // Calculate Elo changes by comparing each player with all others
       // Players with faster times "win" against players with slower times
       const K_FACTOR = 32; // Standard Elo K-factor
@@ -493,11 +507,14 @@ const Stats = () => {
           const actualA = playerA.time < playerB.time ? 1 : 0;
           
           // Calculate Elo change
-          // Adjust K-factor based on time difference (bigger gap = more confidence)
+          // Normalize time difference by time scale to account for different run lengths
+          // A 1% improvement in a short run should be weighted similarly to a 1% improvement in a long run
           const timeDiff = Math.abs(playerA.time - playerB.time);
-          const maxTime = Math.max(playerA.time, playerB.time);
-          const timeRatio = maxTime > 0 ? timeDiff / maxTime : 0;
-          const adjustedK = K_FACTOR * (1 + timeRatio * 0.5); // Up to 50% more for big gaps
+          const relativeTimeDiff = timeScale > 0 ? timeDiff / timeScale : 0;
+          
+          // Adjust K-factor based on relative time difference (percentage-based)
+          // Bigger relative gaps = more confidence, but normalized by the time scale
+          const adjustedK = K_FACTOR * (1 + Math.min(relativeTimeDiff * 2, 1.0)); // Cap at 2x K-factor
           
           const eloChange = adjustedK * (actualA - expectedA);
           totalEloChange += eloChange;
@@ -1288,7 +1305,7 @@ const Stats = () => {
                 Elo Rankings
               </CardTitle>
               <CardDescription>
-                Player rankings based on an Elo rating system comparing times across all categories
+                Player rankings based on an Elo rating system comparing times across all categories (Individual Level runs excluded)
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -1297,7 +1314,8 @@ const Stats = () => {
                   <div className="text-sm text-muted-foreground">
                     Players are ranked using an Elo system where faster times result in higher ratings. 
                     All players start at 1500 Elo. Rankings are calculated by comparing players' best times 
-                    within each category/platform/level combination.
+                    within each category/platform/level combination. Individual Level runs are excluded from Elo calculations, 
+                    and time differences are normalized to account for different run lengths (short vs long runs).
                   </div>
                   <div className="rounded-md border">
                     <Table>
