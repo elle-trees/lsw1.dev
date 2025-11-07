@@ -4919,10 +4919,10 @@ export const deleteAllImportedSRCRunsFirestore = async (): Promise<{ deleted: nu
 };
 
 /**
- * Get unlinked imported runs (runs with importedFromSRC === true but missing srcRunId)
- * These are runs that were imported but don't have a link back to SRC
+ * Get unclaimed imported runs (runs with importedFromSRC === true but missing playerId)
+ * These are runs that were imported but haven't been claimed by a user yet
  */
-export const getUnlinkedImportedRunsFirestore = async (): Promise<LeaderboardEntry[]> => {
+export const getUnclaimedImportedRunsFirestore = async (): Promise<LeaderboardEntry[]> => {
   if (!db) return [];
   
   try {
@@ -4936,28 +4936,29 @@ export const getUnlinkedImportedRunsFirestore = async (): Promise<LeaderboardEnt
     const querySnapshot = await getDocs(q);
     const allImportedRuns = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LeaderboardEntry));
     
-    // Filter for runs that are missing srcRunId
-    const unlinkedRuns = allImportedRuns.filter(run => {
-      return !run.srcRunId || run.srcRunId.trim() === "";
+    // Filter for runs that are missing playerId (unclaimed)
+    const unclaimedRuns = allImportedRuns.filter(run => {
+      const playerId = run.playerId || "";
+      return !playerId || playerId.trim() === "";
     });
     
-    return unlinkedRuns;
+    return unclaimedRuns;
   } catch (error) {
-    console.error("Error fetching unlinked imported runs:", error);
+    console.error("Error fetching unclaimed imported runs:", error);
     return [];
   }
 };
 
 /**
- * Delete all unlinked imported runs (runs with importedFromSRC === true but missing srcRunId)
+ * Delete all unclaimed imported runs (runs with importedFromSRC === true but missing playerId)
  */
-export const deleteAllUnlinkedImportedRunsFirestore = async (onProgress?: (deleted: number) => void): Promise<{ deleted: number; errors: string[] }> => {
+export const deleteAllUnclaimedImportedRunsFirestore = async (onProgress?: (deleted: number) => void): Promise<{ deleted: number; errors: string[] }> => {
   if (!db) return { deleted: 0, errors: ["Firestore not initialized"] };
   
   const result = { deleted: 0, errors: [] as string[] };
   
   try {
-    // Query for all imported runs without srcRunId
+    // Query for all imported runs without playerId
     // Use cursor-based pagination to fetch all batches
     let lastDoc: any = null;
     let totalDeleted = 0;
@@ -4984,14 +4985,15 @@ export const deleteAllUnlinkedImportedRunsFirestore = async (onProgress?: (delet
         break; // No more documents
       }
       
-      // Filter for runs without srcRunId
-      const unlinkedDocs = querySnapshot.docs.filter(docSnapshot => {
+      // Filter for runs without playerId (unclaimed)
+      const unclaimedDocs = querySnapshot.docs.filter(docSnapshot => {
         const data = docSnapshot.data() as LeaderboardEntry;
-        return !data.srcRunId || data.srcRunId.trim() === "";
+        const playerId = data.playerId || "";
+        return !playerId || playerId.trim() === "";
       });
       
-      if (unlinkedDocs.length === 0) {
-        // No unlinked runs in this batch, but continue to next batch
+      if (unclaimedDocs.length === 0) {
+        // No unclaimed runs in this batch, but continue to next batch
         lastDoc = querySnapshot.docs[querySnapshot.docs.length - 1];
         if (querySnapshot.docs.length < batchSize) {
           break;
@@ -5003,7 +5005,7 @@ export const deleteAllUnlinkedImportedRunsFirestore = async (onProgress?: (delet
       const batch = writeBatch(db);
       let currentBatchSize = 0;
       
-      unlinkedDocs.forEach((docSnapshot) => {
+      unclaimedDocs.forEach((docSnapshot) => {
         if (currentBatchSize < batchSize) {
           batch.delete(docSnapshot.ref);
           currentBatchSize++;

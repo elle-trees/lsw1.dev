@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, XCircle, ShieldAlert, ExternalLink, Download, PlusCircle, Trash2, Wrench, Edit2, FolderTree, Play, ArrowUp, ArrowDown, Gamepad2, UserPlus, UserMinus, Trophy, Upload, Star, Gem, RefreshCw, X, AlertTriangle, Users, Search, Save, Unlink } from "lucide-react";
+import { CheckCircle, XCircle, ShieldAlert, ExternalLink, Download, PlusCircle, Trash2, Wrench, Edit2, FolderTree, Play, ArrowUp, ArrowDown, Gamepad2, UserPlus, UserMinus, Trophy, Upload, Star, Gem, RefreshCw, X, AlertTriangle, Users, Search, Save, UserX } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Pagination } from "@/components/Pagination";
@@ -66,8 +66,8 @@ import {
   deletePlayer,
   getIlRunsToFix,
   wipeAllImportedSRCRuns,
-  getUnlinkedImportedRuns,
-  deleteAllUnlinkedImportedRuns,
+  getUnclaimedImportedRuns,
+  deleteAllUnclaimedImportedRuns,
 } from "@/lib/db";
 import { importSRCRuns, type ImportResult } from "@/lib/speedruncom/importService";
 import { fetchCategoryVariables, getLSWGameId, fetchCategories as fetchSRCCategories, type SRCCategory } from "@/lib/speedruncom";
@@ -115,11 +115,11 @@ const Admin = () => {
   const [deletingRunId, setDeletingRunId] = useState<string | null>(null);
   const [wipingImportedRuns, setWipingImportedRuns] = useState(false);
   const [wipingProgress, setWipingProgress] = useState(0);
-  // Unlinked runs state
-  const [unlinkedRuns, setUnlinkedRuns] = useState<LeaderboardEntry[]>([]);
-  const [loadingUnlinkedRuns, setLoadingUnlinkedRuns] = useState(false);
-  const [deletingUnlinkedRuns, setDeletingUnlinkedRuns] = useState(false);
-  const [deletingUnlinkedProgress, setDeletingUnlinkedProgress] = useState(0);
+  // Unclaimed runs state
+  const [unclaimedRuns, setUnclaimedRuns] = useState<LeaderboardEntry[]>([]);
+  const [loadingUnclaimedRuns, setLoadingUnclaimedRuns] = useState(false);
+  const [deletingUnclaimedRuns, setDeletingUnclaimedRuns] = useState(false);
+  const [deletingUnclaimedProgress, setDeletingUnclaimedProgress] = useState(0);
   const itemsPerPage = 25;
   // SRC categories with variables
   const [srcCategoriesWithVars, setSrcCategoriesWithVars] = useState<Array<SRCCategory & { variablesData?: Array<{ id: string; name: string; values: { values: Record<string, { label: string }> } }> }>>([]);
@@ -1047,20 +1047,20 @@ const Admin = () => {
     }
   };
 
-  const fetchUnlinkedRuns = async () => {
-    setLoadingUnlinkedRuns(true);
+  const fetchUnclaimedRuns = async () => {
+    setLoadingUnclaimedRuns(true);
     try {
-      const runs = await getUnlinkedImportedRuns();
-      setUnlinkedRuns(runs);
+      const runs = await getUnclaimedImportedRuns();
+      setUnclaimedRuns(runs);
     } catch (error: any) {
-      console.error("Error fetching unlinked runs:", error);
+      console.error("Error fetching unclaimed runs:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to fetch unlinked runs.",
+        description: error.message || "Failed to fetch unclaimed runs.",
         variant: "destructive",
       });
     } finally {
-      setLoadingUnlinkedRuns(false);
+      setLoadingUnclaimedRuns(false);
     }
   };
 
@@ -4599,16 +4599,16 @@ const Admin = () => {
               </CardContent>
             </Card>
 
-            {/* Unlinked Runs Card */}
+            {/* Unclaimed Runs Card */}
             <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
               <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2 text-xl text-[#f2cdcd]">
-                    <Unlink className="h-5 w-5" />
-                    <span>Unlinked Runs</span>
-                    {unlinkedRuns.length > 0 && (
+                    <UserX className="h-5 w-5" />
+                    <span>Unclaimed Runs</span>
+                    {unclaimedRuns.length > 0 && (
                       <Badge variant="secondary" className="ml-2">
-                        {unlinkedRuns.length}
+                        {unclaimedRuns.length}
                       </Badge>
                     )}
                   </CardTitle>
@@ -4616,74 +4616,72 @@ const Admin = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={fetchUnlinkedRuns}
-                      disabled={loadingUnlinkedRuns}
+                      onClick={fetchUnclaimedRuns}
+                      disabled={loadingUnclaimedRuns}
                       className="border-[hsl(235,13%,30%)] hover:bg-[hsl(235,19%,13%)]"
                     >
-                      <RefreshCw className={`h-4 w-4 mr-2 ${loadingUnlinkedRuns ? 'animate-spin' : ''}`} />
-                      {loadingUnlinkedRuns ? 'Loading...' : 'Refresh'}
+                      <RefreshCw className={`h-4 w-4 mr-2 ${loadingUnclaimedRuns ? 'animate-spin' : ''}`} />
+                      {loadingUnclaimedRuns ? 'Loading...' : 'Refresh'}
                     </Button>
-                    {unlinkedRuns.length > 0 && (
+                    {unclaimedRuns.length > 0 && (
                       <Button
-                        variant="outline"
-                        size="sm"
                         onClick={async () => {
                           if (!window.confirm(
-                            `WARNING: This will delete ${unlinkedRuns.length} unlinked imported run(s).\n\n` +
-                            "Unlinked runs are imported runs that don't have a link back to Speedrun.com.\n\n" +
+                            `WARNING: This will delete ${unclaimedRuns.length} unclaimed imported run(s).\n\n` +
+                            "Unclaimed runs are imported runs that haven't been claimed by a user yet.\n\n" +
                             "This action cannot be undone. Are you absolutely sure you want to continue?"
                           )) {
                             return;
                           }
                           
-                          setDeletingUnlinkedRuns(true);
-                          setDeletingUnlinkedProgress(0);
+                          setDeletingUnclaimedRuns(true);
+                          setDeletingUnclaimedProgress(0);
                           try {
-                            const result = await deleteAllUnlinkedImportedRuns((deleted) => {
-                              setDeletingUnlinkedProgress(deleted);
+                            const result = await deleteAllUnclaimedImportedRuns((deleted) => {
+                              setDeletingUnclaimedProgress(deleted);
                             });
                             
                             if (result.errors.length > 0) {
                               toast({
                                 title: "Delete Complete with Errors",
-                                description: `Deleted ${result.deleted} unlinked run(s). ${result.errors.length} error(s) occurred.`,
+                                description: `Deleted ${result.deleted} unclaimed run(s). ${result.errors.length} error(s) occurred.`,
                                 variant: "destructive",
                               });
                             } else {
                               toast({
-                                title: "All Unlinked Runs Deleted",
-                                description: `Successfully deleted ${result.deleted} unlinked run(s) from the leaderboards.`,
+                                title: "All Unclaimed Runs Deleted",
+                                description: `Successfully deleted ${result.deleted} unclaimed run(s) from the leaderboards.`,
                               });
                             }
                             
-                            // Refresh unlinked runs list
-                            await fetchUnlinkedRuns();
+                            // Refresh unclaimed runs list
+                            await fetchUnclaimedRuns();
                             await refreshAllRunData();
                           } catch (error: any) {
                             toast({
                               title: "Error",
-                              description: error.message || "Failed to delete unlinked runs.",
+                              description: error.message || "Failed to delete unclaimed runs.",
                               variant: "destructive",
                             });
                           } finally {
-                            setDeletingUnlinkedRuns(false);
-                            setDeletingUnlinkedProgress(0);
+                            setDeletingUnclaimedRuns(false);
+                            setDeletingUnclaimedProgress(0);
                           }
                         }}
-                        disabled={deletingUnlinkedRuns}
+                        disabled={deletingUnclaimedRuns}
                         variant="destructive"
                         size="sm"
                         className="bg-red-600/20 hover:bg-red-600/30 text-red-400 border-red-600/50"
                       >
-                        {deletingUnlinkedRuns ? (
+                        {deletingUnclaimedRuns ? (
                           <>
                             <LoadingSpinner size="sm" className="mr-2" />
-                            Deleting... {deletingUnlinkedProgress > 0 && `${deletingUnlinkedProgress} deleted`}
+                            Deleting... {deletingUnclaimedProgress > 0 && `${deletingUnclaimedProgress} deleted`}
                           </>
                         ) : (
                           <>
                             <Trash2 className="h-4 w-4 mr-2" />
-                            Delete All ({unlinkedRuns.length})
+                            Delete All ({unclaimedRuns.length})
                           </>
                         )}
                       </Button>
@@ -4691,17 +4689,17 @@ const Admin = () => {
                   </div>
                 </div>
                 <p className="text-sm text-[hsl(222,15%,60%)] mt-2">
-                  Runs imported from Speedrun.com that don't have a link back to SRC (missing srcRunId field).
+                  Runs imported from Speedrun.com that haven't been claimed by a user yet (missing playerId field).
                 </p>
               </CardHeader>
               <CardContent className="pt-6">
-                {loadingUnlinkedRuns ? (
+                {loadingUnclaimedRuns ? (
                   <div className="text-center py-8">
                     <LoadingSpinner />
                   </div>
-                ) : unlinkedRuns.length === 0 ? (
+                ) : unclaimedRuns.length === 0 ? (
                   <p className="text-[hsl(222,15%,60%)] text-center py-8">
-                    No unlinked runs found. Click "Refresh" to check for unlinked runs.
+                    No unclaimed runs found. Click "Refresh" to check for unclaimed runs.
                   </p>
                 ) : (
                   <div className="overflow-x-auto">
@@ -4717,7 +4715,7 @@ const Admin = () => {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {unlinkedRuns.map((run) => (
+                        {unclaimedRuns.map((run) => (
                           <TableRow key={run.id} className="border-b border-[hsl(235,13%,30%)] hover:bg-[hsl(235,19%,13%)] transition-all duration-200">
                             <TableCell className="py-3 px-4 font-medium">
                               <span style={{ color: run.nameColor || 'inherit' }}>{run.playerName}</span>
