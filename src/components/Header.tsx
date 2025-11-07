@@ -119,9 +119,9 @@ export function Header() {
         className="text-[#fab387] hover:text-[#fab387] flex items-center gap-1 transition-all duration-300 relative group"
         onClick={() => setIsMobileMenuOpen(false)}
       >
-        <Plus className="h-4 w-4 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12" />
+        <LegoStudIcon size={16} color="#fab387" className="transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12" />
         <span className="relative">
-          Points
+          Studs
           <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-[#fab387] via-ctp-pink to-[#fab387] transition-all duration-300 group-hover:w-full"></span>
         </span>
       </Link>

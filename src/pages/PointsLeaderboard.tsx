@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Link } from "react-router-dom";
-import { Sparkles, Plus, Info } from "lucide-react";
+import { Sparkles, Info } from "lucide-react";
 import { Player } from "@/types/database";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { Pagination } from "@/components/Pagination";
@@ -104,13 +104,13 @@ const PointsLeaderboard = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 w-full">
         <div className="text-center mb-8 animate-fade-in">
           <div className="flex items-center justify-center gap-2 mb-4">
-            <Plus className="h-6 w-6 text-[#fab387]" />
+            <LegoStudIcon size={48} color="#fab387" />
             <h1 className="text-3xl md:text-4xl font-bold text-[#fab387]">
-              Points Leaderboard
+              Studs Leaderboard
             </h1>
           </div>
           <p className="text-base text-ctp-subtext1 max-w-3xl mx-auto animate-fade-in-delay">
-            Top players ranked by their total points earned from verified runs.
+            Top players ranked by their total studs earned from verified runs.
           </p>
         </div>
 
@@ -118,7 +118,7 @@ const PointsLeaderboard = () => {
           <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
             <CardTitle className="flex items-center gap-2 text-xl text-[#fab387]">
               <span>
-                Top Players by Points
+                Top Players by Studs
               </span>
             </CardTitle>
           </CardHeader>
@@ -129,7 +129,7 @@ const PointsLeaderboard = () => {
               <div className="text-center py-16">
                 <Sparkles className="h-16 w-16 mx-auto mb-4 text-[hsl(222,15%,60%)] opacity-50" />
                 <p className="text-lg text-[hsl(222,15%,60%)]">
-                  No players with points yet. Submit and verify runs to earn points!
+                  No players with studs yet. Submit and verify runs to earn studs!
                 </p>
               </div>
             ) : (
@@ -206,19 +206,19 @@ const PointsLeaderboard = () => {
                             </div>
                           </div>
 
-                          {/* Points */}
+                          {/* Studs */}
                           <div className="text-right flex-shrink-0">
                             <div className="flex items-center gap-2 justify-end mb-2">
                               <div className="relative">
                                 <div className="absolute inset-0 bg-[#fab387]/20 blur-md group-hover:blur-lg transition-all duration-300" />
-                                <Plus className="h-7 w-7 text-[#fab387] group-hover:scale-125 group-hover:rotate-90 transition-all duration-300 relative z-10" />
+                                <LegoStudIcon size={28} color="#fab387" className="group-hover:scale-125 group-hover:rotate-90 transition-all duration-300 relative z-10" />
                               </div>
                               <div className="text-3xl sm:text-4xl font-bold text-[#fab387] group-hover:scale-110 transition-transform duration-300 relative">
                                 <div className="absolute inset-0 bg-[#fab387]/10 blur-xl group-hover:blur-2xl transition-all duration-300" />
                                 <span className="relative z-10">{formatPoints(points)}</span>
                               </div>
                             </div>
-                            <div className="text-sm text-ctp-overlay0 uppercase tracking-wider font-semibold">points</div>
+                            <div className="text-sm text-ctp-overlay0 uppercase tracking-wider font-semibold">studs</div>
                           </div>
                         </div>
                       </div>
@@ -240,14 +240,14 @@ const PointsLeaderboard = () => {
           </CardContent>
         </Card>
 
-        {/* Points System Explanation Accordion */}
+        {/* Studs System Explanation Accordion */}
         <div className="mt-8 animate-fade-in">
           <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="points-system" className="border-[hsl(235,13%,30%)]">
+            <AccordionItem value="studs-system" className="border-[hsl(235,13%,30%)]">
               <AccordionTrigger className="text-[#fab387] hover:text-[#fab387]/80 px-4 py-6">
                 <div className="flex items-center gap-2">
                   <Info className="h-5 w-5" />
-                  <span className="text-lg font-semibold">How Points Work</span>
+                  <span className="text-lg font-semibold">How Studs Work</span>
                 </div>
               </AccordionTrigger>
               <AccordionContent className="px-4 pb-6 text-ctp-text">
@@ -255,8 +255,8 @@ const PointsLeaderboard = () => {
                   <div>
                     <h3 className="text-lg font-semibold text-[#fab387] mb-3">Overview</h3>
                     <p className="text-ctp-text leading-relaxed">
-                      Points are awarded for all verified runs across Full Game, Individual Levels, and Community Golds leaderboards. 
-                      All platforms and categories are eligible for points.
+                      Studs are awarded for all verified runs across Full Game, Individual Levels, and Community Golds leaderboards. 
+                      All platforms and categories are eligible for studs.
                     </p>
                   </div>
 
@@ -265,20 +265,20 @@ const PointsLeaderboard = () => {
                     <div className="space-y-2 text-ctp-text">
                       <p className="font-medium">Solo Runs:</p>
                       <ul className="list-disc list-inside space-y-1 ml-2 text-ctp-subtext1">
-                        <li>Rank 1: 60 points (10 base + 50 bonus)</li>
-                        <li>Rank 2: 40 points (10 base + 30 bonus)</li>
-                        <li>Rank 3: 30 points (10 base + 20 bonus)</li>
-                        <li>All others: 10 base points</li>
+                        <li>Rank 1: 60 studs (10 base + 50 bonus)</li>
+                        <li>Rank 2: 40 studs (10 base + 30 bonus)</li>
+                        <li>Rank 3: 30 studs (10 base + 20 bonus)</li>
+                        <li>All others: 10 base studs</li>
                       </ul>
                       <p className="font-medium mt-3">Co-op Runs:</p>
                       <ul className="list-disc list-inside space-y-1 ml-2 text-ctp-subtext1">
-                        <li>Rank 1: 30 points per player (60 total ÷ 2)</li>
-                        <li>Rank 2: 20 points per player (40 total ÷ 2)</li>
-                        <li>Rank 3: 15 points per player (30 total ÷ 2)</li>
-                        <li>All others: 5 points per player (10 total ÷ 2)</li>
+                        <li>Rank 1: 30 studs per player (60 total ÷ 2)</li>
+                        <li>Rank 2: 20 studs per player (40 total ÷ 2)</li>
+                        <li>Rank 3: 15 studs per player (30 total ÷ 2)</li>
+                        <li>All others: 5 studs per player (10 total ÷ 2)</li>
                       </ul>
                       <p className="text-sm text-ctp-overlay0 mt-2 italic">
-                        Co-op runs split points equally between both players.
+                        Co-op runs split studs equally between both players.
                       </p>
                     </div>
                   </div>
@@ -286,33 +286,33 @@ const PointsLeaderboard = () => {
                   <div>
                     <h3 className="text-lg font-semibold text-[#fab387] mb-3">Individual Levels & Community Golds</h3>
                     <p className="text-ctp-text leading-relaxed mb-2">
-                      ILs and Community Golds award <strong>half the points</strong> of Full Game runs:
+                      ILs and Community Golds award <strong>half the studs</strong> of Full Game runs:
                     </p>
                     <div className="space-y-2 text-ctp-text">
                       <p className="font-medium">Solo Runs:</p>
                       <ul className="list-disc list-inside space-y-1 ml-2 text-ctp-subtext1">
-                        <li>Rank 1: 30 points (60 × 0.5)</li>
-                        <li>Rank 2: 20 points (40 × 0.5)</li>
-                        <li>Rank 3: 15 points (30 × 0.5)</li>
-                        <li>All others: 5 base points (10 × 0.5)</li>
+                        <li>Rank 1: 30 studs (60 × 0.5)</li>
+                        <li>Rank 2: 20 studs (40 × 0.5)</li>
+                        <li>Rank 3: 15 studs (30 × 0.5)</li>
+                        <li>All others: 5 base studs (10 × 0.5)</li>
                       </ul>
                       <p className="font-medium mt-3">Co-op Runs:</p>
                       <ul className="list-disc list-inside space-y-1 ml-2 text-ctp-subtext1">
-                        <li>Rank 1: 15 points per player (30 × 0.5)</li>
-                        <li>Rank 2: 10 points per player (20 × 0.5)</li>
-                        <li>Rank 3: 8 points per player (15 × 0.5, rounded)</li>
-                        <li>All others: 3 points per player (5 × 0.5, rounded)</li>
+                        <li>Rank 1: 15 studs per player (30 × 0.5)</li>
+                        <li>Rank 2: 10 studs per player (20 × 0.5)</li>
+                        <li>Rank 3: 8 studs per player (15 × 0.5, rounded)</li>
+                        <li>All others: 3 studs per player (5 × 0.5, rounded)</li>
                       </ul>
                       <p className="text-sm text-ctp-overlay0 mt-2 italic">
-                        Points are halved for ILs/Community Golds, then split for co-op runs.
+                        Studs are halved for ILs/Community Golds, then split for co-op runs.
                       </p>
                     </div>
                   </div>
 
                   <div className="bg-[hsl(240,21%,18%)] border border-[hsl(235,13%,30%)] p-4 rounded">
                     <p className="text-sm text-ctp-text leading-relaxed">
-                      <strong className="text-[#fab387]">Note:</strong> Only verified runs count toward points. 
-                      Obsolete runs receive base points only (no rank bonus). Points are automatically calculated 
+                      <strong className="text-[#fab387]">Note:</strong> Only verified runs count toward studs. 
+                      Obsolete runs receive base studs only (no rank bonus). Studs are automatically calculated 
                       and updated when runs are verified.
                     </p>
                   </div>

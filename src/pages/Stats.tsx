@@ -6,26 +6,30 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Trophy, 
   Clock, 
   Users, 
   Gamepad2, 
   BarChart3,
-  Award
+  Award,
+  Star,
+  Gem,
+  Filter
 } from "lucide-react";
-import { getAllVerifiedRuns, getCategories, getPlatforms } from "@/lib/db";
+import { getAllVerifiedRuns, getCategories, getPlatforms, getLevels, runTypes } from "@/lib/db";
 import { LeaderboardEntry } from "@/types/database";
-import { formatTime, parseTimeToSeconds } from "@/lib/utils";
+import { formatTime, parseTimeToSeconds, formatSecondsToTime } from "@/lib/utils";
 import { getCategoryName, getPlatformName, getLevelName } from "@/lib/dataValidation";
 import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
-import { Line, LineChart, XAxis, YAxis, CartesianGrid } from "recharts";
+import { Line, LineChart, XAxis, YAxis, CartesianGrid, Brush } from "recharts";
 import { Link } from "react-router-dom";
 
 // Category name overrides for stats page
 const CATEGORY_NAME_OVERRIDES: Record<string, string> = {
-  'GdR0b0zs2ZFVVvjsglIL': 'Story Mode - IL',
-  'zRhqEIO8iXYUiHoW5qIp': 'Free Play - IL',
+  'GdR0b0zs2ZFVVvjsglIL': 'Story',
+  'zRhqEIO8iXYUiHoW5qIp': 'Free Play',
 };
 
 // Helper function to get category name with overrides
@@ -48,8 +52,13 @@ interface StatsData {
   runsByPlatform: Map<string, number>;
   runsByRunType: { solo: number; coOp: number };
   runsByLeaderboardType: { regular: number; individualLevel: number; communityGolds: number };
-  worldRecordProgression: Array<{ date: string; count: number }>;
+  worldRecordProgression: Array<{ date: string; count: number; runs?: LeaderboardEntry[] }>;
   recentWorldRecords: LeaderboardEntry[];
+  wrStartDate?: string;
+  wrEndDate?: string;
+  longestWRHolder?: { playerName: string; days: number };
+  allWorldRecords: LeaderboardEntry[];
+  allVerifiedRuns: LeaderboardEntry[];
 }
 
 const Stats = () => {
@@ -58,6 +67,12 @@ const Stats = () => {
   const [categories, setCategories] = useState<Array<{ id: string; name: string }>>([]);
   const [platforms, setPlatforms] = useState<Array<{ id: string; name: string }>>([]);
   const [levels, setLevels] = useState<Array<{ id: string; name: string }>>([]);
+  const [wrProgressionLeaderboardType, setWrProgressionLeaderboardType] = useState<'regular' | 'individual-level' | 'community-golds'>('regular');
+  const [wrProgressionCategory, setWrProgressionCategory] = useState("");
+  const [wrProgressionPlatform, setWrProgressionPlatform] = useState("");
+  const [wrProgressionRunType, setWrProgressionRunType] = useState("");
+  const [wrProgressionLevel, setWrProgressionLevel] = useState("");
+  const [availableWrCategories, setAvailableWrCategories] = useState<Array<{ id: string; name: string }>>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -132,7 +147,9 @@ const Stats = () => {
         };
 
         // World record progression over time
+        // Track runs by date for tooltip display
         const wrProgression = new Map<string, number>();
+        const wrRunsByDate = new Map<string, LeaderboardEntry[]>();
         const sortedWRs = worldRecords
           .filter(wr => wr.date)
           .sort((a, b) => {
@@ -144,13 +161,141 @@ const Stats = () => {
         let cumulativeCount = 0;
         sortedWRs.forEach(wr => {
           cumulativeCount++;
-          const date = wr.date;
+          const date = wr.date!;
+          
+          // Track runs for this date
+          if (!wrRunsByDate.has(date)) {
+            wrRunsByDate.set(date, []);
+          }
+          wrRunsByDate.get(date)!.push(wr);
+          
           wrProgression.set(date, cumulativeCount);
         });
 
         const progressionData = Array.from(wrProgression.entries())
-          .map(([date, count]) => ({ date, count }))
+          .map(([date, count]) => ({ 
+            date, 
+            count,
+            runs: wrRunsByDate.get(date) || []
+          }))
           .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+        // Calculate WR start and end dates
+        const wrStartDate = progressionData.length > 0 ? progressionData[0].date : undefined;
+        const wrEndDate = progressionData.length > 0 ? progressionData[progressionData.length - 1].date : undefined;
+
+        // Calculate who has held WRs the longest
+        // Track WR holders by group (category/platform/runType/level) over time
+        // For each group, find all runs that were WRs at some point
+        const wrHoldersByGroup = new Map<string, Array<{ playerName: string; date: string; endDate?: string }>>();
+        const now = new Date();
+        const nowDateStr = now.toISOString().split('T')[0];
+        
+        // Group all verified runs by their leaderboard group
+        const runsByGroup = new Map<string, LeaderboardEntry[]>();
+        verifiedRuns.forEach(run => {
+          if (!run.date) return;
+          
+          const leaderboardType = run.leaderboardType || 'regular';
+          const category = run.category || '';
+          const platform = run.platform || '';
+          const runType = run.runType || 'solo';
+          const level = run.level || '';
+          const groupKey = `${leaderboardType}_${category}_${platform}_${runType}_${level}`;
+          
+          if (!runsByGroup.has(groupKey)) {
+            runsByGroup.set(groupKey, []);
+          }
+          runsByGroup.get(groupKey)!.push(run);
+        });
+        
+        // For each group, sort by time and track WR progression
+        runsByGroup.forEach((runs, groupKey) => {
+          // Sort by time (fastest first)
+          runs.sort((a, b) => {
+            const timeA = parseTimeToSeconds(a.time) || Infinity;
+            const timeB = parseTimeToSeconds(b.time) || Infinity;
+            return timeA - timeB;
+          });
+          
+          // Track when each player held the WR
+          // Sort runs by date first to track chronological WR progression
+          const runsByDate = [...runs].sort((a, b) => {
+            const dateA = new Date(a.date).getTime();
+            const dateB = new Date(b.date).getTime();
+            return dateA - dateB;
+          });
+          
+          // Track the current WR holder over time
+          const holders: Array<{ playerName: string; date: string; endDate?: string }> = [];
+          let currentWR: LeaderboardEntry | null = null;
+          let currentWRDate: string | null = null;
+          
+          // Process runs chronologically
+          runsByDate.forEach(run => {
+            const runTime = parseTimeToSeconds(run.time) || Infinity;
+            const currentWRTime = currentWR ? (parseTimeToSeconds(currentWR.time) || Infinity) : Infinity;
+            
+            // If this run is faster than current WR, it becomes the new WR
+            if (runTime < currentWRTime) {
+              // If there was a previous WR holder, record when their WR ended
+              if (currentWR && currentWRDate) {
+                const lastHolder = holders[holders.length - 1];
+                if (lastHolder && lastHolder.playerName === (currentWR.playerName || 'Unknown') && !lastHolder.endDate) {
+                  lastHolder.endDate = run.date;
+                } else {
+                  holders.push({
+                    playerName: currentWR.playerName || 'Unknown',
+                    date: currentWRDate,
+                    endDate: run.date,
+                  });
+                }
+              }
+              
+              // Set new WR holder
+              currentWR = run;
+              currentWRDate = run.date;
+              holders.push({
+                playerName: run.playerName || 'Unknown',
+                date: run.date,
+                endDate: undefined, // Will be set when broken or at end
+              });
+            }
+          });
+          
+          // Set end date for current WR holder (if still holding)
+          if (holders.length > 0) {
+            const lastHolder = holders[holders.length - 1];
+            if (!lastHolder.endDate) {
+              lastHolder.endDate = nowDateStr;
+            }
+          }
+          
+          wrHoldersByGroup.set(groupKey, holders);
+        });
+        
+        // Calculate total days each player has held WRs (across all groups)
+        // Sum up all WR-holding periods for each player
+        const playerWRDays = new Map<string, number>();
+        wrHoldersByGroup.forEach(holders => {
+          holders.forEach(holder => {
+            const startDate = new Date(holder.date);
+            const endDate = new Date(holder.endDate || nowDateStr);
+            const days = Math.max(0, Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
+            
+            // Sum up days for this player across all groups
+            const currentDays = playerWRDays.get(holder.playerName) || 0;
+            playerWRDays.set(holder.playerName, currentDays + days);
+          });
+        });
+        
+        // Find player with most days
+        let longestWRHolder: { playerName: string; days: number } | undefined;
+        playerWRDays.forEach((days, playerName) => {
+          if (!longestWRHolder || days > longestWRHolder.days) {
+            longestWRHolder = { playerName, days };
+          }
+        });
 
         // Recent world records (last 20)
         const recentWorldRecords = worldRecords
@@ -172,7 +317,23 @@ const Stats = () => {
           runsByLeaderboardType,
           worldRecordProgression: progressionData,
           recentWorldRecords,
+          wrStartDate,
+          wrEndDate,
+          longestWRHolder,
+          allWorldRecords: worldRecords,
+          allVerifiedRuns: verifiedRuns,
         });
+        
+        // Initialize filter defaults
+        if (fetchedPlatforms.length > 0) {
+          setWrProgressionPlatform(fetchedPlatforms[0].id);
+        }
+        if (runTypes.length > 0) {
+          setWrProgressionRunType(runTypes[0].id);
+        }
+        if (fetchedLevels.length > 0) {
+          setWrProgressionLevel(fetchedLevels[0].id);
+        }
       } catch (error) {
         console.error("Error fetching stats:", error);
       } finally {
@@ -182,6 +343,28 @@ const Stats = () => {
 
     fetchData();
   }, []);
+
+  // Update available categories when WR progression leaderboard type changes
+  useEffect(() => {
+    const updateCategories = async () => {
+      try {
+        const fetchedCategories = await getCategories(wrProgressionLeaderboardType);
+        setAvailableWrCategories(fetchedCategories);
+        
+        // Auto-select first category if available
+        if (fetchedCategories.length > 0) {
+          setWrProgressionCategory(fetchedCategories[0].id);
+        } else {
+          setWrProgressionCategory("");
+        }
+      } catch (error) {
+        setAvailableWrCategories([]);
+        setWrProgressionCategory("");
+      }
+    };
+    
+    updateCategories();
+  }, [wrProgressionLeaderboardType]);
 
   const topCategories = useMemo(() => {
     if (!stats) return [];
@@ -206,6 +389,90 @@ const Stats = () => {
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
   }, [stats, platforms]);
+
+  // Calculate filtered WR time progression
+  const filteredWRTimeProgression = useMemo(() => {
+    if (!stats || !stats.allWorldRecords) return [];
+    
+    // Filter world records by selected criteria
+    let filteredWRs = stats.allWorldRecords.filter(wr => {
+      if (!wr.date) return false;
+      
+      // Filter by leaderboard type
+      const runLeaderboardType = wr.leaderboardType || 'regular';
+      if (runLeaderboardType !== wrProgressionLeaderboardType) return false;
+      
+      // Filter by category
+      if (wrProgressionCategory && wr.category !== wrProgressionCategory) return false;
+      
+      // Filter by platform
+      if (wrProgressionPlatform && wr.platform !== wrProgressionPlatform) return false;
+      
+      // Filter by run type
+      if (wrProgressionRunType && wr.runType !== wrProgressionRunType) return false;
+      
+      // Filter by level (for IL/CG)
+      if ((wrProgressionLeaderboardType === 'individual-level' || wrProgressionLeaderboardType === 'community-golds')) {
+        if (wrProgressionLevel && wr.level !== wrProgressionLevel) return false;
+      }
+      
+      return true;
+    });
+    
+    if (filteredWRs.length === 0) return [];
+    
+    // Group by the same key (category/platform/runType/level) to track progression
+    const leaderboardType = wrProgressionLeaderboardType;
+    const category = wrProgressionCategory;
+    const platform = wrProgressionPlatform;
+    const runType = wrProgressionRunType;
+    const level = wrProgressionLevel;
+    const groupKey = `${leaderboardType}_${category}_${platform}_${runType}_${level}`;
+    
+    // Get all runs for this specific group (not just WRs, but all verified runs)
+    // We need to track when WRs were broken
+    const allRunsForGroup = stats.allVerifiedRuns.filter(run => {
+      const runLeaderboardType = run.leaderboardType || 'regular';
+      if (runLeaderboardType !== leaderboardType) return false;
+      if (category && run.category !== category) return false;
+      if (platform && run.platform !== platform) return false;
+      if (runType && run.runType !== runType) return false;
+      if ((leaderboardType === 'individual-level' || leaderboardType === 'community-golds') && level && run.level !== level) return false;
+      return true;
+    });
+    
+    // Sort all runs by date chronologically
+    const runsByDate = allRunsForGroup
+      .filter(run => run.date)
+      .sort((a, b) => {
+        const dateA = new Date(a.date!).getTime();
+        const dateB = new Date(b.date!).getTime();
+        return dateA - dateB;
+      });
+    
+    // Track WR progression (best time over time)
+    const progression: Array<{ date: string; time: number; timeString: string; run: LeaderboardEntry }> = [];
+    let currentBestTime = Infinity;
+    let currentBestRun: LeaderboardEntry | null = null;
+    
+    runsByDate.forEach(run => {
+      const runTime = parseTimeToSeconds(run.time) || Infinity;
+      
+      // If this run is faster than current best, it becomes the new WR
+      if (runTime < currentBestTime) {
+        currentBestTime = runTime;
+        currentBestRun = run;
+        progression.push({
+          date: run.date!,
+          time: runTime,
+          timeString: run.time,
+          run: run,
+        });
+      }
+    });
+    
+    return progression;
+  }, [stats, wrProgressionLeaderboardType, wrProgressionCategory, wrProgressionPlatform, wrProgressionRunType, wrProgressionLevel]);
 
   if (loading) {
     return (
@@ -402,57 +669,272 @@ const Stats = () => {
         <TabsContent value="progression" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>World Record Progression</CardTitle>
-              <CardDescription>Cumulative world records over time</CardDescription>
+              <CardTitle>World Record Time Progression</CardTitle>
+              <CardDescription>World record times improving over time (lower is better)</CardDescription>
             </CardHeader>
             <CardContent>
-              {stats.worldRecordProgression.length > 0 ? (
-                <ChartContainer config={chartConfig} className="h-[400px]">
-                  <LineChart data={stats.worldRecordProgression}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
-                      dataKey="date" 
-                      tickFormatter={(value) => {
-                        const date = new Date(value);
-                        return `${date.getMonth() + 1}/${date.getFullYear()}`;
-                      }}
-                    />
-                    <YAxis />
-                    <ChartTooltip 
-                      content={({ active, payload }) => {
-                        if (active && payload && payload.length) {
-                          const data = payload[0].payload;
-                          const date = new Date(data.date);
-                          return (
-                            <div className="rounded-lg border bg-background p-2 shadow-sm">
-                              <div className="grid gap-2">
-                                <div className="flex items-center justify-between gap-4">
-                                  <span className="text-sm font-medium">Date</span>
-                                  <span className="text-sm">{date.toLocaleDateString()}</span>
-                                </div>
-                                <div className="flex items-center justify-between gap-4">
-                                  <span className="text-sm font-medium">World Records</span>
-                                  <span className="text-sm font-bold">{data.count}</span>
+              {filteredWRTimeProgression.length > 0 ? (
+                <>
+                  {/* Filters */}
+                  <div className="mb-6 space-y-4">
+                    {/* Leaderboard Type Tabs */}
+                    <Tabs value={wrProgressionLeaderboardType} onValueChange={(value) => setWrProgressionLeaderboardType(value as 'regular' | 'individual-level' | 'community-golds')}>
+                      <TabsList className="grid w-full grid-cols-3 mb-4">
+                        <TabsTrigger value="regular" className="flex items-center gap-2">
+                          <Trophy className="h-4 w-4" />
+                          <span>Full Game</span>
+                        </TabsTrigger>
+                        <TabsTrigger value="individual-level" className="flex items-center gap-2">
+                          <Star className="h-4 w-4" />
+                          <span>Individual Levels</span>
+                        </TabsTrigger>
+                        <TabsTrigger value="community-golds" className="flex items-center gap-2">
+                          <Gem className="h-4 w-4" />
+                          <span>Community Golds</span>
+                        </TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+
+                    {/* Category Tabs */}
+                    {availableWrCategories.length > 0 && (
+                      <div className="mb-4">
+                        <Tabs value={wrProgressionCategory} onValueChange={setWrProgressionCategory}>
+                          <TabsList className="flex w-full p-0.5 gap-1 overflow-x-auto overflow-y-hidden scrollbar-hide" style={{ minWidth: 'max-content' }}>
+                            {availableWrCategories.map((category) => (
+                              <TabsTrigger 
+                                key={category.id} 
+                                value={category.id} 
+                                className="data-[state=active]:bg-[#94e2d5] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-colors font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#94e2d5]/50 py-1.5 sm:py-2 px-2 sm:px-3 text-xs sm:text-sm whitespace-nowrap rounded-none flex items-center gap-1.5"
+                              >
+                                {getCategoryNameWithOverride(category.id, categories)}
+                              </TabsTrigger>
+                            ))}
+                          </TabsList>
+                        </Tabs>
+                      </div>
+                    )}
+
+                    {/* Filter Card */}
+                    <Card className="bg-gradient-to-br from-ctp-base to-ctp-mantle border-ctp-surface1 shadow-xl rounded-none">
+                      <CardHeader className="bg-gradient-to-r from-ctp-base to-ctp-mantle border-b border-ctp-surface1 py-3">
+                        <CardTitle className="flex items-center gap-2 text-lg">
+                          <Filter className="h-4 w-4 text-ctp-mauve" />
+                          <span className="text-ctp-text">Filter Results</span>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-3 sm:p-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                          {(wrProgressionLeaderboardType === 'individual-level' || wrProgressionLeaderboardType === 'community-golds') && (
+                            <div>
+                              <label className="block text-sm font-semibold mb-1.5 text-ctp-text flex items-center gap-2">
+                                <Star className="h-3.5 w-3.5 text-ctp-mauve" />
+                                Levels
+                              </label>
+                              <Select value={wrProgressionLevel} onValueChange={setWrProgressionLevel}>
+                                <SelectTrigger className="bg-ctp-base border-ctp-surface1 h-9 text-sm rounded-none">
+                                  <SelectValue placeholder="Select level" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {levels.map((level) => (
+                                    <SelectItem key={level.id} value={level.id} className="text-sm">
+                                      {level.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
+                          <div>
+                            <label className="block text-sm font-semibold mb-1.5 text-ctp-text flex items-center gap-2">
+                              <Gamepad2 className="h-3.5 w-3.5 text-ctp-mauve" />
+                              Platform
+                            </label>
+                            <Select value={wrProgressionPlatform} onValueChange={setWrProgressionPlatform}>
+                              <SelectTrigger className="bg-ctp-base border-ctp-surface1 h-9 text-sm rounded-none">
+                                <SelectValue placeholder="Select platform" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {platforms.map((platform) => (
+                                  <SelectItem key={platform.id} value={platform.id} className="text-sm">
+                                    {platform.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-semibold mb-1.5 text-ctp-text flex items-center gap-2">
+                              {wrProgressionRunType === 'solo' ? (
+                                <Users className="h-3.5 w-3.5 text-ctp-mauve" />
+                              ) : (
+                                <Users className="h-3.5 w-3.5 text-ctp-mauve" />
+                              )}
+                              Run Type
+                            </label>
+                            <Select value={wrProgressionRunType} onValueChange={setWrProgressionRunType}>
+                              <SelectTrigger className="bg-ctp-base border-ctp-surface1 h-9 text-sm rounded-none">
+                                <SelectValue placeholder="Select run type" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {runTypes.map((type) => (
+                                  <SelectItem key={type.id} value={type.id} className="text-sm">
+                                    <div className="flex items-center gap-2">
+                                      {type.id === 'solo' ? <Users className="h-4 w-4" /> : <Users className="h-4 w-4" />}
+                                      {type.name}
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* WR Statistics */}
+                  {filteredWRTimeProgression.length > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                      <div className="p-4 border rounded-lg bg-muted/50">
+                        <div className="text-sm text-muted-foreground mb-1">First WR</div>
+                        <div className="text-lg font-semibold">
+                          {new Date(filteredWRTimeProgression[0].date).toLocaleDateString('en-US', { 
+                            year: 'numeric', 
+                            month: 'long', 
+                            day: 'numeric' 
+                          })}
+                        </div>
+                        <div className="text-sm text-muted-foreground mt-1">
+                          {formatTime(filteredWRTimeProgression[0].timeString)}
+                        </div>
+                      </div>
+                      <div className="p-4 border rounded-lg bg-muted/50">
+                        <div className="text-sm text-muted-foreground mb-1">Current WR</div>
+                        <div className="text-lg font-semibold">
+                          {new Date(filteredWRTimeProgression[filteredWRTimeProgression.length - 1].date).toLocaleDateString('en-US', { 
+                            year: 'numeric', 
+                            month: 'long', 
+                            day: 'numeric' 
+                          })}
+                        </div>
+                        <div className="text-sm text-muted-foreground mt-1">
+                          {formatTime(filteredWRTimeProgression[filteredWRTimeProgression.length - 1].timeString)}
+                        </div>
+                      </div>
+                      <div className="p-4 border rounded-lg bg-muted/50">
+                        <div className="text-sm text-muted-foreground mb-1">Improvement</div>
+                        <div className="text-lg font-semibold">
+                          {(() => {
+                            const firstTime = filteredWRTimeProgression[0].time;
+                            const currentTime = filteredWRTimeProgression[filteredWRTimeProgression.length - 1].time;
+                            const improvement = firstTime - currentTime;
+                            return formatTime(formatSecondsToTime(improvement));
+                          })()}
+                        </div>
+                        <div className="text-sm text-muted-foreground mt-1">
+                          {filteredWRTimeProgression.length} WR{filteredWRTimeProgression.length !== 1 ? 's' : ''} total
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <ChartContainer config={chartConfig} className="h-[600px] w-full">
+                    <LineChart 
+                      data={filteredWRTimeProgression}
+                      margin={{ top: 10, right: 30, left: 0, bottom: 60 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis 
+                        dataKey="date" 
+                        tickFormatter={(value) => {
+                          const date = new Date(value);
+                          return `${date.getMonth() + 1}/${date.getFullYear()}`;
+                        }}
+                        angle={-45}
+                        textAnchor="end"
+                        height={80}
+                      />
+                      <YAxis 
+                        domain={['auto', 'auto']}
+                        tickFormatter={(value) => {
+                          return formatTime(formatSecondsToTime(value));
+                        }}
+                        reversed={false}
+                      />
+                      <ChartTooltip 
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            const data = payload[0].payload;
+                            const date = new Date(data.date);
+                            const run = data.run as LeaderboardEntry;
+                            
+                            if (!run) return null;
+                            
+                            const categoryName = getCategoryNameWithOverride(run.category, categories);
+                            const platformName = getPlatformName(run.platform, platforms);
+                            const levelName = run.level ? getLevelName(run.level, levels) : null;
+                            
+                            return (
+                              <div className="rounded-lg border bg-background p-3 shadow-lg max-w-md">
+                                <div className="grid gap-3">
+                                  <div className="flex items-center justify-between gap-4 border-b pb-2">
+                                    <span className="text-sm font-medium">Date</span>
+                                    <span className="text-sm font-semibold">{date.toLocaleDateString()}</span>
+                                  </div>
+                                  <div className="flex items-center justify-between gap-4 border-b pb-2">
+                                    <span className="text-sm font-medium">World Record Time</span>
+                                    <span className="text-sm font-bold font-mono">{formatTime(data.timeString)}</span>
+                                  </div>
+                                  <div className="mt-2">
+                                    <div className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
+                                      WR Holder
+                                    </div>
+                                    <div className="text-xs border rounded p-2 bg-muted/30">
+                                      <div className="flex items-center justify-between mb-1">
+                                        <span className="font-semibold" style={{ color: run.nameColor || 'inherit' }}>
+                                          {run.playerName}
+                                          {run.player2Name && ` & ${run.player2Name}`}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-2 flex-wrap text-muted-foreground">
+                                        <span>{categoryName}</span>
+                                        {levelName && <span>• {levelName}</span>}
+                                        <span>• {platformName}</span>
+                                        <span>• {run.runType === 'co-op' ? 'Co-op' : 'Solo'}</span>
+                                      </div>
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          );
-                        }
-                        return null;
-                      }}
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="count" 
-                      stroke="var(--color-count)" 
-                      strokeWidth={2}
-                      dot={{ r: 3 }}
-                    />
-                  </LineChart>
-                </ChartContainer>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="time" 
+                        stroke="var(--color-count)" 
+                        strokeWidth={2}
+                        dot={{ r: 4 }}
+                        activeDot={{ r: 6 }}
+                      />
+                      <Brush 
+                        dataKey="date"
+                        height={30}
+                        tickFormatter={(value) => {
+                          const date = new Date(value);
+                          return `${date.getMonth() + 1}/${date.getFullYear()}`;
+                        }}
+                      />
+                    </LineChart>
+                  </ChartContainer>
+                </>
               ) : (
-                <div className="h-[400px] flex items-center justify-center text-muted-foreground">
-                  No world record progression data available
+                <div className="h-[600px] flex items-center justify-center text-muted-foreground">
+                  {stats && stats.allWorldRecords.length > 0 
+                    ? "No world record progression data available for the selected filters"
+                    : "No world record progression data available"}
                 </div>
               )}
             </CardContent>
