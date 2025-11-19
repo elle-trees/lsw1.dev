@@ -3,7 +3,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlayerProfile } from "@/components/PlayerProfile";
 import { ArrowLeft, Trophy, User, Users, Clock, Star, Gem, CheckCircle, Filter, Gamepad2, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -377,35 +376,50 @@ const PlayerDetails = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Tabs value={leaderboardType} onValueChange={(value) => setLeaderboardType(value as 'regular' | 'individual-level' | 'community-golds')} className="w-full">
-              <TabsList className="grid w-full grid-cols-3 mb-4 p-0.5 gap-1 rounded-none">
-                <TabsTrigger 
-                  value="regular" 
-                  className="data-[state=active]:bg-[#f9e2af] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#f9e2af]/50 text-xs sm:text-sm py-1.5 sm:py-2 px-2 sm:px-3 whitespace-nowrap rounded-none"
-                >
-                  <Trophy className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1 sm:mr-1.5" />
-                  <span className="hidden min-[375px]:inline">Full Game</span>
-                  <span className="min-[375px]:hidden">Game</span>
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="individual-level" 
-                  className="data-[state=active]:bg-[#f9e2af] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#f9e2af]/50 text-xs sm:text-sm py-1.5 sm:py-2 px-2 sm:px-3 whitespace-nowrap rounded-none"
-                >
-                  <Star className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1 sm:mr-1.5" />
-                  <span className="hidden sm:inline">Individual Levels</span>
-                  <span className="sm:hidden">ILs</span>
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="community-golds" 
-                  className="data-[state=active]:bg-[#f9e2af] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#f9e2af]/50 text-xs sm:text-sm py-1.5 sm:py-2 px-2 sm:px-3 whitespace-nowrap rounded-none"
-                >
-                  <Gem className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1 sm:mr-1.5" />
-                  <span className="hidden sm:inline">Community Golds</span>
-                  <span className="sm:hidden">CGs</span>
-                </TabsTrigger>
-              </TabsList>
+            {/* Leaderboard Type Buttons */}
+            <div className="grid grid-cols-3 mb-4 p-0.5 gap-1 bg-ctp-surface0/50 rounded-none border border-ctp-surface1">
+              <Button
+                variant={leaderboardType === 'regular' ? "default" : "ghost"}
+                onClick={() => setLeaderboardType('regular')}
+                className={`h-auto py-1.5 sm:py-2 px-2 sm:px-3 rounded-none transition-all duration-300 font-medium text-xs sm:text-sm whitespace-nowrap ${
+                  leaderboardType === 'regular'
+                    ? "bg-[#f9e2af] text-[#11111b] hover:bg-[#f9e2af]/90 shadow-sm"
+                    : "bg-ctp-surface0 text-ctp-text hover:bg-ctp-surface1 hover:text-ctp-text"
+                }`}
+              >
+                <Trophy className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1 sm:mr-1.5" />
+                <span className="hidden min-[375px]:inline">Full Game</span>
+                <span className="min-[375px]:hidden">Game</span>
+              </Button>
+              <Button
+                variant={leaderboardType === 'individual-level' ? "default" : "ghost"}
+                onClick={() => setLeaderboardType('individual-level')}
+                className={`h-auto py-1.5 sm:py-2 px-2 sm:px-3 rounded-none transition-all duration-300 font-medium text-xs sm:text-sm whitespace-nowrap ${
+                  leaderboardType === 'individual-level'
+                    ? "bg-[#f9e2af] text-[#11111b] hover:bg-[#f9e2af]/90 shadow-sm"
+                    : "bg-ctp-surface0 text-ctp-text hover:bg-ctp-surface1 hover:text-ctp-text"
+                }`}
+              >
+                <Star className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1 sm:mr-1.5" />
+                <span className="hidden sm:inline">Individual Levels</span>
+                <span className="sm:hidden">ILs</span>
+              </Button>
+              <Button
+                variant={leaderboardType === 'community-golds' ? "default" : "ghost"}
+                onClick={() => setLeaderboardType('community-golds')}
+                className={`h-auto py-1.5 sm:py-2 px-2 sm:px-3 rounded-none transition-all duration-300 font-medium text-xs sm:text-sm whitespace-nowrap ${
+                  leaderboardType === 'community-golds'
+                    ? "bg-[#f9e2af] text-[#11111b] hover:bg-[#f9e2af]/90 shadow-sm"
+                    : "bg-ctp-surface0 text-ctp-text hover:bg-ctp-surface1 hover:text-ctp-text"
+                }`}
+              >
+                <Gem className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1 sm:mr-1.5" />
+                <span className="hidden sm:inline">Community Golds</span>
+                <span className="sm:hidden">CGs</span>
+              </Button>
+            </div>
 
-              <TabsContent value={leaderboardType} className="mt-0">
+            <div className="mt-0">
                 {(() => {
                   // Get categories that have runs for this leaderboard type
                   const runsForType = playerRuns.filter(run => {
@@ -458,48 +472,60 @@ const PlayerDetails = () => {
                   // Combine verified and unclaimed runs
                   const allRuns = [...filteredVerifiedRuns, ...filteredUnclaimedRuns];
 
-                  // Category tabs
-                  const categoryTabs = categoriesWithRuns.length > 0 ? (
+                  // Category buttons
+                  const categoryButtons = categoriesWithRuns.length > 0 ? (
                     <div className="mb-4">
-                      <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
-                        <TabsList className="flex w-full p-0.5 gap-1 overflow-x-auto overflow-y-hidden scrollbar-hide rounded-none" style={{ minWidth: 'max-content' }}>
-                          {categoriesWithRuns.map((category) => (
-                            <TabsTrigger 
-                              key={category.id} 
-                              value={category.id} 
-                              className="data-[state=active]:bg-[#94e2d5] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-colors font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#94e2d5]/50 py-1.5 sm:py-2 px-2 sm:px-3 text-xs sm:text-sm whitespace-nowrap rounded-none flex items-center gap-1.5"
+                      <div className="flex w-full p-0.5 gap-1 overflow-x-auto overflow-y-hidden scrollbar-hide rounded-none" style={{ minWidth: 'max-content' }}>
+                        {categoriesWithRuns.map((category) => {
+                          const isSelected = selectedCategory === category.id;
+                          return (
+                            <Button
+                              key={category.id}
+                              variant={isSelected ? "default" : "outline"}
+                              onClick={() => setSelectedCategory(category.id)}
+                              className={`${
+                                isSelected
+                                  ? "bg-[#94e2d5] text-[#11111b] hover:bg-[#94e2d5]/90 border-transparent shadow-sm"
+                                  : "bg-ctp-surface0 text-ctp-text border-transparent hover:bg-ctp-surface1 hover:border-[#94e2d5]/50"
+                              } py-1.5 sm:py-2 px-2 sm:px-3 text-xs sm:text-sm whitespace-nowrap rounded-none transition-colors font-medium`}
                             >
                               {category.name}
-                            </TabsTrigger>
-                          ))}
-                        </TabsList>
-                      </Tabs>
+                            </Button>
+                          );
+                        })}
+                      </div>
                     </div>
                   ) : null;
                   
-                  // Subcategory tabs (only for regular leaderboard type)
-                  const subcategoryTabs = leaderboardType === 'regular' && availableSubcategories.length > 0 ? (
+                  // Subcategory buttons (only for regular leaderboard type)
+                  const subcategoryButtons = leaderboardType === 'regular' && availableSubcategories.length > 0 ? (
                     <div className="mb-4">
-                      <Tabs value={selectedSubcategory} onValueChange={setSelectedSubcategory}>
-                        <TabsList className="flex w-full p-0.5 gap-1 overflow-x-auto overflow-y-hidden scrollbar-hide rounded-none" style={{ minWidth: 'max-content' }}>
-                          {availableSubcategories.map((subcategory) => (
-                            <TabsTrigger 
-                              key={subcategory.id} 
-                              value={subcategory.id} 
-                              className="data-[state=active]:bg-[#cba6f7] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-colors font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#cba6f7]/50 py-1.5 sm:py-2 px-2 sm:px-3 text-xs sm:text-sm whitespace-nowrap rounded-none"
+                      <div className="flex w-full p-0.5 gap-1 overflow-x-auto overflow-y-hidden scrollbar-hide rounded-none" style={{ minWidth: 'max-content' }}>
+                        {availableSubcategories.map((subcategory) => {
+                          const isSelected = selectedSubcategory === subcategory.id;
+                          return (
+                            <Button
+                              key={subcategory.id}
+                              variant={isSelected ? "default" : "outline"}
+                              onClick={() => setSelectedSubcategory(subcategory.id)}
+                              className={`${
+                                isSelected
+                                  ? "bg-[#cba6f7] text-[#11111b] hover:bg-[#cba6f7]/90 border-transparent shadow-sm"
+                                  : "bg-ctp-surface0 text-ctp-text border-transparent hover:bg-ctp-surface1 hover:border-[#cba6f7]/50"
+                              } py-1.5 sm:py-2 px-2 sm:px-3 text-xs sm:text-sm whitespace-nowrap rounded-none transition-colors font-medium`}
                             >
                               {subcategory.name}
-                            </TabsTrigger>
-                          ))}
-                        </TabsList>
-                      </Tabs>
+                            </Button>
+                          );
+                        })}
+                      </div>
                     </div>
                   ) : null;
 
                   return (
                     <>
-                      {categoryTabs}
-                      {subcategoryTabs}
+                      {categoryButtons}
+                      {subcategoryButtons}
                       
                       {/* Filters */}
                       <Card className="bg-gradient-to-br from-ctp-base to-ctp-mantle border-ctp-surface1 shadow-xl mb-4 rounded-none">
@@ -712,8 +738,7 @@ const PlayerDetails = () => {
                     </>
                   );
                 })()}
-              </TabsContent>
-            </Tabs>
+            </div>
           </CardContent>
         </Card>
       </div>

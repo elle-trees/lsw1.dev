@@ -3662,43 +3662,62 @@ const Admin = () => {
                     </div>
                   </div>
 
-                  {/* Leaderboard Type Tabs */}
+                  {/* Leaderboard Type Buttons */}
                   <div>
                     <Label className="text-sm font-semibold mb-2 block">Leaderboard Type *</Label>
-                    <Tabs value={manualRunLeaderboardType} onValueChange={(value) => {
-                      setManualRunLeaderboardType(value as 'regular' | 'individual-level' | 'community-golds');
-                      setManualRun(prev => ({ ...prev, category: "", level: "" }));
-                    }}>
-                      <TabsList className="grid w-full grid-cols-3 p-0.5 gap-1">
-                        <TabsTrigger 
-                          value="regular" 
-                          className="data-[state=active]:bg-[#f9e2af] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#f9e2af]/50 text-xs sm:text-sm py-1.5 sm:py-2 px-2 sm:px-3 whitespace-nowrap"
-                        >
-                          <Trophy className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1 sm:mr-1.5" />
-                          <span className="hidden min-[375px]:inline">Full Game</span>
-                          <span className="min-[375px]:hidden">Game</span>
-                        </TabsTrigger>
-                        <TabsTrigger 
-                          value="individual-level" 
-                          className="data-[state=active]:bg-[#f9e2af] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#f9e2af]/50 text-xs sm:text-sm py-1.5 sm:py-2 px-2 sm:px-3 whitespace-nowrap"
-                        >
-                          <Star className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1 sm:mr-1.5" />
-                          <span className="hidden sm:inline">Individual Levels</span>
-                          <span className="sm:hidden">ILs</span>
-                        </TabsTrigger>
-                        <TabsTrigger 
-                          value="community-golds"
-                          className="data-[state=active]:bg-[#f9e2af] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#f9e2af]/50 text-xs sm:text-sm py-1.5 sm:py-2 px-2 sm:px-3 whitespace-nowrap"
-                        >
-                          <Gem className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1 sm:mr-1.5" />
-                          <span className="hidden sm:inline">Community Golds</span>
-                          <span className="sm:hidden">Golds</span>
-                        </TabsTrigger>
-                      </TabsList>
-                    </Tabs>
+                    <div className="grid w-full grid-cols-3 p-0.5 gap-1 bg-ctp-surface0/50 rounded-none border border-ctp-surface1">
+                      <Button
+                        variant={manualRunLeaderboardType === 'regular' ? "default" : "ghost"}
+                        onClick={() => {
+                          setManualRunLeaderboardType('regular');
+                          setManualRun(prev => ({ ...prev, category: "", level: "" }));
+                        }}
+                        className={`h-auto py-1.5 sm:py-2 px-2 sm:px-3 rounded-none transition-all duration-300 font-medium text-xs sm:text-sm whitespace-nowrap ${
+                          manualRunLeaderboardType === 'regular'
+                            ? "bg-[#f9e2af] text-[#11111b] hover:bg-[#f9e2af]/90 shadow-sm"
+                            : "bg-ctp-surface0 text-ctp-text hover:bg-ctp-surface1 hover:text-ctp-text"
+                        }`}
+                      >
+                        <Trophy className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1 sm:mr-1.5" />
+                        <span className="hidden min-[375px]:inline">Full Game</span>
+                        <span className="min-[375px]:hidden">Game</span>
+                      </Button>
+                      <Button
+                        variant={manualRunLeaderboardType === 'individual-level' ? "default" : "ghost"}
+                        onClick={() => {
+                          setManualRunLeaderboardType('individual-level');
+                          setManualRun(prev => ({ ...prev, category: "", level: "" }));
+                        }}
+                        className={`h-auto py-1.5 sm:py-2 px-2 sm:px-3 rounded-none transition-all duration-300 font-medium text-xs sm:text-sm whitespace-nowrap ${
+                          manualRunLeaderboardType === 'individual-level'
+                            ? "bg-[#f9e2af] text-[#11111b] hover:bg-[#f9e2af]/90 shadow-sm"
+                            : "bg-ctp-surface0 text-ctp-text hover:bg-ctp-surface1 hover:text-ctp-text"
+                        }`}
+                      >
+                        <Star className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1 sm:mr-1.5" />
+                        <span className="hidden sm:inline">Individual Levels</span>
+                        <span className="sm:hidden">ILs</span>
+                      </Button>
+                      <Button
+                        variant={manualRunLeaderboardType === 'community-golds' ? "default" : "ghost"}
+                        onClick={() => {
+                          setManualRunLeaderboardType('community-golds');
+                          setManualRun(prev => ({ ...prev, category: "", level: "" }));
+                        }}
+                        className={`h-auto py-1.5 sm:py-2 px-2 sm:px-3 rounded-none transition-all duration-300 font-medium text-xs sm:text-sm whitespace-nowrap ${
+                          manualRunLeaderboardType === 'community-golds'
+                            ? "bg-[#f9e2af] text-[#11111b] hover:bg-[#f9e2af]/90 shadow-sm"
+                            : "bg-ctp-surface0 text-ctp-text hover:bg-ctp-surface1 hover:text-ctp-text"
+                        }`}
+                      >
+                        <Gem className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1 sm:mr-1.5" />
+                        <span className="hidden sm:inline">Community Golds</span>
+                        <span className="sm:hidden">Golds</span>
+                      </Button>
+                    </div>
                   </div>
 
-                  {/* Category Selection - Tabs */}
+                  {/* Category Selection - Buttons */}
                   {firestoreCategories.length > 0 && (
                     <div>
                       <Label className="text-sm font-semibold mb-2 block">
@@ -3706,20 +3725,26 @@ const Admin = () => {
                          manualRunLeaderboardType === 'community-golds' ? 'Full Game Category *' : 
                          'Category *'}
                       </Label>
-                      <Tabs value={manualRun.category} onValueChange={(value) => setManualRun({ ...manualRun, category: value })}>
-                        <TabsList className="flex w-full p-0.5 gap-1 overflow-x-auto overflow-y-hidden scrollbar-hide" style={{ minWidth: 'max-content' }}>
-                          {firestoreCategories.map((category, index) => (
-                            <TabsTrigger 
-                              key={category.id} 
-                              value={category.id} 
-                              className="data-[state=active]:bg-[#94e2d5] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#94e2d5]/50 py-2 px-3 text-sm"
+                      <div className="flex w-full p-0.5 gap-1 overflow-x-auto overflow-y-hidden scrollbar-hide" style={{ minWidth: 'max-content' }}>
+                        {firestoreCategories.map((category, index) => {
+                          const isSelected = manualRun.category === category.id;
+                          return (
+                            <Button
+                              key={category.id}
+                              variant={isSelected ? "default" : "outline"}
+                              onClick={() => setManualRun({ ...manualRun, category: category.id })}
+                              className={`${
+                                isSelected
+                                  ? "bg-[#94e2d5] text-[#11111b] hover:bg-[#94e2d5]/90 border-transparent shadow-sm"
+                                  : "bg-ctp-surface0 text-ctp-text border-transparent hover:bg-ctp-surface1 hover:border-[#94e2d5]/50"
+                              } py-2 px-3 text-sm transition-all duration-300 font-medium`}
                               style={{ animationDelay: `${index * 50}ms` }}
                             >
                               {category.name}
-                            </TabsTrigger>
-                          ))}
-                        </TabsList>
-                      </Tabs>
+                            </Button>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
 
@@ -4126,23 +4151,31 @@ const Admin = () => {
                   
                   return (
                     <>
-                      {/* Tabs for Full Game vs Individual Level - Always show tabs */}
-                      <Tabs 
-                        value={importedRunsLeaderboardType} 
-                        onValueChange={(value) => {
-                          setImportedRunsLeaderboardType(value as 'regular' | 'individual-level');
-                        }} 
-                        className="mb-6"
-                      >
-                        <TabsList className="grid w-full max-w-md grid-cols-2 mb-4 bg-[hsl(240,21%,15%)]">
-                          <TabsTrigger value="regular" className="data-[state=active]:bg-[hsl(240,21%,20%)]">
-                            Full Game ({fullGameCount})
-                          </TabsTrigger>
-                          <TabsTrigger value="individual-level" className="data-[state=active]:bg-[hsl(240,21%,20%)]">
-                            Individual Levels ({ilCount})
-                          </TabsTrigger>
-                        </TabsList>
-                      </Tabs>
+                      {/* Buttons for Full Game vs Individual Level - Always show buttons */}
+                      <div className="grid w-full max-w-md grid-cols-2 mb-6 p-0.5 gap-1 bg-[hsl(240,21%,15%)] rounded-none border border-[hsl(235,13%,30%)]">
+                        <Button
+                          variant={importedRunsLeaderboardType === 'regular' ? "default" : "ghost"}
+                          onClick={() => setImportedRunsLeaderboardType('regular')}
+                          className={`${
+                            importedRunsLeaderboardType === 'regular'
+                              ? "bg-[hsl(240,21%,20%)] text-[hsl(220,17%,92%)] hover:bg-[hsl(240,21%,25%)]"
+                              : "bg-[hsl(240,21%,15%)] text-[hsl(222,15%,60%)] hover:bg-[hsl(240,21%,18%)]"
+                          } transition-all duration-200`}
+                        >
+                          Full Game ({fullGameCount})
+                        </Button>
+                        <Button
+                          variant={importedRunsLeaderboardType === 'individual-level' ? "default" : "ghost"}
+                          onClick={() => setImportedRunsLeaderboardType('individual-level')}
+                          className={`${
+                            importedRunsLeaderboardType === 'individual-level'
+                              ? "bg-[hsl(240,21%,20%)] text-[hsl(220,17%,92%)] hover:bg-[hsl(240,21%,25%)]"
+                              : "bg-[hsl(240,21%,15%)] text-[hsl(222,15%,60%)] hover:bg-[hsl(240,21%,18%)]"
+                          } transition-all duration-200`}
+                        >
+                          Individual Levels ({ilCount})
+                        </Button>
+                      </div>
                       
                       {/* Filters - Always show so users can adjust when results are empty */}
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -5227,40 +5260,59 @@ const Admin = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4">
-            <Tabs value={categoryLeaderboardType} onValueChange={(value) => {
-              setCategoryLeaderboardType(value as 'regular' | 'individual-level' | 'community-golds');
-              fetchCategories(value as 'regular' | 'individual-level' | 'community-golds');
-              // Reset subcategory selection when switching leaderboard types
-              if (value !== 'regular') {
-                setSelectedCategoryForSubcategories(null);
-                setCategoryManagementTab('categories');
-              }
-            }}>
-              <TabsList className="grid w-full grid-cols-3 rounded-lg p-0.5 gap-1 mb-4">
-                <TabsTrigger 
-                  value="regular" 
-                  className="data-[state=active]:bg-[#94e2d5] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#94e2d5]/50 py-2 px-3 text-sm"
-                >
-                  <Trophy className="h-4 w-4 mr-2" />
-                  Full Game
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="individual-level" 
-                  className="data-[state=active]:bg-[#94e2d5] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#94e2d5]/50 py-2 px-3 text-sm"
-                >
-                  <Star className="h-4 w-4 mr-2" />
-                  Individual Level
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="community-golds" 
-                  className="data-[state=active]:bg-[#94e2d5] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#94e2d5]/50 py-2 px-3 text-sm"
-                >
-                  <Gem className="h-4 w-4 mr-2" />
-                  Community Golds
-                </TabsTrigger>
-              </TabsList>
+            <div className="grid w-full grid-cols-3 p-0.5 gap-1 bg-ctp-surface0/50 rounded-none border border-ctp-surface1 mb-4">
+              <Button
+                variant={categoryLeaderboardType === 'regular' ? "default" : "ghost"}
+                onClick={() => {
+                  setCategoryLeaderboardType('regular');
+                  fetchCategories('regular');
+                }}
+                className={`${
+                  categoryLeaderboardType === 'regular'
+                    ? "bg-[#94e2d5] text-[#11111b] hover:bg-[#94e2d5]/90 shadow-sm"
+                    : "bg-ctp-surface0 text-ctp-text hover:bg-ctp-surface1 hover:text-ctp-text"
+                } py-2 px-3 text-sm transition-all duration-300 font-medium`}
+              >
+                <Trophy className="h-4 w-4 mr-2" />
+                Full Game
+              </Button>
+              <Button
+                variant={categoryLeaderboardType === 'individual-level' ? "default" : "ghost"}
+                onClick={() => {
+                  setCategoryLeaderboardType('individual-level');
+                  fetchCategories('individual-level');
+                  setSelectedCategoryForSubcategories(null);
+                  setCategoryManagementTab('categories');
+                }}
+                className={`${
+                  categoryLeaderboardType === 'individual-level'
+                    ? "bg-[#94e2d5] text-[#11111b] hover:bg-[#94e2d5]/90 shadow-sm"
+                    : "bg-ctp-surface0 text-ctp-text hover:bg-ctp-surface1 hover:text-ctp-text"
+                } py-2 px-3 text-sm transition-all duration-300 font-medium`}
+              >
+                <Star className="h-4 w-4 mr-2" />
+                Individual Level
+              </Button>
+              <Button
+                variant={categoryLeaderboardType === 'community-golds' ? "default" : "ghost"}
+                onClick={() => {
+                  setCategoryLeaderboardType('community-golds');
+                  fetchCategories('community-golds');
+                  setSelectedCategoryForSubcategories(null);
+                  setCategoryManagementTab('categories');
+                }}
+                className={`${
+                  categoryLeaderboardType === 'community-golds'
+                    ? "bg-[#94e2d5] text-[#11111b] hover:bg-[#94e2d5]/90 shadow-sm"
+                    : "bg-ctp-surface0 text-ctp-text hover:bg-ctp-surface1 hover:text-ctp-text"
+                } py-2 px-3 text-sm transition-all duration-300 font-medium`}
+              >
+                <Gem className="h-4 w-4 mr-2" />
+                Community Golds
+              </Button>
+            </div>
 
-              <TabsContent value={categoryLeaderboardType} className="mt-0">
+            <div className="mt-0">
                 {/* Inner tabs for Categories vs Subcategories (only show subcategories for regular) */}
                 {categoryLeaderboardType === 'regular' ? (
                   <Tabs value={categoryManagementTab} onValueChange={(value) => setCategoryManagementTab(value as 'categories' | 'subcategories')} className="mb-4">
@@ -5862,8 +5914,7 @@ const Admin = () => {
                     </div>
                   </div>
                 )}
-              </TabsContent>
-            </Tabs>
+            </div>
           </CardContent>
         </Card>
           </TabsContent>
@@ -5879,27 +5930,34 @@ const Admin = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-4">
-                <Tabs value={levelLeaderboardType} onValueChange={(value) => {
-                  setLevelLeaderboardType(value as 'individual-level' | 'community-golds');
-                }}>
-                  <TabsList className="grid w-full grid-cols-2 rounded-lg p-0.5 gap-1 mb-4">
-                    <TabsTrigger 
-                      value="individual-level" 
-                      className="data-[state=active]:bg-[#94e2d5] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#94e2d5]/50 py-2 px-3 text-sm"
-                    >
-                      <Star className="h-4 w-4 mr-2" />
-                      Individual Level
-                    </TabsTrigger>
-                    <TabsTrigger 
-                      value="community-golds" 
-                      className="data-[state=active]:bg-[#94e2d5] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#94e2d5]/50 py-2 px-3 text-sm"
-                    >
-                      <Gem className="h-4 w-4 mr-2" />
-                      Community Golds
-                    </TabsTrigger>
-                  </TabsList>
+                <div className="grid w-full grid-cols-2 p-0.5 gap-1 bg-ctp-surface0/50 rounded-none border border-ctp-surface1 mb-4">
+                  <Button
+                    variant={levelLeaderboardType === 'individual-level' ? "default" : "ghost"}
+                    onClick={() => setLevelLeaderboardType('individual-level')}
+                    className={`${
+                      levelLeaderboardType === 'individual-level'
+                        ? "bg-[#94e2d5] text-[#11111b] hover:bg-[#94e2d5]/90 shadow-sm"
+                        : "bg-ctp-surface0 text-ctp-text hover:bg-ctp-surface1 hover:text-ctp-text"
+                    } py-2 px-3 text-sm transition-all duration-300 font-medium`}
+                  >
+                    <Star className="h-4 w-4 mr-2" />
+                    Individual Level
+                  </Button>
+                  <Button
+                    variant={levelLeaderboardType === 'community-golds' ? "default" : "ghost"}
+                    onClick={() => setLevelLeaderboardType('community-golds')}
+                    className={`${
+                      levelLeaderboardType === 'community-golds'
+                        ? "bg-[#94e2d5] text-[#11111b] hover:bg-[#94e2d5]/90 shadow-sm"
+                        : "bg-ctp-surface0 text-ctp-text hover:bg-ctp-surface1 hover:text-ctp-text"
+                    } py-2 px-3 text-sm transition-all duration-300 font-medium`}
+                  >
+                    <Gem className="h-4 w-4 mr-2" />
+                    Community Golds
+                  </Button>
+                </div>
 
-                  <TabsContent value={levelLeaderboardType} className="mt-0">
+                <div className="mt-0">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                       <div>
                         <h3 className="text-base font-semibold mb-3">Add New Level</h3>
