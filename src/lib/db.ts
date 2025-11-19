@@ -291,8 +291,8 @@ export const moveDownloadDown = moveDownloadDownFirestore;
 export const getCategoriesFromFirestore = async (leaderboardType?: 'regular' | 'individual-level' | 'community-golds'): Promise<Category[]> => {
   return getCategoriesFirestore(leaderboardType);
 };
-export const addCategory = async (name: string, leaderboardType?: 'regular' | 'individual-level' | 'community-golds'): Promise<string | null> => {
-  return addCategoryFirestore(name, leaderboardType);
+export const addCategory = async (name: string, leaderboardType?: 'regular' | 'individual-level' | 'community-golds', srcCategoryId?: string): Promise<string | null> => {
+  return addCategoryFirestore(name, leaderboardType, srcCategoryId);
 };
 export const updateCategory = async (id: string, name: string, subcategories?: Array<{ id: string; name: string; order?: number; srcVariableId?: string; srcValueId?: string }>, srcCategoryId?: string | null, srcSubcategoryVariableName?: string | null): Promise<boolean> => {
   return updateCategoryFirestore(id, name, subcategories, srcCategoryId, srcSubcategoryVariableName);
@@ -351,6 +351,10 @@ export const updatePlayer = updatePlayerFirestore;
 export const deletePlayer = deletePlayerFirestore;
 export const getPlayersWithSRCUsernames = getPlayersWithSRCUsernamesFirestore;
 export const runAutoclaimingForAllUsers = runAutoclaimingForAllUsersFirestore;
+export const syncCategoriesFromSRC = async () => {
+  const { syncCategoriesFromSRC } = await import("./speedruncom/importService");
+  return syncCategoriesFromSRC();
+};
 
 export const getPointsConfig = getPointsConfigFirestore;
 export const updatePointsConfig = updatePointsConfigFirestore;

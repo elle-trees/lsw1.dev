@@ -36,7 +36,11 @@ export const getCategoriesFirestore = async (leaderboardType?: 'regular' | 'indi
   }
 };
 
-export const addCategoryFirestore = async (name: string, leaderboardType: 'regular' | 'individual-level' | 'community-golds' = 'regular'): Promise<string | null> => {
+export const addCategoryFirestore = async (
+  name: string, 
+  leaderboardType: 'regular' | 'individual-level' | 'community-golds' = 'regular',
+  srcCategoryId?: string
+): Promise<string | null> => {
   if (!db) return null;
   try {
     const newDocRef = doc(collection(db, "categories")).withConverter(categoryConverter);
@@ -47,7 +51,8 @@ export const addCategoryFirestore = async (name: string, leaderboardType: 'regul
       id: newDocRef.id,
       name,
       order,
-      leaderboardType
+      leaderboardType,
+      srcCategoryId
     };
     
     await setDoc(newDocRef, newCategory);

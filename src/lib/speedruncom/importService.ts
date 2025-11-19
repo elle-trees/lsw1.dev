@@ -798,3 +798,59 @@ export async function importSRCRuns(
     return result;
   }
 }
+
+/**
+ * Sync categories from Speedrun.com
+ * Fetches all categories from SRC and creates them locally if they don't exist
+ */
+export async function syncCategoriesFromSRC(): Promise<{ created: number; errors: string[] }> {
+  const result = { created: 0, errors: [] as string[] };
+  
+  try {
+    const gameId = await getLSWGameId();
+    if (!gameId) {
+      result.errors.push("Could not find LEGO Star Wars game on speedrun.com");
+      return result;
+    }
+    
+    const [srcCategories, localCategories] = await Promise.all([
+      fetchSRCCategories(gameId),
+      getCategoriesFromFirestore()
+    ]);
+    
+    if (!Array.isArray(srcCategories)) {
+      result.errors.push("Failed to fetch categories from Speedrun.com");
+      return result;
+    }
+    
+    const { addCategory } = await import("../db");
+    
+    for (const srcCat of srcCategories) {
+      if (!srcCat.id || !srcCat.name) continue;
+      
+      // Check if category exists locally (by srcCategoryId or name)
+      const exists = localCategories.some(c => 
+        (c as any).srcCategoryId === srcCat.id || 
+        c.name.toLowerCase().trim() === srcCat.name.toLowerCase().trim()
+      );
+      
+      if (!exists) {
+        try {
+          // Determine leaderboard type
+          const leaderboardType = srcCat.type === 'per-level' ? 'individual-level' : 'regular';
+          
+          // Create category
+          await addCategory(srcCat.name, leaderboardType, srcCat.id);
+          result.created++;
+        } catch (error) {
+          result.errors.push(`Failed to create category "${srcCat.name}": ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
+    }
+    
+    return result;
+  } catch (error) {
+    result.errors.push(`Unexpected error syncing categories: ${error instanceof Error ? error.message : String(error)}`);
+    return result;
+  }
+}
