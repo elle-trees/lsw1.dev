@@ -236,18 +236,6 @@ const Leaderboards = () => {
   return (
     <FadeIn className="min-h-screen bg-[#1e1e2e] text-ctp-text py-4 sm:py-6 overflow-x-hidden">
       <div className="max-w-[1920px] mx-auto px-2 sm:px-4 lg:px-6 w-full">
-        <div className="text-center mb-6 animate-slide-up">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <Trophy className="h-6 w-6 text-[#a6e3a1]" />
-            <h1 className="text-3xl md:text-4xl font-bold text-[#a6e3a1]">
-              Leaderboards
-            </h1>
-          </div>
-          <p className="text-base text-ctp-subtext1 max-w-3xl mx-auto leading-relaxed">
-            Browse the fastest times across all categories and platforms
-          </p>
-        </div>
-
         {/* Leaderboard Type Buttons */}
         <div className="grid grid-cols-3 mb-6 p-0.5 gap-1 bg-ctp-surface0/50 rounded-none border border-ctp-surface1 animate-slide-up" style={{ animationDelay: '0.1s' }}>
           <Button
