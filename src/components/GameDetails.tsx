@@ -418,46 +418,48 @@ export function GameDetails({ className }: GameDetailsProps) {
                 )}
 
                 {/* Main Content */}
-                <div className="flex-1 min-w-0 flex flex-col justify-center">
-                  {/* Title and Categories */}
-                  <div className="mb-1.5">
-                    <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-ctp-text mb-1.5">
-                      {config.title}
-                      {config.subtitle && (
-                        <span className="text-ctp-subtext1 font-normal text-sm sm:text-base"> ({config.subtitle})</span>
+                <div className="flex-1 min-w-0 flex flex-col justify-between">
+                  <div>
+                    {/* Title and Categories */}
+                    <div className="mb-1.5">
+                      <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-ctp-text mb-1.5">
+                        {config.title}
+                        {config.subtitle && (
+                          <span className="text-ctp-subtext1 font-normal text-sm sm:text-base"> ({config.subtitle})</span>
+                        )}
+                      </h1>
+                      {config.categories.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mb-1.5">
+                          {config.categories.map((category, index) => (
+                            <Badge
+                              key={index}
+                              variant="outline"
+                              className="bg-ctp-surface0 text-ctp-text border-ctp-surface1 text-xs sm:text-sm px-2 py-1"
+                            >
+                              {category}
+                            </Badge>
+                          ))}
+                        </div>
                       )}
-                    </h1>
-                    {config.categories.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mb-1.5">
-                        {config.categories.map((category, index) => (
-                          <Badge
-                            key={index}
-                            variant="outline"
-                            className="bg-ctp-surface0 text-ctp-text border-ctp-surface1 text-xs sm:text-sm px-2 py-1"
-                          >
-                            {category}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                    </div>
 
-                  {/* Platform Buttons */}
-                  <div className="flex flex-wrap gap-1.5 mb-1.5">
-                    {sortedPlatforms.map((platform) => (
-                      <Button
-                        key={platform.id}
-                        variant="outline"
-                        className="bg-ctp-surface0 text-ctp-text border-ctp-surface1 hover:bg-ctp-surface1 hover:border-ctp-mauve/50 rounded-none text-xs sm:text-sm px-2.5 py-1 h-auto"
-                      >
-                        {platform.label}
-                      </Button>
-                    ))}
+                    {/* Platform Buttons */}
+                    <div className="flex flex-wrap gap-1.5">
+                      {sortedPlatforms.map((platform) => (
+                        <Button
+                          key={platform.id}
+                          variant="outline"
+                          className="bg-ctp-surface0 text-ctp-text border-ctp-surface1 hover:bg-ctp-surface1 hover:border-ctp-mauve/50 rounded-none text-xs sm:text-sm px-2.5 py-1 h-auto"
+                        >
+                          {platform.label}
+                        </Button>
+                      ))}
+                    </div>
                   </div>
 
                   {/* Header Navigation Links */}
                   {sortedHeaderLinks.length > 0 && (
-                    <nav className="flex flex-wrap gap-2 sm:gap-3 lg:gap-4">
+                    <nav className="flex flex-wrap gap-2 sm:gap-3 lg:gap-4 mt-auto">
                       {sortedHeaderLinks.map((link) => {
                         const IconComponent = link.icon === "LegoStud" 
                           ? LegoStudIcon 
