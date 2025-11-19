@@ -471,38 +471,40 @@ export function GameDetails({ className }: GameDetailsProps) {
                           (link.route !== "/" && location.pathname.startsWith(link.route));
 
                         return (
-                          <Button
+                          <Link
                             key={link.id}
-                            variant={isActive ? "default" : "outline"}
-                            asChild
-                            className={`relative flex items-center gap-1 transition-all duration-300 text-xs sm:text-sm px-2 py-1 h-auto ${
-                              isActive 
-                                ? "bg-ctp-surface1 border-ctp-surface1" 
-                                : "bg-ctp-surface0 border-ctp-surface1 hover:bg-ctp-surface1"
-                            }`}
-                            style={isActive ? { 
-                              borderColor: linkColor,
-                              color: linkColor 
-                            } : {}}
+                            to={link.route}
+                            className="relative flex items-center gap-1 transition-all duration-300 group text-sm"
+                            style={{ color: linkColor }}
                           >
-                            <Link to={link.route}>
-                              {IconComponent && (
-                                link.icon === "LegoStud" ? (
-                                  <LegoStudIcon 
-                                    size={14} 
-                                    color={isActive ? linkColor : undefined}
-                                    className="transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12"
-                                  />
-                                ) : (
-                                  <IconComponent 
-                                    className="h-3.5 w-3.5 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12"
-                                    style={{ color: isActive ? linkColor : undefined }}
-                                  />
-                                )
-                              )}
+                            {IconComponent && (
+                              link.icon === "LegoStud" ? (
+                                <LegoStudIcon 
+                                  size={16} 
+                                  color={linkColor}
+                                  className="transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12"
+                                />
+                              ) : (
+                                <IconComponent 
+                                  className="h-4 w-4 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12"
+                                  style={{ color: linkColor }}
+                                />
+                              )
+                            )}
+                            <span className="relative">
                               {link.label}
-                            </Link>
-                          </Button>
+                              <span 
+                                className="absolute -bottom-1 left-0 w-0 h-0.5 transition-all duration-300 group-hover:w-full"
+                                style={{ backgroundColor: linkColor }}
+                              ></span>
+                            </span>
+                            {isActive && (
+                              <span 
+                                className="absolute -bottom-1 left-0 w-full h-0.5"
+                                style={{ backgroundColor: linkColor }}
+                              ></span>
+                            )}
+                          </Link>
                         );
                       })}
                     </nav>
