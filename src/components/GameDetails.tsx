@@ -405,7 +405,7 @@ export function GameDetails({ className }: GameDetailsProps) {
           {/* Game Details Section - Left Side */}
           <div className="flex items-start gap-2 sm:gap-4 lg:gap-5 min-w-0 flex-shrink flex-1">
             {isVisible ? (
-              <div className="flex items-start gap-2 sm:gap-4 lg:gap-5 min-w-0 flex-shrink flex-1">
+              <div className="flex items-end gap-2 sm:gap-4 lg:gap-5 min-w-0 flex-shrink flex-1">
                 {/* Game Cover Image */}
                 {config.coverImageUrl && (
                   <div className="flex-shrink-0">
@@ -418,8 +418,8 @@ export function GameDetails({ className }: GameDetailsProps) {
                 )}
 
                 {/* Main Content */}
-                <div className="flex-1 min-w-0 flex flex-col justify-between">
-                  <div>
+                <div className="flex-1 min-w-0 flex flex-col h-28 sm:h-32">
+                  <div className="flex-1">
                     {/* Title and Categories */}
                     <div className="mb-1.5">
                       <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-ctp-text mb-1.5">
@@ -459,7 +459,7 @@ export function GameDetails({ className }: GameDetailsProps) {
 
                   {/* Header Navigation Links */}
                   {sortedHeaderLinks.length > 0 && (
-                    <nav className="flex flex-wrap gap-2 sm:gap-3 lg:gap-4 mt-auto">
+                    <nav className="flex flex-wrap gap-2 sm:gap-3 lg:gap-4">
                       {sortedHeaderLinks.map((link) => {
                         const IconComponent = link.icon === "LegoStud" 
                           ? LegoStudIcon 
