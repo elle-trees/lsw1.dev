@@ -69,7 +69,26 @@ export function GameDetails({ className }: GameDetailsProps) {
   });
 
   // Sort header links by order and filter by admin status
-  const sortedHeaderLinks = [...(config.headerLinks || [])]
+  // Also ensure admin link is always present for admins
+  let headerLinks = [...(config.headerLinks || [])];
+  
+  // If user is admin, ensure admin link exists
+  if (currentUser?.isAdmin) {
+    const hasAdminLink = headerLinks.some(link => link.route === "/admin");
+    if (!hasAdminLink) {
+      headerLinks.push({
+        id: "admin",
+        label: "Admin",
+        route: "/admin",
+        icon: "ShieldAlert",
+        color: "#f2cdcd",
+        order: 999, // Put it at the end if not configured
+        adminOnly: true,
+      });
+    }
+  }
+  
+  const sortedHeaderLinks = headerLinks
     .filter(link => !link.adminOnly || currentUser?.isAdmin)
     .sort((a, b) => {
       const orderA = a.order ?? Infinity;
