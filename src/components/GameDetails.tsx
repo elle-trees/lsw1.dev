@@ -401,18 +401,18 @@ export function GameDetails({ className }: GameDetailsProps) {
   return (
     <>
       <header className="bg-[#1e1e2e] shadow-lg sticky top-0 z-40 w-full overflow-x-hidden">
-        <div className="flex items-start justify-between px-2 sm:px-4 min-w-0 w-full py-2">
+        <div className="flex items-start justify-between px-2 sm:px-4 min-w-0 w-full py-3">
           {/* Game Details Section - Left Side */}
-          <div className="flex items-start gap-2 sm:gap-3 lg:gap-4 min-w-0 flex-shrink flex-1">
+          <div className="flex items-start gap-2 sm:gap-4 lg:gap-5 min-w-0 flex-shrink flex-1">
             {isVisible ? (
-              <div className="flex items-start gap-2 sm:gap-3 lg:gap-4 min-w-0 flex-shrink flex-1">
+              <div className="flex items-start gap-2 sm:gap-4 lg:gap-5 min-w-0 flex-shrink flex-1">
                 {/* Game Cover Image */}
                 {config.coverImageUrl && (
                   <div className="flex-shrink-0">
                     <img
                       src={config.coverImageUrl}
                       alt={config.title}
-                      className="w-16 h-20 sm:w-20 sm:h-24 object-cover rounded-none border border-ctp-surface1"
+                      className="w-20 h-28 sm:w-24 sm:h-32 object-cover rounded-none border border-ctp-surface1"
                     />
                   </div>
                 )}
@@ -420,20 +420,20 @@ export function GameDetails({ className }: GameDetailsProps) {
                 {/* Main Content */}
                 <div className="flex-1 min-w-0 flex flex-col justify-center">
                   {/* Title and Categories */}
-                  <div className="mb-1">
-                    <h1 className="text-base sm:text-lg md:text-xl font-bold text-ctp-text mb-1">
+                  <div className="mb-1.5">
+                    <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-ctp-text mb-1.5">
                       {config.title}
                       {config.subtitle && (
-                        <span className="text-ctp-subtext1 font-normal text-sm"> ({config.subtitle})</span>
+                        <span className="text-ctp-subtext1 font-normal text-sm sm:text-base"> ({config.subtitle})</span>
                       )}
                     </h1>
                     {config.categories.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mb-1">
+                      <div className="flex flex-wrap gap-1.5 mb-1.5">
                         {config.categories.map((category, index) => (
                           <Badge
                             key={index}
                             variant="outline"
-                            className="bg-ctp-surface0 text-ctp-text border-ctp-surface1 text-xs px-1.5 py-0.5"
+                            className="bg-ctp-surface0 text-ctp-text border-ctp-surface1 text-xs sm:text-sm px-2 py-1"
                           >
                             {category}
                           </Badge>
@@ -443,12 +443,12 @@ export function GameDetails({ className }: GameDetailsProps) {
                   </div>
 
                   {/* Platform Buttons */}
-                  <div className="flex flex-wrap gap-1 mb-1">
+                  <div className="flex flex-wrap gap-1.5 mb-1.5">
                     {sortedPlatforms.map((platform) => (
                       <Button
                         key={platform.id}
                         variant="outline"
-                        className="bg-ctp-surface0 text-ctp-text border-ctp-surface1 hover:bg-ctp-surface1 hover:border-ctp-mauve/50 rounded-none text-xs px-2 py-0.5 h-auto"
+                        className="bg-ctp-surface0 text-ctp-text border-ctp-surface1 hover:bg-ctp-surface1 hover:border-ctp-mauve/50 rounded-none text-xs sm:text-sm px-2.5 py-1 h-auto"
                       >
                         {platform.label}
                       </Button>
