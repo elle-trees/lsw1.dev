@@ -88,7 +88,7 @@ export const VideoEmbed: React.FC<VideoEmbedProps> = ({ url, title }) => {
           allowFullScreen
           className="absolute top-0 left-0 w-full h-full"
           title={title || "Video Embed"}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
         ></iframe>
       </div>
     </div>

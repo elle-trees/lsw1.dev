@@ -21,6 +21,7 @@ const TwitchEmbed: React.FC<TwitchEmbedProps> = ({ channel }) => {
           height="100%"
           width="100%"
           allowFullScreen
+          allow="fullscreen"
           className="absolute top-0 left-0 w-full h-full"
           title={`${channel} Twitch Stream`}
         ></iframe>
