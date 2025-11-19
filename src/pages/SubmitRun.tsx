@@ -12,6 +12,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
 import { addLeaderboardEntry, getCategories, getCategoriesFromFirestore, getPlatforms, runTypes, getPlayerByDisplayName, getLevels } from "@/lib/db";
+import { Category } from "@/types/database";
 import { useNavigate } from "react-router-dom";
 
 const SubmitRun = () => {
@@ -19,7 +20,7 @@ const SubmitRun = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   
-  const [availableCategories, setAvailableCategories] = useState<{ id: string; name: string }[]>([]);
+  const [availableCategories, setAvailableCategories] = useState<Category[]>([]);
   const [availableLevels, setAvailableLevels] = useState<{ id: string; name: string }[]>([]);
   const [availablePlatforms, setAvailablePlatforms] = useState<{ id: string; name: string }[]>([]);
   const [availableSubcategories, setAvailableSubcategories] = useState<Array<{ id: string; name: string }>>([]);
@@ -459,7 +460,7 @@ const SubmitRun = () => {
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
+                  <div className="animate-fade-in">
                     <Label htmlFor="playerName" className="text-sm font-semibold mb-1.5">Player 1 Name *</Label>
                     <Input
                       id="playerName"
@@ -471,7 +472,7 @@ const SubmitRun = () => {
                       className="bg-gradient-to-br from-[hsl(240,21%,18%)] to-[hsl(240,21%,16%)] border-[hsl(235,13%,30%)] h-10 text-sm hover:border-[#cba6f7] hover:bg-gradient-to-br hover:from-[hsl(240,21%,20%)] hover:to-[hsl(240,21%,18%)] transition-all duration-300"
                     />
                   </div>
-                  <div>
+                  <div className="animate-fade-in" style={{ animationDelay: '50ms' }}>
                     <Label htmlFor="time" className="text-sm font-semibold mb-1.5">Completion Time *</Label>
                     <div className="relative">
                       <Timer className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-[hsl(222,15%,60%)]" />
@@ -488,7 +489,7 @@ const SubmitRun = () => {
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
+                  <div className="animate-fade-in" style={{ animationDelay: '100ms' }}>
                     <Label htmlFor="date" className="text-sm font-semibold mb-1.5">Run Date *</Label>
                     <div className="relative">
                       <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-[hsl(222,15%,60%)]" />
@@ -533,7 +534,7 @@ const SubmitRun = () => {
                   </div>
                 </div>
                 {formData.runType === 'co-op' && (
-                  <div>
+                  <div className="animate-fade-in">
                     <Label htmlFor="player2Name" className="text-sm font-semibold mb-1.5">Player 2 Name *</Label>
                     <Input
                       id="player2Name"
@@ -587,7 +588,7 @@ const SubmitRun = () => {
                             type="button"
                             variant={isSelected ? "default" : "outline"}
                             onClick={() => handleSelectChange("category", category.id)}
-                            className={`button-click-animation whitespace-nowrap px-4 py-2 h-9 text-sm font-medium transition-all duration-200 ${
+                            className={`button-click-animation category-button-animate whitespace-nowrap px-4 py-2 h-9 text-sm font-medium transition-all duration-200 ${
                               isSelected 
                                 ? "bg-[#94e2d5] text-[#11111b] hover:bg-[#94e2d5]/90 border-transparent shadow-sm" 
                                 : "bg-ctp-surface0 text-ctp-text border-ctp-surface1 hover:bg-ctp-surface1 hover:text-ctp-text hover:border-[#94e2d5]/50"
@@ -613,18 +614,35 @@ const SubmitRun = () => {
                 ) : null}
 
                 {/* Subcategory Selection (only for regular leaderboard type) */}
-                {leaderboardType === 'regular' && (
-                  <div>
-                    {loadingSubcategories ? (
-                      <div className="animate-fade-in">
-                        <Skeleton className="h-5 w-32 mb-2" />
-                        <div className="flex gap-2 overflow-x-auto">
-                          <Skeleton className="h-9 w-28 flex-shrink-0" />
-                          <Skeleton className="h-9 w-28 flex-shrink-0" />
-                          <Skeleton className="h-9 w-28 flex-shrink-0" />
+                {leaderboardType === 'regular' && (() => {
+                  // Check if the selected category has subcategories
+                  const selectedCategoryData = availableCategories.find(c => c.id === formData.category);
+                  const hasSubcategories = selectedCategoryData?.subcategories && selectedCategoryData.subcategories.length > 0;
+                  
+                  // Only show loading if we're loading AND the category has subcategories (or we don't know yet)
+                  // Don't show loading if we know the category has no subcategories
+                  if (loadingSubcategories) {
+                    // Only show loading skeleton if category data is available and has subcategories,
+                    // or if category data isn't loaded yet (we don't know if it has subcategories)
+                    if (!selectedCategoryData || hasSubcategories) {
+                      return (
+                        <div className="animate-fade-in">
+                          <Skeleton className="h-5 w-32 mb-2" />
+                          <div className="flex gap-2 overflow-x-auto">
+                            <Skeleton className="h-9 w-28 flex-shrink-0" />
+                            <Skeleton className="h-9 w-28 flex-shrink-0" />
+                            <Skeleton className="h-9 w-28 flex-shrink-0" />
+                          </div>
                         </div>
-                      </div>
-                    ) : availableSubcategories.length > 0 ? (
+                      );
+                    }
+                    // Category has no subcategories, don't show loading
+                    return null;
+                  }
+                  
+                  // Show subcategories if available
+                  if (availableSubcategories.length > 0) {
+                    return (
                       <div className="animate-fade-in">
                         <Label className="text-sm font-semibold mb-2 block flex items-center gap-2">
                           <Trophy className="h-3.5 w-3.5 text-[#cba6f7]" />
@@ -639,7 +657,7 @@ const SubmitRun = () => {
                                 type="button"
                                 variant={isSelected ? "default" : "outline"}
                                 onClick={() => handleSelectChange("subcategory", subcategory.id)}
-                                className={`button-click-animation whitespace-nowrap px-4 py-2 h-8 text-xs sm:text-sm font-medium transition-all duration-200 ${
+                                className={`button-click-animation category-button-animate whitespace-nowrap px-4 py-2 h-8 text-xs sm:text-sm font-medium transition-all duration-200 ${
                                   isSelected 
                                     ? "bg-[#cba6f7] text-[#11111b] hover:bg-[#cba6f7]/90 border-transparent shadow-sm" 
                                     : "bg-ctp-surface0 text-ctp-text border-ctp-surface1 hover:bg-ctp-surface1 hover:text-ctp-text hover:border-[#cba6f7]/50"
@@ -655,9 +673,12 @@ const SubmitRun = () => {
                           Select a subcategory for this run (e.g., Glitchless, No Major Glitches)
                         </p>
                       </div>
-                    ) : null}
-                  </div>
-                )}
+                    );
+                  }
+                  
+                  // Don't render anything if no subcategories
+                  return null;
+                })()}
 
                 {/* Level Selection for ILs and Community Golds */}
                 {(leaderboardType === 'individual-level' || leaderboardType === 'community-golds') && (
@@ -725,7 +746,7 @@ const SubmitRun = () => {
                   </div>
                 </div>
 
-                <div>
+                <div className="animate-fade-in" style={{ animationDelay: '150ms' }}>
                   {(() => {
                     const selectedCategory = availableCategories.find(c => c.id === formData.category);
                     const categoryName = selectedCategory?.name || "";
@@ -760,7 +781,7 @@ const SubmitRun = () => {
                   })()}
                 </div>
 
-                <div>
+                <div className="animate-fade-in" style={{ animationDelay: '200ms' }}>
                   <Label htmlFor="comment" className="text-sm font-semibold mb-1.5">Run Comment</Label>
                   <Textarea
                     id="comment"
@@ -776,7 +797,7 @@ const SubmitRun = () => {
                   </p>
                 </div>
 
-                <div>
+                <div className="animate-fade-in" style={{ animationDelay: '250ms' }}>
                   <Label htmlFor="srcLink" className="text-sm font-semibold mb-1.5">Speedrun.com Link (Optional)</Label>
                   <Input
                     id="srcLink"
@@ -791,7 +812,7 @@ const SubmitRun = () => {
                   </p>
                 </div>
 
-                <div className="pt-2">
+                <div className="pt-2 animate-fade-in" style={{ animationDelay: '300ms' }}>
                   <Button 
                     type="submit" 
                     disabled={loading}
