@@ -1,3 +1,4 @@
+import { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -5,20 +6,23 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Analytics } from "@vercel/analytics/react";
 import { Header } from "@/components/Header";
-import Index from "./pages/Index";
-import Leaderboards from "./pages/Leaderboards";
-import PointsLeaderboard from "./pages/PointsLeaderboard";
-import SubmitRun from "./pages/SubmitRun";
-import PlayerDetails from "./pages/PlayerDetails";
-import RunDetails from "./pages/RunDetails";
-import UserSettings from "./pages/UserSettings";
-import Admin from "./pages/Admin";
-import Live from "./pages/Live";
-import Downloads from "./pages/Downloads";
-import Stats from "./pages/Stats";
-import NotFound from "./pages/NotFound";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { AuthProvider } from "@/components/AuthProvider";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+
+// Lazy load pages for code splitting - reduces initial bundle size
+const Index = lazy(() => import("./pages/Index"));
+const Leaderboards = lazy(() => import("./pages/Leaderboards"));
+const PointsLeaderboard = lazy(() => import("./pages/PointsLeaderboard"));
+const SubmitRun = lazy(() => import("./pages/SubmitRun"));
+const PlayerDetails = lazy(() => import("./pages/PlayerDetails"));
+const RunDetails = lazy(() => import("./pages/RunDetails"));
+const UserSettings = lazy(() => import("./pages/UserSettings"));
+const Admin = lazy(() => import("./pages/Admin"));
+const Live = lazy(() => import("./pages/Live"));
+const Downloads = lazy(() => import("./pages/Downloads"));
+const Stats = lazy(() => import("./pages/Stats"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -46,20 +50,28 @@ const App = () => (
             <div className="flex flex-col min-h-screen">
               <Header />
               <main className="flex-grow">
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/leaderboards" element={<Leaderboards />} />
-                  <Route path="/points" element={<PointsLeaderboard />} />
-                  <Route path="/submit" element={<SubmitRun />} />
-                  <Route path="/player/:playerId" element={<PlayerDetails />} />
-                  <Route path="/run/:runId" element={<RunDetails />} />
-                  <Route path="/settings" element={<UserSettings />} />
-                  <Route path="/admin" element={<Admin />} />
-                  <Route path="/live" element={<Live />} />
-                  <Route path="/downloads" element={<Downloads />} />
-                  <Route path="/stats" element={<Stats />} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
+                <Suspense
+                  fallback={
+                    <div className="flex items-center justify-center min-h-[60vh]">
+                      <LoadingSpinner />
+                    </div>
+                  }
+                >
+                  <Routes>
+                    <Route path="/" element={<Index />} />
+                    <Route path="/leaderboards" element={<Leaderboards />} />
+                    <Route path="/points" element={<PointsLeaderboard />} />
+                    <Route path="/submit" element={<SubmitRun />} />
+                    <Route path="/player/:playerId" element={<PlayerDetails />} />
+                    <Route path="/run/:runId" element={<RunDetails />} />
+                    <Route path="/settings" element={<UserSettings />} />
+                    <Route path="/admin" element={<Admin />} />
+                    <Route path="/live" element={<Live />} />
+                    <Route path="/downloads" element={<Downloads />} />
+                    <Route path="/stats" element={<Stats />} />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </Suspense>
               </main>
             </div>
           </BrowserRouter>
