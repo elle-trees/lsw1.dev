@@ -266,7 +266,7 @@ const PlayerDetails = () => {
   return (
     <div className="min-h-screen text-ctp-text py-8 overflow-x-hidden relative">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 w-full">
-        <div className="mb-6 animate-fade-in">
+        <div className="mb-8 mt-4 animate-fade-in">
           <Button variant="outline" className="text-ctp-text border-ctp-surface1/50 bg-glass hover:bg-ctp-surface0/50 hover:border-ctp-mauve/50 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-ctp-mauve/20 rounded-none backdrop-blur-sm" asChild>
             <Link to="/leaderboards">
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -474,7 +474,7 @@ const PlayerDetails = () => {
                   // Category buttons
                   const categoryButtons = categoriesWithRuns.length > 0 ? (
                     <div className="mb-4">
-                      <div className="flex w-full p-0.5 gap-1 overflow-x-auto overflow-y-hidden scrollbar-hide rounded-none" style={{ minWidth: 'max-content' }}>
+                      <div className="flex w-full p-1 gap-2 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-ctp-surface1 scrollbar-track-transparent pb-3" style={{ minWidth: 'max-content' }}>
                         {categoriesWithRuns.map((category) => {
                           const isSelected = selectedCategory === category.id;
                           return (
@@ -482,11 +482,11 @@ const PlayerDetails = () => {
                               key={category.id}
                               variant={isSelected ? "default" : "outline"}
                               onClick={() => setSelectedCategory(category.id)}
-                              className={`${
+                              className={`button-click-animation whitespace-nowrap px-4 py-2 h-9 text-sm font-medium transition-all duration-200 ${
                                 isSelected
                                   ? "bg-[#94e2d5] text-[#11111b] hover:bg-[#94e2d5]/90 border-transparent shadow-sm"
-                                  : "bg-ctp-surface0 text-ctp-text border-transparent hover:bg-ctp-surface1 hover:border-[#94e2d5]/50"
-                              } py-1.5 sm:py-2 px-2 sm:px-3 text-xs sm:text-sm whitespace-nowrap rounded-none transition-colors font-medium`}
+                                  : "bg-ctp-surface0 text-ctp-text border-ctp-surface1 hover:bg-ctp-surface1 hover:text-ctp-text hover:border-[#94e2d5]/50"
+                              }`}
                             >
                               {category.name}
                             </Button>
@@ -498,8 +498,8 @@ const PlayerDetails = () => {
                   
                   // Subcategory buttons (only for regular leaderboard type)
                   const subcategoryButtons = leaderboardType === 'regular' && availableSubcategories.length > 0 ? (
-                    <div className="mb-4">
-                      <div className="flex w-full p-0.5 gap-1 overflow-x-auto overflow-y-hidden scrollbar-hide rounded-none" style={{ minWidth: 'max-content' }}>
+                    <div className="mb-6">
+                      <div className="flex w-full p-1 gap-2 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-ctp-surface1 scrollbar-track-transparent pb-3" style={{ minWidth: 'max-content' }}>
                         {availableSubcategories.map((subcategory) => {
                           const isSelected = selectedSubcategory === subcategory.id;
                           return (
@@ -507,11 +507,11 @@ const PlayerDetails = () => {
                               key={subcategory.id}
                               variant={isSelected ? "default" : "outline"}
                               onClick={() => setSelectedSubcategory(subcategory.id)}
-                              className={`${
+                              className={`button-click-animation whitespace-nowrap px-4 py-2 h-8 text-xs sm:text-sm font-medium transition-all duration-200 ${
                                 isSelected
                                   ? "bg-[#cba6f7] text-[#11111b] hover:bg-[#cba6f7]/90 border-transparent shadow-sm"
-                                  : "bg-ctp-surface0 text-ctp-text border-transparent hover:bg-ctp-surface1 hover:border-[#cba6f7]/50"
-                              } py-1.5 sm:py-2 px-2 sm:px-3 text-xs sm:text-sm whitespace-nowrap rounded-none transition-colors font-medium`}
+                                  : "bg-ctp-surface0 text-ctp-text border-ctp-surface1 hover:bg-ctp-surface1 hover:text-ctp-text hover:border-[#cba6f7]/50"
+                              }`}
                             >
                               {subcategory.name}
                             </Button>

@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { User, Users, Trophy, Sparkles, TrendingUp, Gamepad2 } from "lucide-react";
 import { LeaderboardEntry } from "@/types/database";
 import { getCategories, getPlatforms } from "@/lib/db";
@@ -162,7 +163,43 @@ export function RecentRuns({ runs, loading, showRankBadge = true, maxRuns }: Rec
       </CardHeader>
       <CardContent ref={containerRef} className="p-6 sm:p-8 flex-1 overflow-hidden">
         {loading ? (
-          <div className="py-12" />
+          <div className="space-y-5">
+            {[...Array(5)].map((_, index) => (
+              <div
+                key={index}
+                className="relative block overflow-hidden bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border border-[hsl(235,13%,30%)] animate-fade-in"
+                style={{ animationDelay: `${index * 0.05}s` }}
+              >
+                <div className="relative flex items-center justify-between p-6 sm:p-8">
+                  <div className="flex items-center gap-6 flex-1 min-w-0">
+                    {showRankBadge && (
+                      <div className="flex-shrink-0">
+                        <Skeleton className="w-16 h-16 rounded-none" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3 mb-3 flex-wrap">
+                        <Skeleton className="h-7 w-32 rounded-none" />
+                        <Skeleton className="h-5 w-20 rounded-none" />
+                      </div>
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <Skeleton className="h-6 w-24 rounded-none" />
+                        <Skeleton className="h-6 w-28 rounded-none" />
+                        <Skeleton className="h-6 w-20 rounded-none" />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-8 flex-shrink-0 ml-6">
+                    <div className="text-left min-w-[140px]">
+                      <Skeleton className="h-8 w-24 mb-2 rounded-none" />
+                      <Skeleton className="h-4 w-20 mt-2 rounded-none" />
+                    </div>
+                    <Skeleton className="w-8 h-8 rounded-none" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         ) : runs.length === 0 ? (
           <div className="text-center py-16">
             <Sparkles className="h-16 w-16 mx-auto mb-4 text-[hsl(222,15%,60%)] opacity-50" />

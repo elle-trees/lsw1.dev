@@ -16,10 +16,9 @@ import {
   Award,
   Star,
   Gem,
-  Filter,
-  TrendingUp
+  Filter
 } from "lucide-react";
-import { getAllVerifiedRuns, getCategories, getPlatforms, getLevels, runTypes, getPlayersByPoints } from "@/lib/db";
+import { getAllVerifiedRuns, getCategories, getPlatforms, getLevels, runTypes } from "@/lib/db";
 import { LeaderboardEntry, Player } from "@/types/database";
 import { formatTime, parseTimeToSeconds, formatSecondsToTime } from "@/lib/utils";
 import { getCategoryName, getPlatformName, getLevelName } from "@/lib/dataValidation";
@@ -392,152 +391,6 @@ const Stats = () => {
       .slice(0, 10);
   }, [stats, platforms]);
 
-  // Calculate rankings based on best Any% and Nocuts Noships times on Gamecube
-  const [eloRankings, setEloRankings] = useState<Array<{
-    playerId: string;
-    playerName: string;
-    bestAnyPercentTime: number;
-    bestAnyPercentTimeString: string;
-    bestNocutsNoshipsTime: number;
-    bestNocutsNoshipsTimeString: string;
-    bestOverallTime: number;
-    rank: number;
-  }>>([]);
-
-  useEffect(() => {
-    const fetchEloRankings = async () => {
-      if (!stats || !stats.allVerifiedRuns || !categories.length || !platforms.length) {
-        setEloRankings([]);
-        return;
-      }
-
-      try {
-        // Find category IDs for "Any%" and "Nocuts Noships"
-        const anyPercentCategory = categories.find(cat => {
-          const name = cat.name.toLowerCase().trim();
-          return name === 'any%' || name === 'any percent';
-        });
-        
-        const nocutsNoshipsCategory = categories.find(cat => {
-          const name = cat.name.toLowerCase().trim();
-          return name === 'nocuts noships' || name === 'nocutsnoships' || name === 'no cuts no ships';
-        });
-
-        // Find platform ID for "GameCube" (case-insensitive)
-        const gamecubePlatform = platforms.find(plat => {
-          const name = plat.name.toLowerCase().trim();
-          return name === 'gamecube' || name === 'game cube';
-        });
-
-        if (!anyPercentCategory || !nocutsNoshipsCategory || !gamecubePlatform) {
-          setEloRankings([]);
-          return;
-        }
-
-        // Filter runs to only include Any% and Nocuts Noships on Gamecube
-        const relevantRuns = stats.allVerifiedRuns.filter(run => {
-          if (!run.verified || run.isObsolete) return false;
-          
-          // Must be regular leaderboard type (full game)
-          const leaderboardType = run.leaderboardType || 'regular';
-          if (leaderboardType !== 'regular') return false;
-          
-          // Must be Gamecube platform
-          if (run.platform !== gamecubePlatform.id) return false;
-          
-          // Must be Any% or Nocuts Noships category
-          const isAnyPercent = run.category === anyPercentCategory.id;
-          const isNocutsNoships = run.category === nocutsNoshipsCategory.id;
-          
-          return isAnyPercent || isNocutsNoships;
-        });
-
-        // Track best times for each player in each category
-        const playerTimes = new Map<string, {
-          bestAnyPercentTime: number;
-          bestAnyPercentTimeString: string;
-          bestNocutsNoshipsTime: number;
-          bestNocutsNoshipsTimeString: string;
-          playerName: string;
-        }>();
-
-        relevantRuns.forEach(run => {
-          const playerId = run.playerId || run.playerName;
-          if (!playerId) return;
-
-          if (!playerTimes.has(playerId)) {
-            playerTimes.set(playerId, {
-              bestAnyPercentTime: Infinity,
-              bestAnyPercentTimeString: '',
-              bestNocutsNoshipsTime: Infinity,
-              bestNocutsNoshipsTimeString: '',
-              playerName: run.playerName || 'Unknown',
-            });
-          }
-
-          const playerData = playerTimes.get(playerId)!;
-          const runTime = parseTimeToSeconds(run.time) || Infinity;
-          
-          if (run.category === anyPercentCategory.id) {
-            if (runTime < playerData.bestAnyPercentTime) {
-              playerData.bestAnyPercentTime = runTime;
-              playerData.bestAnyPercentTimeString = run.time;
-            }
-          } else if (run.category === nocutsNoshipsCategory.id) {
-            if (runTime < playerData.bestNocutsNoshipsTime) {
-              playerData.bestNocutsNoshipsTime = runTime;
-              playerData.bestNocutsNoshipsTimeString = run.time;
-            }
-          }
-        });
-
-        // Convert to array and calculate best overall time (minimum of the two)
-        const rankings = Array.from(playerTimes.entries())
-          .map(([playerId, data]) => {
-            const bestOverallTime = Math.min(
-              data.bestAnyPercentTime === Infinity ? Infinity : data.bestAnyPercentTime,
-              data.bestNocutsNoshipsTime === Infinity ? Infinity : data.bestNocutsNoshipsTime
-            );
-            
-            return {
-              playerId,
-              playerName: data.playerName,
-              bestAnyPercentTime: data.bestAnyPercentTime,
-              bestAnyPercentTimeString: data.bestAnyPercentTimeString,
-              bestNocutsNoshipsTime: data.bestNocutsNoshipsTime,
-              bestNocutsNoshipsTimeString: data.bestNocutsNoshipsTimeString,
-              bestOverallTime: bestOverallTime === Infinity ? Infinity : bestOverallTime,
-              rank: 0, // Will be set after sorting
-            };
-          })
-          // Filter out players with no valid times
-          .filter(player => player.bestOverallTime !== Infinity)
-          // Sort by best overall time (lower is better)
-          .sort((a, b) => {
-            // If both have valid times, compare them
-            if (a.bestOverallTime !== Infinity && b.bestOverallTime !== Infinity) {
-              return a.bestOverallTime - b.bestOverallTime;
-            }
-            // If only one has a valid time, it ranks higher
-            if (a.bestOverallTime !== Infinity) return -1;
-            if (b.bestOverallTime !== Infinity) return 1;
-            return 0;
-          })
-          // Assign ranks
-          .map((player, index) => ({
-            ...player,
-            rank: index + 1,
-          }));
-
-        setEloRankings(rankings);
-      } catch (error) {
-        console.error("Error fetching rankings:", error);
-        setEloRankings([]);
-      }
-    };
-
-    fetchEloRankings();
-  }, [stats, categories, platforms]);
 
   // Calculate filtered WR time progression
   const filteredWRTimeProgression = useMemo(() => {
@@ -750,17 +603,6 @@ const Stats = () => {
             }`}
           >
             <span className="font-medium text-xs sm:text-sm">Recent WRs</span>
-          </Button>
-          <Button
-            variant={activeTab === 'elo' ? "default" : "ghost"}
-            onClick={() => setActiveTab('elo')}
-            className={`h-auto py-2 px-3 rounded-none transition-all duration-300 ${
-              activeTab === 'elo'
-                ? "bg-[#f9e2af] text-[#11111b] hover:bg-[#f9e2af]/90 shadow-sm"
-                : "text-ctp-text hover:bg-ctp-surface1 hover:text-ctp-text"
-            }`}
-          >
-            <span className="font-medium text-xs sm:text-sm">Gamecube Rankings</span>
           </Button>
         </div>
 
@@ -1301,74 +1143,6 @@ const Stats = () => {
           </Card>
         )}
 
-        {activeTab === 'elo' && (
-          <Card className="animate-slide-up-delay">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5" />
-                Gamecube Rankings
-              </CardTitle>
-              <CardDescription>
-                Player rankings based on best Any% and Nocuts Noships times on Gamecube
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {eloRankings.length > 0 ? (
-                <div className="space-y-4">
-                  <div className="text-sm text-muted-foreground">
-                    Players are ranked by their best overall time across Any% and Nocuts Noships categories on Gamecube. 
-                    The ranking uses the faster of the two category times for each player.
-                  </div>
-                  <div className="rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-16">Rank</TableHead>
-                          <TableHead>Player</TableHead>
-                          <TableHead className="text-right">Best Any% Time</TableHead>
-                          <TableHead className="text-right">Best Nocuts Noships Time</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {eloRankings.map((player) => (
-                          <TableRow key={player.playerId}>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                {player.rank === 1 && <Trophy className="h-4 w-4 text-yellow-500" />}
-                                {player.rank === 2 && <Award className="h-4 w-4 text-gray-400" />}
-                                {player.rank === 3 && <Award className="h-4 w-4 text-amber-600" />}
-                                <span className="font-semibold">#{player.rank}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Link 
-                                to={`/player/${player.playerId}`}
-                                className="text-primary hover:underline font-medium"
-                                style={{ color: player.playerName === 'Unknown' ? 'inherit' : undefined }}
-                              >
-                                {player.playerName}
-                              </Link>
-                            </TableCell>
-                            <TableCell className="text-right font-mono">
-                              {player.bestAnyPercentTime !== Infinity ? formatTime(player.bestAnyPercentTimeString) : 'N/A'}
-                            </TableCell>
-                            <TableCell className="text-right font-mono">
-                              {player.bestNocutsNoshipsTime !== Infinity ? formatTime(player.bestNocutsNoshipsTimeString) : 'N/A'}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-center text-muted-foreground py-8">
-                  No player data available for Gamecube rankings. Make sure there are verified runs for Any% and Nocuts Noships categories on Gamecube platform.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        )}
       </div>
     </div>
   );
