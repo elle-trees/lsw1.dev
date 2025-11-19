@@ -1,15 +1,20 @@
 import { useState, useEffect, useRef } from "react";
-import { Button } from "@/components/ui/button";
+import { FadeIn } from "@/components/ui/fade-in";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Trophy, CheckCircle, Clock, ExternalLink } from "lucide-react";
 import { getRecentRuns, getAllVerifiedRuns } from "@/lib/db";
 import { LeaderboardEntry } from "@/types/database";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { RecentRuns } from "@/components/RecentRuns";
 import TwitchEmbed from "@/components/TwitchEmbed";
-import { parseTimeToSeconds, formatSecondsToTime } from "@/lib/utils";
+import { parseTimeToSeconds, formatSecondsToTime, cn } from "@/lib/utils";
+import { motion } from "framer-motion";
+import { buttonVariants } from "@/components/ui/button";
+import { AnimatedCard } from "@/components/ui/animated-card";
+
+const MotionLink = motion(Link);
 
 // Format seconds into months, days, hours, minutes, seconds in compact format
 const formatTimeWithDays = (totalSeconds: number): string => {
@@ -145,13 +150,18 @@ const Index = () => {
 
   return (
     <div className="min-h-screen text-ctp-text overflow-x-hidden relative">
-      <div className="py-20 px-4 sm:px-6 lg:px-8 animate-fade-in">
+      <FadeIn className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-[1920px] mx-auto w-full">
           {/* Top Row - Stats Cards and Title */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-8 mb-6 lg:mb-8">
             {/* Left Side - Verified Runs Card */}
             <div className="lg:col-span-3 lg:order-1 min-w-0">
-              <Card className="glass shadow-colored-green card-hover border-ctp-surface1/50 w-full group overflow-hidden relative rounded-none">
+              <AnimatedCard 
+                className="glass shadow-colored-green card-hover border-ctp-surface1/50 w-full group overflow-hidden relative rounded-none"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5 }}
+              >
                 <div className="absolute inset-0 bg-gradient-to-br from-ctp-green/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                 <CardHeader className="pb-2 pt-4 px-4 relative z-10">
                   <CardTitle className="flex items-center gap-2 text-card-foreground text-base sm:text-lg lg:text-xl whitespace-nowrap">
@@ -186,7 +196,7 @@ const Index = () => {
                     </Badge>
                   </div>
                 </CardContent>
-              </Card>
+              </AnimatedCard>
             </div>
 
             {/* Center Content - Title, Subtext, Buttons */}
@@ -200,18 +210,39 @@ const Index = () => {
                 The official site for the LEGO Star Wars: The Video Game speedrunning community. Track your progress and try to earn a stud on the leaderboards!
               </p>
               <div className="flex flex-col sm:flex-row justify-center gap-4 lg:gap-6 animate-fade-in-delay-2 px-2">
-                <Button size="lg" className="bg-gradient-to-r from-ctp-mauve via-ctp-pink to-ctp-mauve hover:from-ctp-pink hover:via-ctp-mauve hover:to-ctp-pink text-ctp-crust font-bold transition-all duration-300 hover:scale-110 hover:shadow-xl hover:shadow-ctp-mauve/50 animate-gradient bg-[length:200%_auto] whitespace-nowrap text-base sm:text-lg lg:text-xl px-6 sm:px-8 lg:px-10 py-6 sm:py-7 lg:py-8 rounded-none border-0 shadow-colored" asChild>
-                  <Link to="/submit">Submit Run</Link>
-                </Button>
-                <Button size="lg" variant="outline" className="text-ctp-text hover:text-ctp-text border-ctp-surface1/50 bg-glass hover:bg-ctp-blue/10 hover:border-ctp-blue/50 transition-all duration-300 hover:scale-110 hover:shadow-xl hover:shadow-ctp-blue/30 whitespace-nowrap text-base sm:text-lg lg:text-xl px-6 sm:px-8 lg:px-10 py-6 sm:py-7 lg:py-8 rounded-none backdrop-blur-sm" asChild>
-                  <Link to="/leaderboards">View All Leaderboards</Link>
-                </Button>
+                <MotionLink 
+                  to="/submit"
+                  className={cn(
+                    buttonVariants({ size: "lg" }),
+                    "bg-gradient-to-r from-ctp-mauve via-ctp-pink to-ctp-mauve hover:from-ctp-pink hover:via-ctp-mauve hover:to-ctp-pink text-ctp-crust font-bold transition-all duration-300 hover:shadow-xl hover:shadow-ctp-mauve/50 animate-gradient bg-[length:200%_auto] whitespace-nowrap text-base sm:text-lg lg:text-xl px-6 sm:px-8 lg:px-10 py-6 sm:py-7 lg:py-8 rounded-none border-0 shadow-colored"
+                  )}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  Submit Run
+                </MotionLink>
+                <MotionLink 
+                  to="/leaderboards"
+                  className={cn(
+                    buttonVariants({ size: "lg", variant: "outline" }),
+                    "text-ctp-text hover:text-ctp-text border-ctp-surface1/50 bg-glass hover:bg-ctp-blue/10 hover:border-ctp-blue/50 transition-all duration-300 hover:shadow-xl hover:shadow-ctp-blue/30 whitespace-nowrap text-base sm:text-lg lg:text-xl px-6 sm:px-8 lg:px-10 py-6 sm:py-7 lg:py-8 rounded-none backdrop-blur-sm"
+                  )}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  View All Leaderboards
+                </MotionLink>
               </div>
             </div>
 
             {/* Right Side - Total Time Card */}
             <div className="lg:col-span-3 lg:order-3 min-w-0">
-              <Card className="glass shadow-colored card-hover border-ctp-surface1/50 w-full group overflow-hidden relative rounded-none">
+              <AnimatedCard 
+                className="glass shadow-colored card-hover border-ctp-surface1/50 w-full group overflow-hidden relative rounded-none"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5 }}
+              >
                 <div className="absolute inset-0 bg-gradient-to-br from-ctp-mauve/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                 <CardHeader className="pb-2 pt-4 px-4 relative z-10">
                   <CardTitle className="flex items-center gap-2 text-card-foreground text-base sm:text-lg lg:text-xl whitespace-nowrap">
@@ -231,7 +262,7 @@ const Index = () => {
                     Combined runtime
                   </p>
                 </CardContent>
-              </Card>
+              </AnimatedCard>
             </div>
           </div>
 
@@ -284,14 +315,22 @@ const Index = () => {
               </div>
 
               <div className="mt-4 text-center flex-shrink-0">
-                <Button variant="outline" size="sm" className="text-sm lg:text-base text-ctp-text border-ctp-surface1/50 bg-glass hover:bg-ctp-blue/10 hover:border-ctp-blue/50 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-ctp-blue/20 whitespace-nowrap px-4 lg:px-6 py-2 lg:py-3 rounded-none backdrop-blur-sm" asChild>
-                  <Link to="/leaderboards">View Full Leaderboards</Link>
-                </Button>
+                <MotionLink 
+                  to="/leaderboards"
+                  className={cn(
+                    buttonVariants({ variant: "outline", size: "sm" }),
+                    "text-sm lg:text-base text-ctp-text border-ctp-surface1/50 bg-glass hover:bg-ctp-blue/10 hover:border-ctp-blue/50 transition-all duration-300 hover:shadow-lg hover:shadow-ctp-blue/20 whitespace-nowrap px-4 lg:px-6 py-2 lg:py-3 rounded-none backdrop-blur-sm"
+                  )}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  View Full Leaderboards
+                </MotionLink>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      </FadeIn>
     </div>
   );
 };

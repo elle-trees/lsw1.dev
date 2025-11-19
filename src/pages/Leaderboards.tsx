@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useMemo, useCallback, useTransition } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { AnimatedCard } from "@/components/ui/animated-card";
+import { FadeIn } from "@/components/ui/fade-in";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Filter, User, Users, Trophy, Sparkles, TrendingUp, Star, Gem, Gamepad2 } from "lucide-react";
@@ -232,7 +234,7 @@ const Leaderboards = () => {
   }, [selectedCategory, selectedPlatform, selectedRunType, selectedLevel, showObsoleteRuns, leaderboardType, selectedSubcategory]);
 
   return (
-    <div className="min-h-screen bg-[#1e1e2e] text-ctp-text py-4 sm:py-6 overflow-x-hidden animate-fade-in">
+    <FadeIn className="min-h-screen bg-[#1e1e2e] text-ctp-text py-4 sm:py-6 overflow-x-hidden">
       <div className="max-w-[1920px] mx-auto px-2 sm:px-4 lg:px-6 w-full">
         <div className="text-center mb-6 animate-slide-up">
           <div className="flex items-center justify-center gap-2 mb-4">
@@ -425,7 +427,12 @@ const Leaderboards = () => {
             })()}
 
         {/* Filters */}
-            <Card className="bg-gradient-to-br from-ctp-base to-ctp-mantle border-ctp-surface1 shadow-xl mb-6 rounded-none overflow-hidden animate-slide-up-delay-2">
+            <AnimatedCard 
+              className="bg-gradient-to-br from-ctp-base to-ctp-mantle border-ctp-surface1 shadow-xl mb-6 rounded-none overflow-hidden animate-slide-up-delay-2"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
           <CardHeader className="bg-gradient-to-r from-ctp-base to-ctp-mantle border-b border-ctp-surface1 py-4">
             <CardTitle className="flex items-center gap-2 text-lg font-bold">
               <Filter className="h-5 w-5 text-ctp-mauve" />
@@ -514,10 +521,15 @@ const Leaderboards = () => {
               </div>
             </div>
           </CardContent>
-        </Card>
+        </AnimatedCard>
 
         {/* Leaderboard Table */}
-        <Card className="bg-gradient-to-br from-ctp-base to-ctp-mantle border-ctp-surface1 shadow-xl rounded-none overflow-hidden animate-slide-up-delay-2">
+        <AnimatedCard 
+          className="bg-gradient-to-br from-ctp-base to-ctp-mantle border-ctp-surface1 shadow-xl rounded-none overflow-hidden animate-slide-up-delay-2"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
           <CardHeader className="bg-gradient-to-r from-ctp-base to-ctp-mantle border-b border-ctp-surface1 py-4">
             <CardTitle className="flex items-center gap-2 text-lg text-[#a6e3a1]">
               <span>
@@ -573,10 +585,10 @@ const Leaderboards = () => {
               </div>
             )}
           </CardContent>
-        </Card>
+        </AnimatedCard>
           </div>
       </div>
-    </div>
+    </FadeIn>
   );
 };
 

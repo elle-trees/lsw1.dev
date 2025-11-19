@@ -1,6 +1,8 @@
 import { useState, useEffect, useTransition } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { AnimatedCard } from "@/components/ui/animated-card";
+import { FadeIn } from "@/components/ui/fade-in";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -322,7 +324,7 @@ const SubmitRun = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#1e1e2e] text-ctp-text py-6 overflow-x-hidden">
+    <FadeIn className="min-h-screen bg-[#1e1e2e] text-ctp-text py-6 overflow-x-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 w-full">
         <div className="text-center mb-8 animate-fade-in">
           <div className="flex items-center justify-center gap-2 mb-4">
@@ -337,7 +339,11 @@ const SubmitRun = () => {
         </div>
 
         {!currentUser ? (
-          <Card className="bg-gradient-to-br from-ctp-base to-ctp-mantle border-ctp-surface1 shadow-xl max-w-2xl mx-auto">
+          <AnimatedCard 
+            className="bg-gradient-to-br from-ctp-base to-ctp-mantle border-ctp-surface1 shadow-xl max-w-2xl mx-auto"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
             <CardContent className="p-12 text-center">
               <div className="mb-6">
                 <Sparkles className="h-16 w-16 mx-auto mb-4 text-ctp-subtext1 opacity-50" />
@@ -350,10 +356,10 @@ const SubmitRun = () => {
                 Log In to Submit
               </Button>
             </CardContent>
-          </Card>
+          </AnimatedCard>
         ) : loadingData ? (
           <div className="space-y-6 max-w-6xl mx-auto">
-            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
+            <AnimatedCard className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
               <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)] py-4">
                 <CardTitle className="flex items-center gap-2 text-xl text-[#eba0ac]">
                   <span>Run Details</span>
@@ -376,12 +382,16 @@ const SubmitRun = () => {
                   </div>
                 </div>
               </CardContent>
-            </Card>
+            </AnimatedCard>
           </div>
         ) : (
           <div className="space-y-6 max-w-6xl mx-auto animate-fade-in">
             {/* Main Form */}
-            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
+            <AnimatedCard 
+              className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
                 <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)] py-4">
                   <CardTitle className="flex items-center gap-2 text-xl text-[#eba0ac]">
                     <span>
@@ -818,7 +828,7 @@ const SubmitRun = () => {
                 </div>
               </form>
             </CardContent>
-          </Card>
+          </AnimatedCard>
 
             {/* Guidelines Section */}
             <div className="mt-8 animate-fade-in">
@@ -916,7 +926,7 @@ const SubmitRun = () => {
           animation: fade-in 0.4s ease-out forwards;
         }
       `}</style>
-    </div>
+    </FadeIn>
   );
 };
 
