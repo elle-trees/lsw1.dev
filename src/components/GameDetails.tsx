@@ -98,7 +98,7 @@ export function GameDetails({ className }: GameDetailsProps) {
 
   return (
     <div className={`bg-[#1e1e2e] ${className || ""}`}>
-      <div className="max-w-[1920px] mx-auto px-2 sm:px-4 py-6">
+      <div className="px-2 sm:px-4 py-6">
         <div className="flex flex-col lg:flex-row gap-6 items-start">
           {/* Game Cover Image */}
           {config.coverImageUrl && (

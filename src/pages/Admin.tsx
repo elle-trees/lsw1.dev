@@ -4448,14 +4448,14 @@ const Admin = () => {
                             <div>
                               <Label htmlFor="headerLinkIcon" className="text-sm">Icon (Optional)</Label>
                               <Select
-                                value={newHeaderLink.icon}
-                                onValueChange={(value) => setNewHeaderLink({ ...newHeaderLink, icon: value })}
+                                value={newHeaderLink.icon || "none"}
+                                onValueChange={(value) => setNewHeaderLink({ ...newHeaderLink, icon: value === "none" ? "" : value })}
                               >
                                 <SelectTrigger className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] h-9 text-sm">
                                   <SelectValue placeholder="Select icon" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="">None</SelectItem>
+                                  <SelectItem value="none">None</SelectItem>
                                   <SelectItem value="Trophy">Trophy</SelectItem>
                                   <SelectItem value="LegoStud">LegoStud</SelectItem>
                                   <SelectItem value="Upload">Upload</SelectItem>
@@ -4576,14 +4576,14 @@ const Admin = () => {
                                       <TableCell className="py-2 px-3 text-sm">
                                         {editingHeaderLink?.id === link.id ? (
                                           <Select
-                                            value={editingHeaderLinkForm.icon}
-                                            onValueChange={(value) => setEditingHeaderLinkForm({ ...editingHeaderLinkForm, icon: value })}
+                                            value={editingHeaderLinkForm.icon || "none"}
+                                            onValueChange={(value) => setEditingHeaderLinkForm({ ...editingHeaderLinkForm, icon: value === "none" ? "" : value })}
                                           >
                                             <SelectTrigger className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] h-8 text-xs w-28">
                                               <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
-                                              <SelectItem value="">None</SelectItem>
+                                              <SelectItem value="none">None</SelectItem>
                                               <SelectItem value="Trophy">Trophy</SelectItem>
                                               <SelectItem value="LegoStud">LegoStud</SelectItem>
                                               <SelectItem value="Upload">Upload</SelectItem>
