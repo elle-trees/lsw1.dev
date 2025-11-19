@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +44,7 @@ const SubmitRun = () => {
   const [loadingData, setLoadingData] = useState(true);
   const [loadingSubcategories, setLoadingSubcategories] = useState(false);
   const [guidelinesOpen, setGuidelinesOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -396,15 +397,15 @@ const SubmitRun = () => {
                     <Button
                       type="button"
                       variant={leaderboardType === 'regular' ? "default" : "ghost"}
-                      onClick={() => {
+                      onClick={() => startTransition(() => {
                         setLeaderboardType('regular');
                         setFormData(prev => ({ ...prev, category: "", level: "" }));
-                      }}
-                      className={`h-auto py-2 sm:py-3 px-2 sm:px-4 rounded-md transition-all duration-300 ${
+                      })}
+                      className={`h-auto py-2 sm:py-3 px-2 sm:px-4 rounded-md transition-all duration-200 ${
                         leaderboardType === 'regular' 
                           ? "bg-[#f9e2af] text-[#11111b] hover:bg-[#f9e2af]/90 shadow-sm" 
                           : "text-ctp-text hover:bg-ctp-surface1 hover:text-ctp-text"
-                      }`}
+                      } ${isPending ? 'opacity-70' : ''}`}
                     >
                       <div className="flex items-center justify-center gap-2">
                         <Trophy className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -415,15 +416,15 @@ const SubmitRun = () => {
                     <Button
                       type="button"
                       variant={leaderboardType === 'individual-level' ? "default" : "ghost"}
-                      onClick={() => {
+                      onClick={() => startTransition(() => {
                         setLeaderboardType('individual-level');
                         setFormData(prev => ({ ...prev, category: "", level: "" }));
-                      }}
-                      className={`h-auto py-2 sm:py-3 px-2 sm:px-4 rounded-md transition-all duration-300 ${
+                      })}
+                      className={`h-auto py-2 sm:py-3 px-2 sm:px-4 rounded-md transition-all duration-200 ${
                         leaderboardType === 'individual-level' 
                           ? "bg-[#f9e2af] text-[#11111b] hover:bg-[#f9e2af]/90 shadow-sm" 
                           : "text-ctp-text hover:bg-ctp-surface1 hover:text-ctp-text"
-                      }`}
+                      } ${isPending ? 'opacity-70' : ''}`}
                     >
                       <div className="flex items-center justify-center gap-2">
                         <Star className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -434,15 +435,15 @@ const SubmitRun = () => {
                     <Button
                       type="button"
                       variant={leaderboardType === 'community-golds' ? "default" : "ghost"}
-                      onClick={() => {
+                      onClick={() => startTransition(() => {
                         setLeaderboardType('community-golds');
                         setFormData(prev => ({ ...prev, category: "", level: "" }));
-                      }}
-                      className={`h-auto py-2 sm:py-3 px-2 sm:px-4 rounded-md transition-all duration-300 ${
+                      })}
+                      className={`h-auto py-2 sm:py-3 px-2 sm:px-4 rounded-md transition-all duration-200 ${
                         leaderboardType === 'community-golds' 
                           ? "bg-[#f9e2af] text-[#11111b] hover:bg-[#f9e2af]/90 shadow-sm" 
                           : "text-ctp-text hover:bg-ctp-surface1 hover:text-ctp-text"
-                      }`}
+                      } ${isPending ? 'opacity-70' : ''}`}
                     >
                       <div className="flex items-center justify-center gap-2">
                         <Gem className="h-3.5 w-3.5 sm:h-4 sm:w-4" />

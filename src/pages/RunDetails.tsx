@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 import { ArrowLeft, User, Users, Calendar, CheckCircle, UserCircle, Trophy, Edit2, Save, X, Trash2 } from "lucide-react";
 import LegoStudIcon from "@/components/icons/LegoStudIcon";
 import { getLeaderboardEntryById, getPlayerByUid, getPlayerByDisplayName, getCategories, getCategoriesFromFirestore, getPlatforms, runTypes, updateLeaderboardEntry, deleteLeaderboardEntry } from "@/lib/db";
@@ -291,6 +291,7 @@ const RunDetails = () => {
         date: run.date || "",
         videoUrl: run.videoUrl || "",
         comment: run.comment || "",
+        subcategory: run.subcategory || "",
       });
     }
     setIsEditing(false);
@@ -381,6 +382,7 @@ const RunDetails = () => {
             date: updatedRun.date || "",
             videoUrl: updatedRun.videoUrl || "",
             comment: updatedRun.comment || "",
+            subcategory: updatedRun.subcategory || "",
           });
           // Force height recalculation after run data updates
           setTimeout(() => {
@@ -692,34 +694,39 @@ const RunDetails = () => {
                       </Select>
                     </div>
 
-                    {/* Subcategory Selection (only for regular leaderboard type) */}
-                    {run.leaderboardType === 'regular' && availableSubcategories.length > 0 && (
                       <div>
                         <Label className="text-sm font-semibold mb-2 block">Subcategory (Optional)</Label>
-                        <Tabs 
-                          value={editFormData.subcategory || "none"} 
-                          onValueChange={(value) => setEditFormData({ ...editFormData, subcategory: value === "none" ? "" : value })}
-                        >
-                          <TabsList className="flex w-full p-0.5 gap-1 overflow-x-auto overflow-y-hidden scrollbar-hide" style={{ minWidth: 'max-content' }}>
-                            <TabsTrigger 
-                              value="none" 
-                              className="data-[state=active]:bg-[#cba6f7] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#cba6f7]/50 py-1.5 sm:py-2 px-2 sm:px-3 text-xs sm:text-sm whitespace-nowrap"
-                            >
-                              None
-                            </TabsTrigger>
-                            {availableSubcategories.map((subcategory) => (
-                              <TabsTrigger 
-                                key={subcategory.id} 
-                                value={subcategory.id} 
-                                className="data-[state=active]:bg-[#cba6f7] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#cba6f7]/50 py-1.5 sm:py-2 px-2 sm:px-3 text-xs sm:text-sm whitespace-nowrap"
+                        <div className="flex w-full p-1 gap-2 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-ctp-surface1 scrollbar-track-transparent pb-3" style={{ minWidth: 'max-content' }}>
+                          <Button
+                            variant={(!editFormData.subcategory || editFormData.subcategory === "none") ? "default" : "outline"}
+                            onClick={() => setEditFormData({ ...editFormData, subcategory: "" })}
+                            className={`whitespace-nowrap px-4 py-2 h-9 text-sm font-medium transition-all duration-200 ${
+                              (!editFormData.subcategory || editFormData.subcategory === "none")
+                                ? "bg-[#cba6f7] text-[#11111b] hover:bg-[#cba6f7]/90 border-transparent shadow-sm"
+                                : "bg-ctp-surface0 text-ctp-text border-ctp-surface1 hover:bg-ctp-surface1 hover:text-ctp-text hover:border-[#cba6f7]/50"
+                            }`}
+                          >
+                            None
+                          </Button>
+                          {availableSubcategories.map((subcategory) => {
+                            const isSelected = editFormData.subcategory === subcategory.id;
+                            return (
+                              <Button
+                                key={subcategory.id}
+                                variant={isSelected ? "default" : "outline"}
+                                onClick={() => setEditFormData({ ...editFormData, subcategory: subcategory.id })}
+                                className={`whitespace-nowrap px-4 py-2 h-9 text-sm font-medium transition-all duration-200 ${
+                                  isSelected
+                                    ? "bg-[#cba6f7] text-[#11111b] hover:bg-[#cba6f7]/90 border-transparent shadow-sm"
+                                    : "bg-ctp-surface0 text-ctp-text border-ctp-surface1 hover:bg-ctp-surface1 hover:text-ctp-text hover:border-[#cba6f7]/50"
+                                }`}
                               >
                                 {subcategory.name}
-                              </TabsTrigger>
-                            ))}
-                          </TabsList>
-                        </Tabs>
+                              </Button>
+                            );
+                          })}
+                        </div>
                       </div>
-                    )}
 
                     <div>
                       <Label htmlFor="edit-platform">Platform</Label>

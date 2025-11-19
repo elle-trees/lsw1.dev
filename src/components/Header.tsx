@@ -55,7 +55,7 @@ export function Header() {
         const player = await getPlayerByUid(currentUser.uid);
         if (player?.srcUsername) {
           try {
-            const unclaimedRuns = await getUnclaimedRunsBySRCUsername(player.srcUsername, currentUser.uid);
+            const unclaimedRuns = await getUnclaimedRunsBySRCUsername(player.srcUsername);
             setUnclaimedRunsCount(unclaimedRuns.length);
           } catch (error) {
             setUnclaimedRunsCount(0);
@@ -197,7 +197,7 @@ export function Header() {
               <span className="text-base sm:text-lg md:text-xl font-bold text-[#74c7ec] whitespace-nowrap">lsw1.dev</span>
             </Link>
             {/* Desktop Navigation - Only shown on very large screens */}
-            <nav className="hidden xl:flex space-x-6 overflow-x-auto flex-shrink min-w-0">
+            <nav className="hidden xl:flex space-x-6 flex-shrink min-w-0">
               <NavLinks />
             </nav>
           </div>

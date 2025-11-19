@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback, useTransition } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -33,6 +33,7 @@ const Leaderboards = () => {
   const requestCounterRef = useRef(0);
   const abortControllerRef = useRef<AbortController | null>(null);
   const lastRefreshTimeRef = useRef<number>(Date.now());
+  const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -245,12 +246,12 @@ const Leaderboards = () => {
         <div className="grid grid-cols-3 mb-6 p-0.5 gap-1 bg-ctp-surface0/50 rounded-none border border-ctp-surface1">
           <Button
             variant={leaderboardType === 'regular' ? "default" : "ghost"}
-            onClick={() => setLeaderboardType('regular')}
-            className={`h-auto py-2 sm:py-3 px-2 sm:px-4 rounded-none transition-all duration-300 ${
+            onClick={() => startTransition(() => setLeaderboardType('regular'))}
+            className={`h-auto py-2 sm:py-3 px-2 sm:px-4 rounded-none transition-all duration-200 ${
               leaderboardType === 'regular' 
                 ? "bg-[#f9e2af] text-[#11111b] hover:bg-[#f9e2af]/90 shadow-sm" 
                 : "text-ctp-text hover:bg-ctp-surface1 hover:text-ctp-text"
-            }`}
+            } ${isPending ? 'opacity-70' : ''}`}
           >
             <div className="flex items-center justify-center gap-2">
               <Trophy className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -260,12 +261,12 @@ const Leaderboards = () => {
           </Button>
           <Button
             variant={leaderboardType === 'individual-level' ? "default" : "ghost"}
-            onClick={() => setLeaderboardType('individual-level')}
-            className={`h-auto py-2 sm:py-3 px-2 sm:px-4 rounded-none transition-all duration-300 ${
+            onClick={() => startTransition(() => setLeaderboardType('individual-level'))}
+            className={`h-auto py-2 sm:py-3 px-2 sm:px-4 rounded-none transition-all duration-200 ${
               leaderboardType === 'individual-level' 
                 ? "bg-[#f9e2af] text-[#11111b] hover:bg-[#f9e2af]/90 shadow-sm" 
                 : "text-ctp-text hover:bg-ctp-surface1 hover:text-ctp-text"
-            }`}
+            } ${isPending ? 'opacity-70' : ''}`}
           >
             <div className="flex items-center justify-center gap-2">
               <Star className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -275,12 +276,12 @@ const Leaderboards = () => {
           </Button>
           <Button
             variant={leaderboardType === 'community-golds' ? "default" : "ghost"}
-            onClick={() => setLeaderboardType('community-golds')}
-            className={`h-auto py-2 sm:py-3 px-2 sm:px-4 rounded-none transition-all duration-300 ${
+            onClick={() => startTransition(() => setLeaderboardType('community-golds'))}
+            className={`h-auto py-2 sm:py-3 px-2 sm:px-4 rounded-none transition-all duration-200 ${
               leaderboardType === 'community-golds' 
                 ? "bg-[#f9e2af] text-[#11111b] hover:bg-[#f9e2af]/90 shadow-sm" 
                 : "text-ctp-text hover:bg-ctp-surface1 hover:text-ctp-text"
-            }`}
+            } ${isPending ? 'opacity-70' : ''}`}
           >
             <div className="flex items-center justify-center gap-2">
               <Gem className="h-3.5 w-3.5 sm:h-4 sm:w-4" />

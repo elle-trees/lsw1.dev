@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -774,16 +774,67 @@ const Stats = () => {
         </Card>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="progression">World Record Progression</TabsTrigger>
-          <TabsTrigger value="breakdown">Breakdown</TabsTrigger>
-          <TabsTrigger value="recent">Recent World Records</TabsTrigger>
-          <TabsTrigger value="elo">Elo Rankings</TabsTrigger>
-        </TabsList>
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 mb-6 p-0.5 gap-1 bg-ctp-surface0/50 rounded-none border border-ctp-surface1">
+          <Button
+            variant={activeTab === 'overview' ? "default" : "ghost"}
+            onClick={() => setActiveTab('overview')}
+            className={`h-auto py-2 px-3 rounded-none transition-all duration-300 ${
+              activeTab === 'overview'
+                ? "bg-[#f9e2af] text-[#11111b] hover:bg-[#f9e2af]/90 shadow-sm"
+                : "text-ctp-text hover:bg-ctp-surface1 hover:text-ctp-text"
+            }`}
+          >
+            <span className="font-medium text-xs sm:text-sm">Overview</span>
+          </Button>
+          <Button
+            variant={activeTab === 'progression' ? "default" : "ghost"}
+            onClick={() => setActiveTab('progression')}
+            className={`h-auto py-2 px-3 rounded-none transition-all duration-300 ${
+              activeTab === 'progression'
+                ? "bg-[#f9e2af] text-[#11111b] hover:bg-[#f9e2af]/90 shadow-sm"
+                : "text-ctp-text hover:bg-ctp-surface1 hover:text-ctp-text"
+            }`}
+          >
+            <span className="font-medium text-xs sm:text-sm">WR Progression</span>
+          </Button>
+          <Button
+            variant={activeTab === 'breakdown' ? "default" : "ghost"}
+            onClick={() => setActiveTab('breakdown')}
+            className={`h-auto py-2 px-3 rounded-none transition-all duration-300 ${
+              activeTab === 'breakdown'
+                ? "bg-[#f9e2af] text-[#11111b] hover:bg-[#f9e2af]/90 shadow-sm"
+                : "text-ctp-text hover:bg-ctp-surface1 hover:text-ctp-text"
+            }`}
+          >
+            <span className="font-medium text-xs sm:text-sm">Breakdown</span>
+          </Button>
+          <Button
+            variant={activeTab === 'recent' ? "default" : "ghost"}
+            onClick={() => setActiveTab('recent')}
+            className={`h-auto py-2 px-3 rounded-none transition-all duration-300 ${
+              activeTab === 'recent'
+                ? "bg-[#f9e2af] text-[#11111b] hover:bg-[#f9e2af]/90 shadow-sm"
+                : "text-ctp-text hover:bg-ctp-surface1 hover:text-ctp-text"
+            }`}
+          >
+            <span className="font-medium text-xs sm:text-sm">Recent WRs</span>
+          </Button>
+          <Button
+            variant={activeTab === 'elo' ? "default" : "ghost"}
+            onClick={() => setActiveTab('elo')}
+            className={`h-auto py-2 px-3 rounded-none transition-all duration-300 ${
+              activeTab === 'elo'
+                ? "bg-[#f9e2af] text-[#11111b] hover:bg-[#f9e2af]/90 shadow-sm"
+                : "text-ctp-text hover:bg-ctp-surface1 hover:text-ctp-text"
+            }`}
+          >
+            <span className="font-medium text-xs sm:text-sm">Elo Rankings</span>
+          </Button>
+        </div>
 
-        <TabsContent value="overview" className="space-y-4">
+        {activeTab === 'overview' && (
+          <>
           <div className="grid gap-4 md:grid-cols-2">
             <Card className="animate-slide-up-delay">
               <CardHeader>
@@ -876,9 +927,10 @@ const Stats = () => {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
+          </>
+        )}
 
-        <TabsContent value="progression" className="space-y-4">
+        {activeTab === 'progression' && (
           <Card className="animate-slide-up-delay-2">
             <CardHeader>
               <CardTitle>World Record Time Progression</CardTitle>
@@ -887,40 +939,74 @@ const Stats = () => {
             <CardContent>
               {/* Filters - Always show so users can switch leaderboard types even when no data */}
               <div className="mb-6 space-y-4">
-                {/* Leaderboard Type Tabs */}
-                <Tabs value={wrProgressionLeaderboardType} onValueChange={(value) => setWrProgressionLeaderboardType(value as 'regular' | 'individual-level' | 'community-golds')}>
-                  <TabsList className="grid w-full grid-cols-3 mb-4">
-                    <TabsTrigger value="regular" className="flex items-center gap-2">
+                {/* Leaderboard Type Buttons */}
+                <div className="grid grid-cols-3 mb-4 p-0.5 gap-1 bg-ctp-surface0/50 rounded-none border border-ctp-surface1">
+                  <Button
+                    variant={wrProgressionLeaderboardType === 'regular' ? "default" : "ghost"}
+                    onClick={() => setWrProgressionLeaderboardType('regular')}
+                    className={`h-auto py-2 px-3 rounded-none transition-all duration-300 ${
+                      wrProgressionLeaderboardType === 'regular'
+                        ? "bg-[#f9e2af] text-[#11111b] hover:bg-[#f9e2af]/90 shadow-sm"
+                        : "text-ctp-text hover:bg-ctp-surface1 hover:text-ctp-text"
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-2">
                       <Trophy className="h-4 w-4" />
-                      <span>Full Game</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="individual-level" className="flex items-center gap-2">
+                      <span className="font-medium text-xs sm:text-sm">Full Game</span>
+                    </div>
+                  </Button>
+                  <Button
+                    variant={wrProgressionLeaderboardType === 'individual-level' ? "default" : "ghost"}
+                    onClick={() => setWrProgressionLeaderboardType('individual-level')}
+                    className={`h-auto py-2 px-3 rounded-none transition-all duration-300 ${
+                      wrProgressionLeaderboardType === 'individual-level'
+                        ? "bg-[#f9e2af] text-[#11111b] hover:bg-[#f9e2af]/90 shadow-sm"
+                        : "text-ctp-text hover:bg-ctp-surface1 hover:text-ctp-text"
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-2">
                       <Star className="h-4 w-4" />
-                      <span>Individual Levels</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="community-golds" className="flex items-center gap-2">
+                      <span className="font-medium text-xs sm:text-sm">ILs</span>
+                    </div>
+                  </Button>
+                  <Button
+                    variant={wrProgressionLeaderboardType === 'community-golds' ? "default" : "ghost"}
+                    onClick={() => setWrProgressionLeaderboardType('community-golds')}
+                    className={`h-auto py-2 px-3 rounded-none transition-all duration-300 ${
+                      wrProgressionLeaderboardType === 'community-golds'
+                        ? "bg-[#f9e2af] text-[#11111b] hover:bg-[#f9e2af]/90 shadow-sm"
+                        : "text-ctp-text hover:bg-ctp-surface1 hover:text-ctp-text"
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-2">
                       <Gem className="h-4 w-4" />
-                      <span>Community Golds</span>
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
+                      <span className="font-medium text-xs sm:text-sm">CGs</span>
+                    </div>
+                  </Button>
+                </div>
 
-                {/* Category Tabs */}
+                {/* Category Buttons */}
                 {availableWrCategories.length > 0 && (
                   <div className="mb-4">
-                    <Tabs value={wrProgressionCategory} onValueChange={setWrProgressionCategory}>
-                      <TabsList className="flex w-full p-0.5 gap-1 overflow-x-auto overflow-y-hidden scrollbar-hide" style={{ minWidth: 'max-content' }}>
-                        {availableWrCategories.map((category) => (
-                          <TabsTrigger 
-                            key={category.id} 
-                            value={category.id} 
-                            className="data-[state=active]:bg-[#94e2d5] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-colors font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#94e2d5]/50 py-1.5 sm:py-2 px-2 sm:px-3 text-xs sm:text-sm whitespace-nowrap rounded-none flex items-center gap-1.5"
+                    <div className="flex w-full p-1 gap-2 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-ctp-surface1 scrollbar-track-transparent pb-3" style={{ minWidth: 'max-content' }}>
+                      {availableWrCategories.map((category) => {
+                        const isSelected = wrProgressionCategory === category.id;
+                        return (
+                          <Button
+                            key={category.id}
+                            variant={isSelected ? "default" : "outline"}
+                            onClick={() => setWrProgressionCategory(category.id)}
+                            className={`whitespace-nowrap px-4 py-2 h-9 text-sm font-medium transition-all duration-200 ${
+                              isSelected
+                                ? "bg-[#94e2d5] text-[#11111b] hover:bg-[#94e2d5]/90 border-transparent shadow-sm"
+                                : "bg-ctp-surface0 text-ctp-text border-ctp-surface1 hover:bg-ctp-surface1 hover:text-ctp-text hover:border-[#94e2d5]/50"
+                            }`}
                           >
                             {category.name || getCategoryNameWithOverride(category.id, availableWrCategories)}
-                          </TabsTrigger>
-                        ))}
-                      </TabsList>
-                    </Tabs>
+                          </Button>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
 
@@ -1151,9 +1237,9 @@ const Stats = () => {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
+        )}
 
-        <TabsContent value="breakdown" className="space-y-4">
+        {activeTab === 'breakdown' && (
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardHeader>
@@ -1213,9 +1299,9 @@ const Stats = () => {
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
+        )}
 
-        <TabsContent value="recent" className="space-y-4">
+        {activeTab === 'recent' && (
           <Card className="animate-slide-up-delay">
             <CardHeader>
               <CardTitle>Recent World Records</CardTitle>
@@ -1282,9 +1368,9 @@ const Stats = () => {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
+        )}
 
-        <TabsContent value="elo" className="space-y-4">
+        {activeTab === 'elo' && (
           <Card className="animate-slide-up-delay">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -1380,8 +1466,8 @@ const Stats = () => {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+        )}
+      </div>
     </div>
   );
 };
