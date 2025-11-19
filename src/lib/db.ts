@@ -275,9 +275,6 @@ export const getPlayerRuns = getPlayerRunsFirestore;
 export const getPlayerPendingRuns = getPlayerPendingRunsFirestore;
 export const getUnverifiedLeaderboardEntries = getUnverifiedLeaderboardEntriesFirestore;
 export const updateLeaderboardEntry = async (runId: string, data: Partial<LeaderboardEntry>): Promise<boolean> => {
-  // Dynamic import to avoid potential cycles if any, but now we can import directly safely?
-  // Let's stick to dynamic import but from the specific file
-  const { updateLeaderboardEntryFirestore } = await import("./data/firestore/runs");
   try {
     return await updateLeaderboardEntryFirestore(runId, data);
   } catch (error: any) {
@@ -378,12 +375,10 @@ export const getPointsConfig = getPointsConfigFirestore;
 export const updatePointsConfig = updatePointsConfigFirestore;
 
 export const backfillPointsForAllRuns = async () => {
-  const { backfillPointsForAllRunsFirestore } = await import("./data/firestore/points");
   return backfillPointsForAllRunsFirestore();
 };
 
 export const wipeLeaderboards = async () => {
-  const { wipeLeaderboardsFirestore } = await import("./data/firestore/points");
   return wipeLeaderboardsFirestore();
 };
 
