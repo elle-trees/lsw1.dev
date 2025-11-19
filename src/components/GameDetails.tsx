@@ -256,9 +256,7 @@ export function GameDetails({ className }: GameDetailsProps) {
                         className="text-[#F59E0B] hover:text-[#F59E0B] transition-all duration-300 hover:scale-110"
                         aria-label="Speedrun.com"
                       >
-                        <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 2.4c5.302 0 9.6 4.298 9.6 9.6 0 5.302-4.298 9.6-9.6 9.6-5.302 0-9.6-4.298-9.6-9.6 0-5.302 4.298-9.6 9.6-9.6zm-1.2 3.6v7.2H8.4V6h2.4zm4.8 0v7.2h-2.4V6h2.4z"/>
-                        </svg>
+                        <Trophy className="h-5 w-5" />
                       </a>
                     )}
                     <a
@@ -296,9 +294,7 @@ export function GameDetails({ className }: GameDetailsProps) {
                   className="text-[#F59E0B] hover:text-[#F59E0B] transition-all duration-300 hover:scale-110"
                   aria-label="Speedrun.com"
                 >
-                  <svg className="h-5 w-5 transition-transform duration-300 hover:rotate-12" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 2.4c5.302 0 9.6 4.298 9.6 9.6 0 5.302-4.298 9.6-9.6 9.6-5.302 0-9.6-4.298-9.6-9.6 0-5.302 4.298-9.6 9.6-9.6zm-1.2 3.6v7.2H8.4V6h2.4zm4.8 0v7.2h-2.4V6h2.4z"/>
-                  </svg>
+                  <Trophy className="h-5 w-5 transition-transform duration-300 hover:rotate-12" />
                 </a>
               )}
               <a
@@ -625,9 +621,7 @@ export function GameDetails({ className }: GameDetailsProps) {
                         className="text-[#F59E0B] hover:text-[#F59E0B] transition-all duration-300 hover:scale-110"
                         aria-label="Speedrun.com"
                       >
-                        <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 2.4c5.302 0 9.6 4.298 9.6 9.6 0 5.302-4.298 9.6-9.6 9.6-5.302 0-9.6-4.298-9.6-9.6 0-5.302 4.298-9.6 9.6-9.6zm-1.2 3.6v7.2H8.4V6h2.4zm4.8 0v7.2h-2.4V6h2.4z"/>
-                        </svg>
+                        <Trophy className="h-5 w-5" />
                       </a>
                     )}
                     <a
@@ -665,9 +659,7 @@ export function GameDetails({ className }: GameDetailsProps) {
                   className="text-[#F59E0B] hover:text-[#F59E0B] transition-all duration-300 hover:scale-110"
                   aria-label="Speedrun.com"
                 >
-                  <svg className="h-5 w-5 transition-transform duration-300 hover:rotate-12" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 2.4c5.302 0 9.6 4.298 9.6 9.6 0 5.302-4.298 9.6-9.6 9.6-5.302 0-9.6-4.298-9.6-9.6 0-5.302 4.298-9.6 9.6-9.6zm-1.2 3.6v7.2H8.4V6h2.4zm4.8 0v7.2h-2.4V6h2.4z"/>
-                  </svg>
+                  <Trophy className="h-5 w-5 transition-transform duration-300 hover:rotate-12" />
                 </a>
               )}
               <a
