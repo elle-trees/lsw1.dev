@@ -354,43 +354,65 @@ const Leaderboards = () => {
                   </div>
                   
                   {/* Subcategory Buttons (only for regular leaderboard type) */}
-                  {leaderboardType === 'regular' && (
-                    subcategoriesLoading ? (
-                      <div className="mb-6">
-                        <div className="flex w-full p-1 gap-2 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-ctp-surface1 scrollbar-track-transparent pb-3">
-                          {[...Array(4)].map((_, index) => (
-                            <Skeleton 
-                              key={index} 
-                              className="h-8 w-28 flex-shrink-0 rounded-md"
-                              style={{ animationDelay: `${index * 50}ms` }}
-                            />
-                          ))}
+                  {leaderboardType === 'regular' && (() => {
+                    // Check if the selected category has subcategories
+                    const selectedCategoryData = availableCategories.find(c => c.id === selectedCategory);
+                    const hasSubcategories = selectedCategoryData?.subcategories && selectedCategoryData.subcategories.length > 0;
+                    
+                    // Only show loading if we're loading AND the category has subcategories (or we don't know yet)
+                    // Don't show loading if we know the category has no subcategories
+                    if (subcategoriesLoading) {
+                      // Only show loading skeleton if category data is available and has subcategories,
+                      // or if category data isn't loaded yet (we don't know if it has subcategories)
+                      if (!selectedCategoryData || hasSubcategories) {
+                        return (
+                          <div className="mb-6">
+                            <div className="flex w-full p-1 gap-2 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-ctp-surface1 scrollbar-track-transparent pb-3">
+                              {[...Array(4)].map((_, index) => (
+                                <Skeleton 
+                                  key={index} 
+                                  className="h-8 w-28 flex-shrink-0 rounded-md"
+                                  style={{ animationDelay: `${index * 50}ms` }}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      }
+                      // Category has no subcategories, don't show loading
+                      return null;
+                    }
+                    
+                    // Show subcategories if available
+                    if (availableSubcategories.length > 0) {
+                      return (
+                        <div className="mb-6 animate-slide-up-delay">
+                          <div className="flex w-full p-1 gap-2 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-ctp-surface1 scrollbar-track-transparent pb-3" style={{ minWidth: 'max-content' }}>
+                              {availableSubcategories.map((subcategory, index) => {
+                                const isSelected = selectedSubcategory === subcategory.id;
+                                return (
+                                <Button 
+                                  key={subcategory.id} 
+                                  variant={isSelected ? "default" : "outline"}
+                                  onClick={() => setSelectedSubcategory(subcategory.id)}
+                                  className={`button-click-animation category-button-animate whitespace-nowrap px-4 py-2 h-8 text-xs sm:text-sm font-medium transition-all duration-200 ${
+                                    isSelected 
+                                      ? "bg-[#cba6f7] text-[#11111b] hover:bg-[#cba6f7]/90 border-transparent shadow-sm" 
+                                      : "bg-ctp-surface0 text-ctp-text border-ctp-surface1 hover:bg-ctp-surface1 hover:text-ctp-text hover:border-[#cba6f7]/50"
+                                  }`}
+                                  style={{ animationDelay: `${index * 50}ms` }}
+                                >
+                                  {subcategory.name}
+                                </Button>
+                              )})}
+                          </div>
                         </div>
-                      </div>
-                    ) : availableSubcategories.length > 0 && (
-                      <div className="mb-6 animate-slide-up-delay">
-                        <div className="flex w-full p-1 gap-2 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-ctp-surface1 scrollbar-track-transparent pb-3" style={{ minWidth: 'max-content' }}>
-                            {availableSubcategories.map((subcategory, index) => {
-                              const isSelected = selectedSubcategory === subcategory.id;
-                              return (
-                              <Button 
-                                key={subcategory.id} 
-                                variant={isSelected ? "default" : "outline"}
-                                onClick={() => setSelectedSubcategory(subcategory.id)}
-                                className={`button-click-animation category-button-animate whitespace-nowrap px-4 py-2 h-8 text-xs sm:text-sm font-medium transition-all duration-200 ${
-                                  isSelected 
-                                    ? "bg-[#cba6f7] text-[#11111b] hover:bg-[#cba6f7]/90 border-transparent shadow-sm" 
-                                    : "bg-ctp-surface0 text-ctp-text border-ctp-surface1 hover:bg-ctp-surface1 hover:text-ctp-text hover:border-[#cba6f7]/50"
-                                }`}
-                                style={{ animationDelay: `${index * 50}ms` }}
-                              >
-                                {subcategory.name}
-                              </Button>
-                            )})}
-                        </div>
-                      </div>
-                    )
-                  )}
+                      );
+                    }
+                    
+                    // Don't render anything if no subcategories
+                    return null;
+                  })()}
                 </>
               ) : (
                 availableCategories.length > 0 && (
