@@ -405,39 +405,39 @@ export function GameDetails({ className }: GameDetailsProps) {
   return (
     <>
       <header className="bg-[#1e1e2e] shadow-lg sticky top-0 z-40 w-full overflow-x-hidden">
-        <div className="flex items-start justify-between px-2 sm:px-4 min-w-0 w-full py-4">
+        <div className="flex items-start justify-between px-2 sm:px-4 min-w-0 w-full py-2">
           {/* Game Details Section - Left Side */}
-          <div className="flex items-start gap-2 sm:gap-4 lg:gap-6 min-w-0 flex-shrink flex-1">
+          <div className="flex items-start gap-2 sm:gap-3 lg:gap-4 min-w-0 flex-shrink flex-1">
             {isVisible ? (
-              <div className="flex items-start gap-2 sm:gap-4 lg:gap-6 min-w-0 flex-shrink flex-1">
+              <div className="flex items-start gap-2 sm:gap-3 lg:gap-4 min-w-0 flex-shrink flex-1">
                 {/* Game Cover Image */}
                 {config.coverImageUrl && (
                   <div className="flex-shrink-0">
                     <img
                       src={config.coverImageUrl}
                       alt={config.title}
-                      className="w-24 h-32 sm:w-32 sm:h-40 object-cover rounded-none border border-ctp-surface1"
+                      className="w-16 h-20 sm:w-20 sm:h-24 object-cover rounded-none border border-ctp-surface1"
                     />
                   </div>
                 )}
 
                 {/* Main Content */}
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 flex flex-col justify-center">
                   {/* Title and Categories */}
-                  <div className="mb-2">
-                    <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-ctp-text mb-2">
+                  <div className="mb-1">
+                    <h1 className="text-base sm:text-lg md:text-xl font-bold text-ctp-text mb-1">
                       {config.title}
                       {config.subtitle && (
-                        <span className="text-ctp-subtext1 font-normal"> ({config.subtitle})</span>
+                        <span className="text-ctp-subtext1 font-normal text-sm"> ({config.subtitle})</span>
                       )}
                     </h1>
                     {config.categories.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mb-2">
+                      <div className="flex flex-wrap gap-1 mb-1">
                         {config.categories.map((category, index) => (
                           <Badge
                             key={index}
                             variant="outline"
-                            className="bg-ctp-surface0 text-ctp-text border-ctp-surface1 text-xs sm:text-sm"
+                            className="bg-ctp-surface0 text-ctp-text border-ctp-surface1 text-xs px-1.5 py-0.5"
                           >
                             {category}
                           </Badge>
@@ -447,12 +447,12 @@ export function GameDetails({ className }: GameDetailsProps) {
                   </div>
 
                   {/* Platform Buttons */}
-                  <div className="flex flex-wrap gap-2 mb-2">
+                  <div className="flex flex-wrap gap-1 mb-1">
                     {sortedPlatforms.map((platform) => (
                       <Button
                         key={platform.id}
                         variant="outline"
-                        className="bg-ctp-surface0 text-ctp-text border-ctp-surface1 hover:bg-ctp-surface1 hover:border-ctp-mauve/50 rounded-none text-xs sm:text-sm px-3 py-1.5 h-auto"
+                        className="bg-ctp-surface0 text-ctp-text border-ctp-surface1 hover:bg-ctp-surface1 hover:border-ctp-mauve/50 rounded-none text-xs px-2 py-0.5 h-auto"
                       >
                         {platform.label}
                       </Button>
@@ -461,7 +461,7 @@ export function GameDetails({ className }: GameDetailsProps) {
 
                   {/* Header Navigation Links */}
                   {sortedHeaderLinks.length > 0 && (
-                    <nav className="flex flex-wrap gap-2 sm:gap-3 lg:gap-4 mt-3">
+                    <nav className="flex flex-wrap gap-2 sm:gap-3 lg:gap-4">
                       {sortedHeaderLinks.map((link) => {
                         const IconComponent = link.icon === "LegoStud" 
                           ? LegoStudIcon 
@@ -471,40 +471,38 @@ export function GameDetails({ className }: GameDetailsProps) {
                           (link.route !== "/" && location.pathname.startsWith(link.route));
 
                         return (
-                          <Link
+                          <Button
                             key={link.id}
-                            to={link.route}
-                            className="relative flex items-center gap-1 transition-all duration-300 group text-sm"
-                            style={{ color: linkColor }}
+                            variant={isActive ? "default" : "outline"}
+                            asChild
+                            className={`relative flex items-center gap-1 transition-all duration-300 text-xs sm:text-sm px-2 py-1 h-auto ${
+                              isActive 
+                                ? "bg-ctp-surface1 border-ctp-surface1" 
+                                : "bg-ctp-surface0 border-ctp-surface1 hover:bg-ctp-surface1"
+                            }`}
+                            style={isActive ? { 
+                              borderColor: linkColor,
+                              color: linkColor 
+                            } : {}}
                           >
-                            {IconComponent && (
-                              link.icon === "LegoStud" ? (
-                                <LegoStudIcon 
-                                  size={16} 
-                                  color={linkColor}
-                                  className="transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12"
-                                />
-                              ) : (
-                                <IconComponent 
-                                  className="h-4 w-4 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12"
-                                  style={{ color: linkColor }}
-                                />
-                              )
-                            )}
-                            <span className="relative">
+                            <Link to={link.route}>
+                              {IconComponent && (
+                                link.icon === "LegoStud" ? (
+                                  <LegoStudIcon 
+                                    size={14} 
+                                    color={isActive ? linkColor : undefined}
+                                    className="transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12"
+                                  />
+                                ) : (
+                                  <IconComponent 
+                                    className="h-3.5 w-3.5 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12"
+                                    style={{ color: isActive ? linkColor : undefined }}
+                                  />
+                                )
+                              )}
                               {link.label}
-                              <span 
-                                className="absolute -bottom-1 left-0 w-0 h-0.5 transition-all duration-300 group-hover:w-full"
-                                style={{ backgroundColor: linkColor }}
-                              ></span>
-                            </span>
-                            {isActive && (
-                              <span 
-                                className="absolute -bottom-1 left-0 w-full h-0.5"
-                                style={{ backgroundColor: linkColor }}
-                              ></span>
-                            )}
-                          </Link>
+                            </Link>
+                          </Button>
                         );
                       })}
                     </nav>
