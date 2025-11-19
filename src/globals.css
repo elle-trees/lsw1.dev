@@ -322,10 +322,6 @@
   }
 
   /* Smooth scrolling */
-  html {
-    scroll-behavior: smooth;
-  }
-
   .overflow-x-auto {
     scroll-behavior: smooth;
   }
@@ -333,6 +329,59 @@
   /* Enhanced transitions */
   * {
     @apply transition-colors duration-200;
+  }
+
+  /* Performance optimizations */
+  /* Use GPU acceleration for animated elements */
+  .group:hover,
+  .card-hover,
+  .card-hover-subtle,
+  .link-hover,
+  .link-glow {
+    will-change: transform, opacity;
+  }
+
+  /* Optimize header for sticky positioning */
+  header {
+    will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+
+  /* Optimize animations to use transform and opacity */
+  .animate-fade-in,
+  .animate-fade-in-delay,
+  .animate-fade-in-delay-2,
+  .animate-fade-in-scale,
+  .animate-slide-up,
+  .animate-slide-up-delay,
+  .animate-slide-up-delay-2 {
+    will-change: transform, opacity;
+  }
+
+  /* Reduce repaints for frequently animated elements */
+  .transition-transform,
+  .transition-all {
+    will-change: transform;
+  }
+
+  /* Smooth scrolling performance */
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Improve image rendering */
+  img {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+
+  /* Better focus indicators with smooth transitions */
+  *:focus-visible {
+    transition: outline-offset 0.2s ease;
   }
 
   /* Card hover effects */
@@ -524,5 +573,22 @@
     outline: 2px solid rgba(203, 166, 247, 0.5);
     outline-offset: 2px;
     border-radius: 4px;
+    transition: outline-offset 0.2s ease, outline-color 0.2s ease;
+  }
+
+  /* Smooth page transitions */
+  main {
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  /* Optimize button interactions */
+  button,
+  a {
+    touch-action: manipulation;
+  }
+
+  /* Reduce layout shifts */
+  [data-skeleton] {
+    min-height: 1em;
   }
 }

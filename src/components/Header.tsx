@@ -12,6 +12,7 @@ import { LoginModal } from "@/components/LoginModal";
 import { useToast } from "@/hooks/use-toast";
 import { getErrorMessage, logError } from "@/lib/errorUtils";
 import { getUnverifiedLeaderboardEntries, getUnclaimedRunsBySRCUsername, getPlayerByUid } from "@/lib/db";
+import { usePrefetchOnHover } from "@/hooks/usePrefetch";
 
 export function Header() {
   const { currentUser, loading } = useAuth();
@@ -101,89 +102,107 @@ export function Header() {
   const notificationCount = currentUser?.isAdmin ? unverifiedRunsCount : unclaimedRunsCount;
   const hasNotifications = notificationCount > 0;
 
-  const NavLinks = () => (
-    <>
-      <Link 
-        to="/leaderboards" 
-        className="text-[#a6e3a1] hover:text-[#a6e3a1] flex items-center gap-1 transition-all duration-300 relative group"
-        onClick={() => setIsMobileMenuOpen(false)}
-      >
-        <Trophy className="h-4 w-4 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12" />
-        <span className="relative">
-          Leaderboards
-          <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-[#a6e3a1] via-ctp-green to-[#a6e3a1] transition-all duration-300 group-hover:w-full"></span>
-        </span>
-      </Link>
-      <Link 
-        to="/points" 
-        className="text-[#fab387] hover:text-[#fab387] flex items-center gap-1 transition-all duration-300 relative group"
-        onClick={() => setIsMobileMenuOpen(false)}
-      >
-        <LegoStudIcon size={16} color="#fab387" className="transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12" />
-        <span className="relative">
-          Studs
-          <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-[#fab387] via-ctp-pink to-[#fab387] transition-all duration-300 group-hover:w-full"></span>
-        </span>
-      </Link>
-      <Link 
-        to="/submit" 
-        className="text-[#eba0ac] hover:text-[#eba0ac] flex items-center gap-1 transition-all duration-300 relative group"
-        onClick={() => setIsMobileMenuOpen(false)}
-      >
-        <Upload className="h-4 w-4 transition-transform duration-300 group-hover:scale-110 group-hover:translate-y-[-2px]" />
-        <span className="relative">
-          Submit Run
-          <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-[#eba0ac] via-ctp-mauve to-[#eba0ac] transition-all duration-300 group-hover:w-full"></span>
-        </span>
-      </Link>
-      <Link 
-        to="/live" 
-        className="text-[#f38ba8] hover:text-[#f38ba8] flex items-center gap-1 transition-all duration-300 relative group"
-        onClick={() => setIsMobileMenuOpen(false)}
-      >
-        <Radio className="h-4 w-4 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12" />
-        <span className="relative">
-          Live
-          <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-[#f38ba8] via-ctp-sapphire to-[#f38ba8] transition-all duration-300 group-hover:w-full"></span>
-        </span>
-      </Link>
-      <Link 
-        to="/downloads" 
-        className="text-[#cba6f7] hover:text-[#cba6f7] flex items-center gap-1 transition-all duration-300 relative group"
-        onClick={() => setIsMobileMenuOpen(false)}
-      >
-        <Download className="h-4 w-4 transition-transform duration-300 group-hover:scale-110 group-hover:translate-y-[2px]" />
-        <span className="relative">
-          Downloads
-          <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-[#cba6f7] via-ctp-sky to-[#cba6f7] transition-all duration-300 group-hover:w-full"></span>
-        </span>
-      </Link>
-      <Link 
-        to="/stats" 
-        className="text-[#89b4fa] hover:text-[#89b4fa] flex items-center gap-1 transition-all duration-300 relative group"
-        onClick={() => setIsMobileMenuOpen(false)}
-      >
-        <BarChart3 className="h-4 w-4 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12" />
-        <span className="relative">
-          Stats
-          <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-[#89b4fa] via-ctp-blue to-[#89b4fa] transition-all duration-300 group-hover:w-full"></span>
-        </span>
-      </Link>
-      {currentUser?.isAdmin && (
+  const NavLinks = () => {
+    // Prefetch hooks for all navigation links
+    const leaderboardsPrefetch = usePrefetchOnHover("/leaderboards");
+    const pointsPrefetch = usePrefetchOnHover("/points");
+    const submitPrefetch = usePrefetchOnHover("/submit");
+    const livePrefetch = usePrefetchOnHover("/live");
+    const downloadsPrefetch = usePrefetchOnHover("/downloads");
+    const statsPrefetch = usePrefetchOnHover("/stats");
+    const adminPrefetch = usePrefetchOnHover("/admin");
+
+    return (
+      <>
         <Link 
-          to="/admin" 
-          className="text-[#f2cdcd] hover:text-[#f2cdcd] flex items-center gap-1 transition-all duration-300 relative group"
+          to="/leaderboards" 
+          className="text-[#a6e3a1] hover:text-[#a6e3a1] flex items-center gap-1 transition-all duration-300 relative group"
           onClick={() => setIsMobileMenuOpen(false)}
+          {...leaderboardsPrefetch}
         >
-          <ShieldAlert className="h-4 w-4 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12" />
+          <Trophy className="h-4 w-4 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12" />
           <span className="relative">
-            Admin
-            <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-[#f2cdcd] via-ctp-pink to-[#f2cdcd] transition-all duration-300 group-hover:w-full"></span>
+            Leaderboards
+            <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-[#a6e3a1] via-ctp-green to-[#a6e3a1] transition-all duration-300 group-hover:w-full"></span>
           </span>
         </Link>
-      )}
-    </>
-  );
+        <Link 
+          to="/points" 
+          className="text-[#fab387] hover:text-[#fab387] flex items-center gap-1 transition-all duration-300 relative group"
+          onClick={() => setIsMobileMenuOpen(false)}
+          {...pointsPrefetch}
+        >
+          <LegoStudIcon size={16} color="#fab387" className="transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12" />
+          <span className="relative">
+            Studs
+            <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-[#fab387] via-ctp-pink to-[#fab387] transition-all duration-300 group-hover:w-full"></span>
+          </span>
+        </Link>
+        <Link 
+          to="/submit" 
+          className="text-[#eba0ac] hover:text-[#eba0ac] flex items-center gap-1 transition-all duration-300 relative group"
+          onClick={() => setIsMobileMenuOpen(false)}
+          {...submitPrefetch}
+        >
+          <Upload className="h-4 w-4 transition-transform duration-300 group-hover:scale-110 group-hover:translate-y-[-2px]" />
+          <span className="relative">
+            Submit Run
+            <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-[#eba0ac] via-ctp-mauve to-[#eba0ac] transition-all duration-300 group-hover:w-full"></span>
+          </span>
+        </Link>
+        <Link 
+          to="/live" 
+          className="text-[#f38ba8] hover:text-[#f38ba8] flex items-center gap-1 transition-all duration-300 relative group"
+          onClick={() => setIsMobileMenuOpen(false)}
+          {...livePrefetch}
+        >
+          <Radio className="h-4 w-4 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12" />
+          <span className="relative">
+            Live
+            <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-[#f38ba8] via-ctp-sapphire to-[#f38ba8] transition-all duration-300 group-hover:w-full"></span>
+          </span>
+        </Link>
+        <Link 
+          to="/downloads" 
+          className="text-[#cba6f7] hover:text-[#cba6f7] flex items-center gap-1 transition-all duration-300 relative group"
+          onClick={() => setIsMobileMenuOpen(false)}
+          {...downloadsPrefetch}
+        >
+          <Download className="h-4 w-4 transition-transform duration-300 group-hover:scale-110 group-hover:translate-y-[2px]" />
+          <span className="relative">
+            Downloads
+            <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-[#cba6f7] via-ctp-sky to-[#cba6f7] transition-all duration-300 group-hover:w-full"></span>
+          </span>
+        </Link>
+        <Link 
+          to="/stats" 
+          className="text-[#89b4fa] hover:text-[#89b4fa] flex items-center gap-1 transition-all duration-300 relative group"
+          onClick={() => setIsMobileMenuOpen(false)}
+          {...statsPrefetch}
+        >
+          <BarChart3 className="h-4 w-4 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12" />
+          <span className="relative">
+            Stats
+            <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-[#89b4fa] via-ctp-blue to-[#89b4fa] transition-all duration-300 group-hover:w-full"></span>
+          </span>
+        </Link>
+        {currentUser?.isAdmin && (
+          <Link 
+            to="/admin" 
+            className="text-[#f2cdcd] hover:text-[#f2cdcd] flex items-center gap-1 transition-all duration-300 relative group"
+            onClick={() => setIsMobileMenuOpen(false)}
+            {...adminPrefetch}
+          >
+            <ShieldAlert className="h-4 w-4 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12" />
+            <span className="relative">
+              Admin
+              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-[#f2cdcd] via-ctp-pink to-[#f2cdcd] transition-all duration-300 group-hover:w-full"></span>
+            </span>
+          </Link>
+        )}
+      </>
+    );
+  };
 
   return (
     <>
