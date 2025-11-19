@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Settings, User, Mail, Lock, Palette, Trophy, CheckCircle, Upload, X, Sparkles, Gem, Users } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getCategoryName, getPlatformName, getLevelName } from "@/lib/dataValidation";
 import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
@@ -114,7 +113,7 @@ const UserSettings = () => {
     if (!srcUsername || !currentUser) return;
     setLoadingSRCUnclaimed(true);
     try {
-      const runs = await getUnclaimedRunsBySRCUsername(srcUsername, currentUser.uid);
+      const runs = await getUnclaimedRunsBySRCUsername(srcUsername);
       const trulyUnclaimed = runs.filter(run => run.playerId !== currentUser.uid);
       setUnclaimedSRCRuns(trulyUnclaimed);
     } catch (error) {
@@ -370,12 +369,12 @@ const UserSettings = () => {
     try {
       // Use autoClaimRunsBySRCUsername which claims all matching runs
       const { autoClaimRunsBySRCUsername } = await import("@/lib/db");
-      const result = await autoClaimRunsBySRCUsername(currentUser.uid, srcUsername);
+      const claimedCount = await autoClaimRunsBySRCUsername(currentUser.uid, srcUsername);
       
-      if (result.claimed > 0) {
+      if (claimedCount > 0) {
         toast({
           title: "Runs Claimed",
-          description: `Successfully claimed ${result.claimed} run${result.claimed === 1 ? '' : 's'}!`,
+          description: `Successfully claimed ${claimedCount} run${claimedCount === 1 ? '' : 's'}!`,
         });
         // Refresh unclaimed runs list
         fetchUnclaimedSRCRuns(srcUsername);
@@ -383,15 +382,6 @@ const UserSettings = () => {
         toast({
           title: "No Runs to Claim",
           description: "No unclaimed runs found matching your SRC username.",
-        });
-      }
-      
-      if (result.errors.length > 0) {
-        console.error("Claim errors:", result.errors);
-        toast({
-          title: "Some Errors Occurred",
-          description: `${result.errors.length} error${result.errors.length === 1 ? '' : 's'} occurred while claiming runs.`,
-          variant: "destructive",
         });
       }
     } catch (error: any) {
@@ -668,26 +658,56 @@ const UserSettings = () => {
                     No unclaimed runs found for your SRC username. Make sure you've entered your exact Speedrun.com username above.
                   </p>
                 ) : (
-                  <Tabs value={unclaimedLeaderboardType} onValueChange={(value) => setUnclaimedLeaderboardType(value as 'regular' | 'individual-level' | 'community-golds')}>
-                    <TabsList className="grid w-full grid-cols-3 mb-3">
-                      <TabsTrigger value="regular" className="flex items-center gap-2">
+                <>
+                  <div className="grid grid-cols-3 mb-3 gap-1 bg-ctp-surface0/50 rounded-lg border border-ctp-surface1 p-0.5">
+                    <Button
+                      variant={unclaimedLeaderboardType === 'regular' ? "default" : "ghost"}
+                      onClick={() => setUnclaimedLeaderboardType('regular')}
+                      className={`h-auto py-2 px-3 rounded-md transition-all duration-300 ${
+                        unclaimedLeaderboardType === 'regular' 
+                          ? "bg-[#f9e2af] text-[#11111b] hover:bg-[#f9e2af]/90 shadow-sm" 
+                          : "text-ctp-text hover:bg-ctp-surface1 hover:text-ctp-text"
+                      }`}
+                    >
+                      <div className="flex items-center justify-center gap-2">
                         <Trophy className="h-4 w-4" />
-                        <span className="hidden sm:inline">Full Game</span>
-                        <span className="sm:hidden">FG</span>
-                      </TabsTrigger>
-                      <TabsTrigger value="individual-level" className="flex items-center gap-2">
+                        <span className="hidden sm:inline font-medium">Full Game</span>
+                        <span className="sm:hidden font-medium">FG</span>
+                      </div>
+                    </Button>
+                    <Button
+                      variant={unclaimedLeaderboardType === 'individual-level' ? "default" : "ghost"}
+                      onClick={() => setUnclaimedLeaderboardType('individual-level')}
+                      className={`h-auto py-2 px-3 rounded-md transition-all duration-300 ${
+                        unclaimedLeaderboardType === 'individual-level' 
+                          ? "bg-[#f9e2af] text-[#11111b] hover:bg-[#f9e2af]/90 shadow-sm" 
+                          : "text-ctp-text hover:bg-ctp-surface1 hover:text-ctp-text"
+                      }`}
+                    >
+                      <div className="flex items-center justify-center gap-2">
                         <Sparkles className="h-4 w-4" />
-                        <span className="hidden sm:inline">Individual Level</span>
-                        <span className="sm:hidden">IL</span>
-                      </TabsTrigger>
-                      <TabsTrigger value="community-golds" className="flex items-center gap-2">
+                        <span className="hidden sm:inline font-medium">Individual Level</span>
+                        <span className="sm:hidden font-medium">IL</span>
+                      </div>
+                    </Button>
+                    <Button
+                      variant={unclaimedLeaderboardType === 'community-golds' ? "default" : "ghost"}
+                      onClick={() => setUnclaimedLeaderboardType('community-golds')}
+                      className={`h-auto py-2 px-3 rounded-md transition-all duration-300 ${
+                        unclaimedLeaderboardType === 'community-golds' 
+                          ? "bg-[#f9e2af] text-[#11111b] hover:bg-[#f9e2af]/90 shadow-sm" 
+                          : "text-ctp-text hover:bg-ctp-surface1 hover:text-ctp-text"
+                      }`}
+                    >
+                      <div className="flex items-center justify-center gap-2">
                         <Gem className="h-4 w-4" />
-                        <span className="hidden sm:inline">Community Golds</span>
-                        <span className="sm:hidden">CGs</span>
-                      </TabsTrigger>
-                    </TabsList>
+                        <span className="hidden sm:inline font-medium">Community Golds</span>
+                        <span className="sm:hidden font-medium">CGs</span>
+                      </div>
+                    </Button>
+                  </div>
 
-                    <TabsContent value={unclaimedLeaderboardType} className="mt-0">
+                  <div className="mt-0">
                       {(() => {
                         // Filter runs by leaderboard type
                         const filteredRuns = unclaimedSRCRuns.filter(run => {
@@ -777,8 +797,8 @@ const UserSettings = () => {
                           </div>
                         );
                       })()}
-                    </TabsContent>
-                  </Tabs>
+                  </div>
+                </>
                 )}
               </>
             )}

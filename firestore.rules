@@ -46,11 +46,10 @@ service cloud.firestore {
     
     // Leaderboard entries
     match /leaderboardEntries/{entryId} {
-      // Anyone can read verified entries
-      allow read: if resource.data.verified == true;
+      // Anyone can read verified entries OR imported entries
+      allow read: if resource.data.verified == true || resource.data.importedFromSRC == true;
       // Users can read their own unverified entries (for pending submissions)
-      allow read: if resource.data.verified != true && 
-                     (isOwner(resource.data.playerId) || resource.data.importedFromSRC == true);
+      allow read: if resource.data.verified != true && isOwner(resource.data.playerId);
       // Authenticated users can create entries (for submissions)
       allow create: if isAuthenticated() && 
                        request.resource.data.playerId == request.auth.uid;
@@ -72,20 +71,14 @@ service cloud.firestore {
                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['comment', 'date']);
       // Users can claim runs imported from SRC by updating playerId if srcPlayerName/srcPlayer2Name matches their SRC username
       // Only imported runs can be claimed - manual runs are automatically assigned to the submitting user
-      // Note: Client-side code ensures only matching runs are shown
       // This rule allows authenticated users to claim imported runs by updating playerId to their own uid
       allow update: if isAuthenticated() && 
                        // User is setting playerId to their own uid (claiming the run)
                        request.resource.data.playerId == request.auth.uid &&
                        // Only allowing update to playerId field (must be in the changed fields)
                        ('playerId' in request.resource.data.diff(resource.data).affectedKeys()) &&
-                       // Ensure the player document exists (user must have a profile)
-                       exists(/databases/$(database)/documents/players/$(request.auth.uid)) &&
                        // Only allow claiming runs imported from SRC
-                       // Client-side code handles case-insensitive matching - this rule is a safety check
-                       (resource.data.importedFromSRC == true &&
-                        get(/databases/$(database)/documents/players/$(request.auth.uid)).data.srcUsername != null &&
-                        (resource.data.srcPlayerName != null || resource.data.srcPlayer2Name != null));
+                       resource.data.importedFromSRC == true;
     }
     
     // Download entries

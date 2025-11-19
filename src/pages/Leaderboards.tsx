@@ -7,15 +7,15 @@ import { Filter, User, Users, Trophy, Sparkles, TrendingUp, Star, Gem, Gamepad2 
 import { LeaderboardTable } from "@/components/LeaderboardTable";
 import { Pagination } from "@/components/Pagination";
 import { getLeaderboardEntries, getCategories, getPlatforms, runTypes, getLevels } from "@/lib/db";
-import { LeaderboardEntry } from "@/types/database";
+import { LeaderboardEntry, Category, Level } from "@/types/database";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { Skeleton } from "@/components/ui/skeleton";
 import LegoGoldBrickIcon from "@/components/icons/LegoGoldBrickIcon";
 
 const Leaderboards = () => {
   const [leaderboardType, setLeaderboardType] = useState<'regular' | 'individual-level' | 'community-golds'>('regular');
-  const [availableCategories, setAvailableCategories] = useState<{ id: string; name: string }[]>([]);
-  const [availableLevels, setAvailableLevels] = useState<{ id: string; name: string }[]>([]);
+  const [availableCategories, setAvailableCategories] = useState<Category[]>([]);
+  const [availableLevels, setAvailableLevels] = useState<Level[]>([]);
   const [availablePlatforms, setAvailablePlatforms] = useState<{ id: string; name: string }[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedLevel, setSelectedLevel] = useState("");
@@ -241,37 +241,57 @@ const Leaderboards = () => {
           </p>
         </div>
 
-        {/* Tabs */}
-        <Tabs value={leaderboardType} onValueChange={(value) => setLeaderboardType(value as 'regular' | 'individual-level' | 'community-golds')} className="mb-6">
-          <TabsList className="grid w-full grid-cols-3 mb-4 sm:mb-6 p-0.5 gap-1 rounded-none">
-            <TabsTrigger 
-              value="regular" 
-              className="data-[state=active]:bg-[#f9e2af] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#f9e2af]/50 text-xs sm:text-sm py-1.5 sm:py-2 px-2 sm:px-3 whitespace-nowrap rounded-none"
-            >
-              <Trophy className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1 sm:mr-1.5" />
-              <span className="hidden min-[375px]:inline">Full Game</span>
-              <span className="min-[375px]:hidden">Game</span>
-            </TabsTrigger>
-            <TabsTrigger 
-              value="individual-level" 
-              className="data-[state=active]:bg-[#f9e2af] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#f9e2af]/50 text-xs sm:text-sm py-1.5 sm:py-2 px-2 sm:px-3 whitespace-nowrap rounded-none"
-            >
-              <Star className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1 sm:mr-1.5" />
-              <span className="hidden sm:inline">Individual Levels</span>
-              <span className="sm:hidden">ILs</span>
-            </TabsTrigger>
-            <TabsTrigger 
-              value="community-golds" 
-              className="data-[state=active]:bg-[#f9e2af] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#f9e2af]/50 text-xs sm:text-sm py-1.5 sm:py-2 px-2 sm:px-3 whitespace-nowrap rounded-none"
-            >
-              <Gem className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1 sm:mr-1.5" />
-              <span className="hidden sm:inline">Community Golds</span>
-              <span className="sm:hidden">CGs</span>
-            </TabsTrigger>
-          </TabsList>
+        {/* Leaderboard Type Buttons */}
+        <div className="grid grid-cols-3 mb-6 p-0.5 gap-1 bg-ctp-surface0/50 rounded-lg border border-ctp-surface1">
+          <Button
+            variant={leaderboardType === 'regular' ? "default" : "ghost"}
+            onClick={() => setLeaderboardType('regular')}
+            className={`h-auto py-2 sm:py-3 px-2 sm:px-4 rounded-md transition-all duration-300 ${
+              leaderboardType === 'regular' 
+                ? "bg-[#f9e2af] text-[#11111b] hover:bg-[#f9e2af]/90 shadow-sm" 
+                : "text-ctp-text hover:bg-ctp-surface1 hover:text-ctp-text"
+            }`}
+          >
+            <div className="flex items-center justify-center gap-2">
+              <Trophy className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden min-[375px]:inline font-medium">Full Game</span>
+              <span className="min-[375px]:hidden font-medium">Game</span>
+            </div>
+          </Button>
+          <Button
+            variant={leaderboardType === 'individual-level' ? "default" : "ghost"}
+            onClick={() => setLeaderboardType('individual-level')}
+            className={`h-auto py-2 sm:py-3 px-2 sm:px-4 rounded-md transition-all duration-300 ${
+              leaderboardType === 'individual-level' 
+                ? "bg-[#f9e2af] text-[#11111b] hover:bg-[#f9e2af]/90 shadow-sm" 
+                : "text-ctp-text hover:bg-ctp-surface1 hover:text-ctp-text"
+            }`}
+          >
+            <div className="flex items-center justify-center gap-2">
+              <Star className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline font-medium">Individual Levels</span>
+              <span className="sm:hidden font-medium">ILs</span>
+            </div>
+          </Button>
+          <Button
+            variant={leaderboardType === 'community-golds' ? "default" : "ghost"}
+            onClick={() => setLeaderboardType('community-golds')}
+            className={`h-auto py-2 sm:py-3 px-2 sm:px-4 rounded-md transition-all duration-300 ${
+              leaderboardType === 'community-golds' 
+                ? "bg-[#f9e2af] text-[#11111b] hover:bg-[#f9e2af]/90 shadow-sm" 
+                : "text-ctp-text hover:bg-ctp-surface1 hover:text-ctp-text"
+            }`}
+          >
+            <div className="flex items-center justify-center gap-2">
+              <Gem className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline font-medium">Community Golds</span>
+              <span className="sm:hidden font-medium">CGs</span>
+            </div>
+          </Button>
+        </div>
 
-          <TabsContent value={leaderboardType} className="mt-0">
-            {/* Category Tabs */}
+        <div className="mt-0">
+            {/* Category Buttons */}
             {(() => {
               // Filter out categories that are disabled for the selected level
               const filteredCategories = availableCategories.filter(category => {
@@ -293,45 +313,54 @@ const Leaderboards = () => {
               return filteredCategories.length > 0 ? (
                 <>
                   <div className="mb-4">
-                    <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
-                      <TabsList className="flex w-full p-0.5 gap-1 overflow-x-auto overflow-y-hidden scrollbar-hide rounded-none" style={{ minWidth: 'max-content' }}>
+                    <div className="flex w-full p-1 gap-2 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-ctp-surface1 scrollbar-track-transparent pb-3" style={{ minWidth: 'max-content' }}>
                         {filteredCategories.map((category) => {
+                          const isSelected = selectedCategory === category.id;
                           return (
-                          <TabsTrigger 
+                          <Button 
                             key={category.id} 
-                            value={category.id} 
-                            className="data-[state=active]:bg-[#94e2d5] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-colors font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#94e2d5]/50 py-1.5 sm:py-2 px-2 sm:px-3 text-xs sm:text-sm whitespace-nowrap rounded-none flex items-center gap-1.5"
+                            variant={isSelected ? "default" : "outline"}
+                            onClick={() => setSelectedCategory(category.id)}
+                            className={`whitespace-nowrap px-4 py-2 h-9 text-sm font-medium transition-all duration-200 ${
+                              isSelected 
+                                ? "bg-[#94e2d5] text-[#11111b] hover:bg-[#94e2d5]/90 border-transparent shadow-sm" 
+                                : "bg-ctp-surface0 text-ctp-text border-ctp-surface1 hover:bg-ctp-surface1 hover:text-ctp-text hover:border-[#94e2d5]/50"
+                            }`}
                           >
                             {category.name}
-                          </TabsTrigger>
+                          </Button>
                           );
                         })}
-                      </TabsList>
-                    </Tabs>
+                    </div>
                   </div>
                   
-                  {/* Subcategory Tabs (only for regular leaderboard type) */}
+                  {/* Subcategory Buttons (only for regular leaderboard type) */}
                   {leaderboardType === 'regular' && availableSubcategories.length > 0 && (
-                    <div className="mb-4">
-                      <Tabs value={selectedSubcategory} onValueChange={setSelectedSubcategory}>
-                        <TabsList className="flex w-full p-0.5 gap-1 overflow-x-auto overflow-y-hidden scrollbar-hide rounded-none" style={{ minWidth: 'max-content' }}>
-                          {availableSubcategories.map((subcategory) => (
-                            <TabsTrigger 
+                    <div className="mb-6">
+                      <div className="flex w-full p-1 gap-2 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-ctp-surface1 scrollbar-track-transparent pb-3" style={{ minWidth: 'max-content' }}>
+                          {availableSubcategories.map((subcategory) => {
+                            const isSelected = selectedSubcategory === subcategory.id;
+                            return (
+                            <Button 
                               key={subcategory.id} 
-                              value={subcategory.id} 
-                              className="data-[state=active]:bg-[#cba6f7] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-colors font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#cba6f7]/50 py-1.5 sm:py-2 px-2 sm:px-3 text-xs sm:text-sm whitespace-nowrap rounded-none"
+                              variant={isSelected ? "default" : "outline"}
+                              onClick={() => setSelectedSubcategory(subcategory.id)}
+                              className={`whitespace-nowrap px-4 py-2 h-8 text-xs sm:text-sm font-medium transition-all duration-200 ${
+                                isSelected 
+                                  ? "bg-[#cba6f7] text-[#11111b] hover:bg-[#cba6f7]/90 border-transparent shadow-sm" 
+                                  : "bg-ctp-surface0 text-ctp-text border-ctp-surface1 hover:bg-ctp-surface1 hover:text-ctp-text hover:border-[#cba6f7]/50"
+                              }`}
                             >
                               {subcategory.name}
-                            </TabsTrigger>
-                          ))}
-                        </TabsList>
-                      </Tabs>
+                            </Button>
+                          )})}
+                      </div>
                     </div>
                   )}
                 </>
               ) : (
                 availableCategories.length > 0 && (
-                  <div className="mb-4 p-4 bg-ctp-surface0 rounded-none border border-ctp-surface1">
+                  <div className="mb-4 p-4 bg-ctp-surface0 rounded-lg border border-ctp-surface1">
                     <p className="text-sm text-ctp-subtext1">
                       No categories available for the selected level. Please enable categories for this level in the admin panel.
                     </p>
@@ -341,25 +370,25 @@ const Leaderboards = () => {
             })()}
 
         {/* Filters */}
-            <Card className="bg-gradient-to-br from-ctp-base to-ctp-mantle border-ctp-surface1 shadow-xl mb-4 rounded-none">
-          <CardHeader className="bg-gradient-to-r from-ctp-base to-ctp-mantle border-b border-ctp-surface1 py-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Filter className="h-4 w-4 text-ctp-mauve" />
+            <Card className="bg-gradient-to-br from-ctp-base to-ctp-mantle border-ctp-surface1 shadow-xl mb-6 rounded-xl overflow-hidden">
+          <CardHeader className="bg-gradient-to-r from-ctp-base to-ctp-mantle border-b border-ctp-surface1 py-4">
+            <CardTitle className="flex items-center gap-2 text-lg font-bold">
+              <Filter className="h-5 w-5 text-ctp-mauve" />
               <span className="text-ctp-text">Filter Results</span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-3 sm:p-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <CardContent className="p-4 sm:p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {(leaderboardType === 'individual-level' || leaderboardType === 'community-golds') && (
                 <div>
-                  <label className="block text-sm font-semibold mb-1.5 text-ctp-text flex items-center gap-2">
-                    <Sparkles className="h-3.5 w-3.5 text-ctp-mauve" />
+                  <label className="block text-sm font-semibold mb-2 text-ctp-text flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-ctp-mauve" />
                     Levels
                   </label>
                   <Select value={selectedLevel} onValueChange={setSelectedLevel}>
-                    <SelectTrigger className="bg-ctp-base border-ctp-surface1 h-9 text-sm rounded-none">
+                    <SelectTrigger className="bg-ctp-base border-ctp-surface1 h-10 text-sm rounded-md focus:ring-ctp-mauve">
                       <SelectValue placeholder="Select level" />
-                  </SelectTrigger>
+                    </SelectTrigger>
                   <SelectContent>
                       {availableLevels.map((level) => (
                         <SelectItem key={level.id} value={level.id} className="text-sm">
@@ -371,12 +400,12 @@ const Leaderboards = () => {
               </div>
               )}
               <div>
-                <label className="block text-sm font-semibold mb-1.5 text-ctp-text flex items-center gap-2">
-                  <Gamepad2 className="h-3.5 w-3.5 text-ctp-mauve" />
+                <label className="block text-sm font-semibold mb-2 text-ctp-text flex items-center gap-2">
+                  <Gamepad2 className="h-4 w-4 text-ctp-mauve" />
                   Platform
                 </label>
                 <Select value={selectedPlatform} onValueChange={setSelectedPlatform}>
-                  <SelectTrigger className="bg-ctp-base border-ctp-surface1 h-9 text-sm rounded-none">
+                  <SelectTrigger className="bg-ctp-base border-ctp-surface1 h-10 text-sm rounded-md focus:ring-ctp-mauve">
                     <SelectValue placeholder="Select platform" />
                   </SelectTrigger>
                   <SelectContent>
@@ -389,16 +418,16 @@ const Leaderboards = () => {
                 </Select>
               </div>
               <div>
-                <label className="block text-sm font-semibold mb-1.5 text-ctp-text flex items-center gap-2">
+                <label className="block text-sm font-semibold mb-2 text-ctp-text flex items-center gap-2">
                   {selectedRunType === 'solo' ? (
-                    <User className="h-3.5 w-3.5 text-ctp-mauve" />
+                    <User className="h-4 w-4 text-ctp-mauve" />
                   ) : (
-                    <Users className="h-3.5 w-3.5 text-ctp-mauve" />
+                    <Users className="h-4 w-4 text-ctp-mauve" />
                   )}
                   Run Type
                 </label>
                 <Select value={selectedRunType} onValueChange={setSelectedRunType}>
-                  <SelectTrigger className="bg-ctp-base border-ctp-surface1 h-9 text-sm rounded-none">
+                  <SelectTrigger className="bg-ctp-base border-ctp-surface1 h-10 text-sm rounded-md focus:ring-ctp-mauve">
                     <SelectValue placeholder="Select run type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -414,12 +443,12 @@ const Leaderboards = () => {
                 </Select>
               </div>
               <div>
-                <label className="block text-sm font-semibold mb-1.5 text-ctp-text flex items-center gap-2">
-                  <TrendingUp className="h-3.5 w-3.5 text-ctp-mauve" />
+                <label className="block text-sm font-semibold mb-2 text-ctp-text flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-ctp-mauve" />
                   Run Status
                 </label>
                 <Select value={showObsoleteRuns} onValueChange={setShowObsoleteRuns}>
-                  <SelectTrigger className="bg-ctp-base border-ctp-surface1 h-9 text-sm rounded-none">
+                  <SelectTrigger className="bg-ctp-base border-ctp-surface1 h-10 text-sm rounded-md focus:ring-ctp-mauve">
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -433,8 +462,8 @@ const Leaderboards = () => {
         </Card>
 
         {/* Leaderboard Table */}
-        <Card className="bg-gradient-to-br from-ctp-base to-ctp-mantle border-ctp-surface1 shadow-xl rounded-none">
-          <CardHeader className="bg-gradient-to-r from-ctp-base to-ctp-mantle border-b border-ctp-surface1 py-3">
+        <Card className="bg-gradient-to-br from-ctp-base to-ctp-mantle border-ctp-surface1 shadow-xl rounded-xl overflow-hidden">
+          <CardHeader className="bg-gradient-to-r from-ctp-base to-ctp-mantle border-b border-ctp-surface1 py-4">
             <CardTitle className="flex items-center gap-2 text-lg text-[#a6e3a1]">
               <span>
                 {availableCategories.find(c => c.id === selectedCategory)?.name || "Leaderboards"}
@@ -493,8 +522,7 @@ const Leaderboards = () => {
             )}
           </CardContent>
         </Card>
-          </TabsContent>
-        </Tabs>
+          </div>
       </div>
     </div>
   );

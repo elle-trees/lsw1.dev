@@ -1,13 +1,6 @@
 import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
-import {
-  getLeaderboardEntriesFirestore,
-} from "./data/firestore/leaderboards";
-import {
-  getLeaderboardEntryByIdFirestore, // Assuming this is in leaderboards or runs? It was in firestore.ts. I need to check where I put it.
-  // Wait, I might have missed getLeaderboardEntryByIdFirestore in my refactor!
-  // I'll check runs.ts and leaderboards.ts.
-} from "./data/firestore/leaderboards"; // Placeholder, will fix imports below
+
 
 // I need to be careful. I might have missed some functions.
 // Let's check where I put each function.
@@ -157,7 +150,7 @@ import {
   getAllVerifiedRunsFirestore
 } from "./data/firestore/src-imports";
 
-import { LeaderboardEntry, Category, Player } from "@/types/database";
+import { LeaderboardEntry, Category, Player, Platform, Level } from "@/types/database";
 
 // Helper to fix missing function
 const getLeaderboardEntryByIdFirestore = async (id: string): Promise<LeaderboardEntry | null> => {
@@ -194,7 +187,7 @@ export const initializeDefaultCategories = async (): Promise<void> => {
   }
 };
 
-export const getCategories = async (leaderboardType?: 'regular' | 'individual-level' | 'community-golds'): Promise<{ id: string; name: string }[]> => {
+export const getCategories = async (leaderboardType?: 'regular' | 'individual-level' | 'community-golds'): Promise<Category[]> => {
   try {
     const type = leaderboardType || 'regular';
     let firestoreCategories = await getCategoriesFirestore(type);
@@ -231,7 +224,7 @@ export const initializeDefaultPlatforms = async (): Promise<void> => {
   }
 };
 
-export const getPlatforms = async (): Promise<{ id: string; name: string }[]> => {
+export const getPlatforms = async (): Promise<Platform[]> => {
   try {
     let firestorePlatforms = await getPlatformsFirestore();
     
@@ -383,6 +376,7 @@ export const setPlayerAdminStatus = async (uid: string, isAdmin: boolean): Promi
     if (!existingPlayer) {
       const today = new Date().toISOString().split('T')[0];
       const newPlayer = {
+        id: uid,
         uid: uid,
         displayName: "",
         email: "",

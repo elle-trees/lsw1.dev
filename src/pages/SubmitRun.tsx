@@ -9,7 +9,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { Upload, Gamepad2, Timer, User, Users, FileText, Sparkles, CheckCircle, Calendar, ChevronDown, ChevronUp, Trophy, Star, Gem, BookOpen } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
 import { addLeaderboardEntry, getCategories, getCategoriesFromFirestore, getPlatforms, runTypes, getPlayerByDisplayName, getLevels } from "@/lib/db";
@@ -390,40 +389,68 @@ const SubmitRun = () => {
               </CardHeader>
                 <CardContent className="p-6">
               <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Leaderboard Type Tabs */}
+                {/* Leaderboard Type Buttons */}
                 <div>
                   <Label className="text-sm font-semibold mb-2 block">Leaderboard Type *</Label>
-                  <Tabs value={leaderboardType} onValueChange={(value) => {
-                    setLeaderboardType(value as 'regular' | 'individual-level' | 'community-golds');
-                    setFormData(prev => ({ ...prev, category: "", level: "" })); // Reset category and level when type changes
-                  }}>
-                    <TabsList className="grid w-full grid-cols-3 p-0.5 gap-1">
-                      <TabsTrigger 
-                        value="regular" 
-                        className="data-[state=active]:bg-[#f9e2af] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#f9e2af]/50 text-xs sm:text-sm py-1.5 sm:py-2 px-2 sm:px-3 whitespace-nowrap"
-                      >
-                        <Trophy className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1 sm:mr-1.5" />
-                        <span className="hidden min-[375px]:inline">Full Game</span>
-                        <span className="min-[375px]:hidden">Game</span>
-                      </TabsTrigger>
-                      <TabsTrigger 
-                        value="individual-level" 
-                        className="data-[state=active]:bg-[#f9e2af] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#f9e2af]/50 text-xs sm:text-sm py-1.5 sm:py-2 px-2 sm:px-3 whitespace-nowrap"
-                      >
-                        <Star className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1 sm:mr-1.5" />
-                        <span className="hidden sm:inline">Individual Levels</span>
-                        <span className="sm:hidden">ILs</span>
-                      </TabsTrigger>
-                      <TabsTrigger 
-                        value="community-golds"
-                        className="data-[state=active]:bg-[#f9e2af] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#f9e2af]/50 text-xs sm:text-sm py-1.5 sm:py-2 px-2 sm:px-3 whitespace-nowrap"
-                      >
-                        <Gem className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1 sm:mr-1.5" />
-                        <span className="hidden sm:inline">Community Golds</span>
-                        <span className="sm:hidden">Golds</span>
-                      </TabsTrigger>
-                    </TabsList>
-                  </Tabs>
+                  <div className="grid grid-cols-3 p-0.5 gap-1 bg-ctp-surface0/50 rounded-lg border border-ctp-surface1">
+                    <Button
+                      type="button"
+                      variant={leaderboardType === 'regular' ? "default" : "ghost"}
+                      onClick={() => {
+                        setLeaderboardType('regular');
+                        setFormData(prev => ({ ...prev, category: "", level: "" }));
+                      }}
+                      className={`h-auto py-2 sm:py-3 px-2 sm:px-4 rounded-md transition-all duration-300 ${
+                        leaderboardType === 'regular' 
+                          ? "bg-[#f9e2af] text-[#11111b] hover:bg-[#f9e2af]/90 shadow-sm" 
+                          : "text-ctp-text hover:bg-ctp-surface1 hover:text-ctp-text"
+                      }`}
+                    >
+                      <div className="flex items-center justify-center gap-2">
+                        <Trophy className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        <span className="hidden min-[375px]:inline font-medium">Full Game</span>
+                        <span className="min-[375px]:hidden font-medium">Game</span>
+                      </div>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={leaderboardType === 'individual-level' ? "default" : "ghost"}
+                      onClick={() => {
+                        setLeaderboardType('individual-level');
+                        setFormData(prev => ({ ...prev, category: "", level: "" }));
+                      }}
+                      className={`h-auto py-2 sm:py-3 px-2 sm:px-4 rounded-md transition-all duration-300 ${
+                        leaderboardType === 'individual-level' 
+                          ? "bg-[#f9e2af] text-[#11111b] hover:bg-[#f9e2af]/90 shadow-sm" 
+                          : "text-ctp-text hover:bg-ctp-surface1 hover:text-ctp-text"
+                      }`}
+                    >
+                      <div className="flex items-center justify-center gap-2">
+                        <Star className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        <span className="hidden sm:inline font-medium">Individual Levels</span>
+                        <span className="sm:hidden font-medium">ILs</span>
+                      </div>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={leaderboardType === 'community-golds' ? "default" : "ghost"}
+                      onClick={() => {
+                        setLeaderboardType('community-golds');
+                        setFormData(prev => ({ ...prev, category: "", level: "" }));
+                      }}
+                      className={`h-auto py-2 sm:py-3 px-2 sm:px-4 rounded-md transition-all duration-300 ${
+                        leaderboardType === 'community-golds' 
+                          ? "bg-[#f9e2af] text-[#11111b] hover:bg-[#f9e2af]/90 shadow-sm" 
+                          : "text-ctp-text hover:bg-ctp-surface1 hover:text-ctp-text"
+                      }`}
+                    >
+                      <div className="flex items-center justify-center gap-2">
+                        <Gem className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        <span className="hidden sm:inline font-medium">Community Golds</span>
+                        <span className="sm:hidden font-medium">Golds</span>
+                      </div>
+                    </Button>
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -514,7 +541,7 @@ const SubmitRun = () => {
                   </div>
                 )}
 
-                {/* Category Selection - Tabs for all types */}
+                {/* Category Selection - Buttons for all types */}
                 {loadingData ? (
                   <div className="animate-fade-in">
                     <Skeleton className="h-5 w-32 mb-2" />
@@ -545,20 +572,27 @@ const SubmitRun = () => {
                         </>
                       )}
                     </Label>
-                    <Tabs value={formData.category} onValueChange={(value) => handleSelectChange("category", value)}>
-                      <TabsList className="flex w-full p-0.5 gap-1 overflow-x-auto overflow-y-hidden scrollbar-hide" style={{ minWidth: 'max-content' }}>
-                        {availableCategories.map((category, index) => (
-                          <TabsTrigger 
+                    <div className="flex w-full p-1 gap-2 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-ctp-surface1 scrollbar-track-transparent pb-3" style={{ minWidth: 'max-content' }}>
+                        {availableCategories.map((category, index) => {
+                          const isSelected = formData.category === category.id;
+                          return (
+                          <Button 
                             key={category.id} 
-                            value={category.id} 
-                            className="data-[state=active]:bg-[#94e2d5] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#94e2d5]/50 py-2 px-3 text-sm"
+                            type="button"
+                            variant={isSelected ? "default" : "outline"}
+                            onClick={() => handleSelectChange("category", category.id)}
+                            className={`whitespace-nowrap px-4 py-2 h-9 text-sm font-medium transition-all duration-200 ${
+                              isSelected 
+                                ? "bg-[#94e2d5] text-[#11111b] hover:bg-[#94e2d5]/90 border-transparent shadow-sm" 
+                                : "bg-ctp-surface0 text-ctp-text border-ctp-surface1 hover:bg-ctp-surface1 hover:text-ctp-text hover:border-[#94e2d5]/50"
+                            }`}
                             style={{ animationDelay: `${index * 50}ms` }}
                           >
                             {category.name}
-                          </TabsTrigger>
-                        ))}
-                      </TabsList>
-                    </Tabs>
+                          </Button>
+                          );
+                        })}
+                    </div>
                     {leaderboardType === 'individual-level' && (
                       <p className="text-xs text-[hsl(222,15%,60%)] mt-1">
                         Choose "Story" for story mode levels or "Free Play" for free play levels
@@ -590,23 +624,27 @@ const SubmitRun = () => {
                           <Trophy className="h-3.5 w-3.5 text-[#cba6f7]" />
                           Subcategory *
                         </Label>
-                        <Tabs 
-                          value={formData.subcategory || ""} 
-                          onValueChange={(value) => handleSelectChange("subcategory", value)}
-                        >
-                          <TabsList className="flex w-full p-0.5 gap-1 overflow-x-auto overflow-y-hidden scrollbar-hide" style={{ minWidth: 'max-content' }}>
-                            {availableSubcategories.map((subcategory, index) => (
-                              <TabsTrigger 
+                        <div className="flex w-full p-1 gap-2 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-ctp-surface1 scrollbar-track-transparent pb-3" style={{ minWidth: 'max-content' }}>
+                            {availableSubcategories.map((subcategory, index) => {
+                              const isSelected = formData.subcategory === subcategory.id;
+                              return (
+                              <Button 
                                 key={subcategory.id} 
-                                value={subcategory.id} 
-                                className="data-[state=active]:bg-[#cba6f7] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#cba6f7]/50 py-1.5 sm:py-2 px-2 sm:px-3 text-xs sm:text-sm whitespace-nowrap"
+                                type="button"
+                                variant={isSelected ? "default" : "outline"}
+                                onClick={() => handleSelectChange("subcategory", subcategory.id)}
+                                className={`whitespace-nowrap px-4 py-2 h-8 text-xs sm:text-sm font-medium transition-all duration-200 ${
+                                  isSelected 
+                                    ? "bg-[#cba6f7] text-[#11111b] hover:bg-[#cba6f7]/90 border-transparent shadow-sm" 
+                                    : "bg-ctp-surface0 text-ctp-text border-ctp-surface1 hover:bg-ctp-surface1 hover:text-ctp-text hover:border-[#cba6f7]/50"
+                                }`}
                                 style={{ animationDelay: `${index * 50}ms` }}
                               >
                                 {subcategory.name}
-                              </TabsTrigger>
-                            ))}
-                          </TabsList>
-                        </Tabs>
+                              </Button>
+                              );
+                            })}
+                        </div>
                         <p className="text-xs text-[hsl(222,15%,60%)] mt-1">
                           Select a subcategory for this run (e.g., Glitchless, No Major Glitches)
                         </p>
