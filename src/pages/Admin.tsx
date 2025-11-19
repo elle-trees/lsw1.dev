@@ -69,11 +69,13 @@ import {
   wipeAllImportedSRCRuns,
   getPointsConfig,
   updatePointsConfig,
+  getGameDetailsConfig,
+  updateGameDetailsConfig,
 } from "@/lib/db";
 import { importSRCRuns, type ImportResult } from "@/lib/speedruncom/importService";
 import { fetchCategoryVariables, getLSWGameId, fetchCategories as fetchSRCCategories, type SRCCategory } from "@/lib/speedruncom";
 import { useUploadThing } from "@/lib/uploadthing";
-import { LeaderboardEntry, DownloadEntry, Category, Level, Subcategory, PointsConfig } from "@/types/database";
+import { LeaderboardEntry, DownloadEntry, Category, Level, Subcategory, PointsConfig, GameDetailsConfig, GameDetailsNavItem } from "@/types/database";
 import { useNavigate } from "react-router-dom";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { formatTime } from "@/lib/utils";
@@ -237,6 +239,12 @@ const Admin = () => {
   const [savingPointsConfig, setSavingPointsConfig] = useState(false);
   const [pointsConfigForm, setPointsConfigForm] = useState<Partial<PointsConfig>>({});
 
+  // Game details configuration state
+  const [gameDetailsConfig, setGameDetailsConfig] = useState<GameDetailsConfig | null>(null);
+  const [loadingGameDetailsConfig, setLoadingGameDetailsConfig] = useState(false);
+  const [savingGameDetailsConfig, setSavingGameDetailsConfig] = useState(false);
+  const [gameDetailsConfigForm, setGameDetailsConfigForm] = useState<Partial<GameDetailsConfig>>({});
+
   useEffect(() => {
     fetchPlatforms();
     fetchCategories('regular'); // Load regular categories by default
@@ -326,6 +334,38 @@ const Admin = () => {
     }
   }, [activeTab, toast]);
 
+  // Load game details config when switching to game-details tab
+  useEffect(() => {
+    if (activeTab === "game-details") {
+      const loadGameDetailsConfig = async () => {
+        setLoadingGameDetailsConfig(true);
+        try {
+          const config = await getGameDetailsConfig();
+          setGameDetailsConfig(config);
+          setGameDetailsConfigForm(config || {
+            id: "default",
+            title: "LEGO Star Wars: The Video Game",
+            subtitle: "2005",
+            categories: [],
+            platforms: [],
+            navItems: [],
+            visibleOnPages: [],
+            enabled: true,
+          });
+        } catch (error) {
+          toast({
+            title: "Error",
+            description: "Failed to load game details configuration.",
+            variant: "destructive",
+          });
+        } finally {
+          setLoadingGameDetailsConfig(false);
+        }
+      };
+      loadGameDetailsConfig();
+    }
+  }, [activeTab, toast]);
+
   const handleSavePointsConfig = async () => {
     if (!pointsConfig) return;
     
@@ -357,6 +397,36 @@ const Admin = () => {
       });
     } finally {
       setSavingPointsConfig(false);
+    }
+  };
+
+  const handleSaveGameDetailsConfig = async () => {
+    if (!gameDetailsConfig) return;
+    
+    setSavingGameDetailsConfig(true);
+    try {
+      const success = await updateGameDetailsConfig(gameDetailsConfigForm as GameDetailsConfig);
+      if (success) {
+        // Reload config to get updated values
+        const updatedConfig = await getGameDetailsConfig();
+        setGameDetailsConfig(updatedConfig);
+        setGameDetailsConfigForm(updatedConfig || gameDetailsConfigForm);
+        
+        toast({
+          title: "Success",
+          description: "Game details configuration saved successfully.",
+        });
+      } else {
+        throw new Error("Failed to save configuration");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save game details configuration.",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingGameDetailsConfig(false);
     }
   };
 
@@ -2956,6 +3026,13 @@ const Admin = () => {
               Points
             </TabsTrigger>
             <TabsTrigger 
+              value="game-details" 
+              className="data-[state=active]:bg-[#f9e2af] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#f9e2af]/50 text-xs sm:text-sm py-1.5 sm:py-2 px-2 sm:px-3 whitespace-nowrap"
+            >
+              <Gamepad2 className="h-4 w-4 mr-1.5" />
+              Game Details
+            </TabsTrigger>
+            <TabsTrigger 
               value="src" 
               className="data-[state=active]:bg-[#f9e2af] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#f9e2af]/50 text-xs sm:text-sm py-1.5 sm:py-2 px-2 sm:px-3 whitespace-nowrap"
             >
@@ -3970,6 +4047,217 @@ const Admin = () => {
                     </div>
                   )}
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Game Details Configuration Section */}
+          <TabsContent value="game-details" className="space-y-4 animate-fade-in">
+            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
+              <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
+                <CardTitle className="flex items-center gap-2 text-xl text-[#94e2d5]">
+                  <Gamepad2 className="h-5 w-5" />
+                  Game Details Configuration
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                {loadingGameDetailsConfig ? (
+                  <div className="py-12">
+                    <LoadingSpinner size="sm" />
+                  </div>
+                ) : gameDetailsConfig ? (
+                  <div className="space-y-6">
+                    {/* Enable/Disable */}
+                    <div className="flex items-center justify-between p-4 bg-[hsl(240,21%,15%)] border border-[hsl(235,13%,30%)] rounded">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="enabled" className="text-base">
+                          Enable Game Details Component
+                        </Label>
+                        <p className="text-sm text-[hsl(222,15%,60%)]">
+                          Show or hide the game details component on configured pages.
+                        </p>
+                      </div>
+                      <Switch
+                        id="enabled"
+                        checked={gameDetailsConfigForm.enabled ?? gameDetailsConfig.enabled ?? true}
+                        onCheckedChange={(checked) => setGameDetailsConfigForm({ ...gameDetailsConfigForm, enabled: checked })}
+                      />
+                    </div>
+
+                    {/* Title and Subtitle */}
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="title" className="text-base font-semibold">
+                          Game Title
+                        </Label>
+                        <Input
+                          id="title"
+                          type="text"
+                          value={gameDetailsConfigForm.title ?? gameDetailsConfig.title ?? ""}
+                          onChange={(e) => setGameDetailsConfigForm({ ...gameDetailsConfigForm, title: e.target.value })}
+                          className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="subtitle" className="text-base font-semibold">
+                          Subtitle (Optional)
+                        </Label>
+                        <Input
+                          id="subtitle"
+                          type="text"
+                          placeholder="e.g., 2005"
+                          value={gameDetailsConfigForm.subtitle ?? gameDetailsConfig.subtitle ?? ""}
+                          onChange={(e) => setGameDetailsConfigForm({ ...gameDetailsConfigForm, subtitle: e.target.value })}
+                          className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="coverImageUrl" className="text-base font-semibold">
+                          Cover Image URL (Optional)
+                        </Label>
+                        <Input
+                          id="coverImageUrl"
+                          type="url"
+                          placeholder="https://example.com/image.jpg"
+                          value={gameDetailsConfigForm.coverImageUrl ?? gameDetailsConfig.coverImageUrl ?? ""}
+                          onChange={(e) => setGameDetailsConfigForm({ ...gameDetailsConfigForm, coverImageUrl: e.target.value })}
+                          className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Categories */}
+                    <div className="space-y-2">
+                      <Label className="text-base font-semibold">Categories</Label>
+                      <p className="text-sm text-[hsl(222,15%,60%)] mb-2">
+                        Enter categories separated by commas (e.g., "LEGO Series, Star Wars Series")
+                      </p>
+                      <Input
+                        type="text"
+                        placeholder="LEGO Series, Star Wars Series"
+                        value={(gameDetailsConfigForm.categories ?? gameDetailsConfig.categories ?? []).join(", ")}
+                        onChange={(e) => {
+                          const categories = e.target.value.split(",").map(c => c.trim()).filter(c => c.length > 0);
+                          setGameDetailsConfigForm({ ...gameDetailsConfigForm, categories });
+                        }}
+                        className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                      />
+                    </div>
+
+                    {/* Platforms */}
+                    <div className="space-y-2">
+                      <Label className="text-base font-semibold">Platforms</Label>
+                      <p className="text-sm text-[hsl(222,15%,60%)] mb-2">
+                        Configure platform buttons. Enter platform labels separated by commas (e.g., "GCN, PS2, Xbox, PC")
+                      </p>
+                      <Input
+                        type="text"
+                        placeholder="GCN, PS2, Xbox, PC"
+                        value={(gameDetailsConfigForm.platforms ?? gameDetailsConfig.platforms ?? []).map(p => p.label).join(", ")}
+                        onChange={(e) => {
+                          const labels = e.target.value.split(",").map(l => l.trim()).filter(l => l.length > 0);
+                          const platforms = labels.map((label, index) => ({
+                            id: label.toLowerCase().replace(/\s+/g, "-"),
+                            label,
+                            order: index + 1,
+                          }));
+                          setGameDetailsConfigForm({ ...gameDetailsConfigForm, platforms });
+                        }}
+                        className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                      />
+                    </div>
+
+                    {/* Discord URL */}
+                    <div className="space-y-2">
+                      <Label htmlFor="discordUrl" className="text-base font-semibold">
+                        Discord URL (Optional)
+                      </Label>
+                      <Input
+                        id="discordUrl"
+                        type="url"
+                        placeholder="https://discord.gg/..."
+                        value={gameDetailsConfigForm.discordUrl ?? gameDetailsConfig.discordUrl ?? ""}
+                        onChange={(e) => setGameDetailsConfigForm({ ...gameDetailsConfigForm, discordUrl: e.target.value })}
+                        className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                      />
+                    </div>
+
+                    {/* Navigation Items */}
+                    <div className="space-y-4">
+                      <Label className="text-base font-semibold">Navigation Items</Label>
+                      <p className="text-sm text-[hsl(222,15%,60%)] mb-2">
+                        Configure navigation tabs. Each line should be: Label|Route|BadgeCount (optional)
+                        <br />
+                        Example: "Levels|/leaderboards|18" or "Stats|/stats"
+                      </p>
+                      <Textarea
+                        rows={8}
+                        placeholder="Levels|/leaderboards|18&#10;News|/&#10;Guides|/downloads|8&#10;Resources|/downloads|12&#10;Forums|/|20&#10;Streams|/live|1&#10;Stats|/stats&#10;Leaderboards|/leaderboards"
+                        value={(gameDetailsConfigForm.navItems ?? gameDetailsConfig.navItems ?? []).map(item => 
+                          `${item.label}|${item.route}${item.badgeCount !== undefined ? `|${item.badgeCount}` : ""}`
+                        ).join("\n")}
+                        onChange={(e) => {
+                          const lines = e.target.value.split("\n").filter(l => l.trim().length > 0);
+                          const navItems: GameDetailsNavItem[] = lines.map((line, index) => {
+                            const parts = line.split("|").map(p => p.trim());
+                            return {
+                              id: parts[0].toLowerCase().replace(/\s+/g, "-"),
+                              label: parts[0],
+                              route: parts[1] || "/",
+                              badgeCount: parts[2] ? parseInt(parts[2]) : undefined,
+                              order: index + 1,
+                            };
+                          });
+                          setGameDetailsConfigForm({ ...gameDetailsConfigForm, navItems });
+                        }}
+                        className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] font-mono text-sm"
+                      />
+                    </div>
+
+                    {/* Visible Pages */}
+                    <div className="space-y-2">
+                      <Label className="text-base font-semibold">Visible On Pages</Label>
+                      <p className="text-sm text-[hsl(222,15%,60%)] mb-2">
+                        Enter page routes separated by commas where the component should be visible (e.g., "/, /leaderboards, /stats")
+                      </p>
+                      <Input
+                        type="text"
+                        placeholder="/, /leaderboards, /stats"
+                        value={(gameDetailsConfigForm.visibleOnPages ?? gameDetailsConfig.visibleOnPages ?? []).join(", ")}
+                        onChange={(e) => {
+                          const pages = e.target.value.split(",").map(p => p.trim()).filter(p => p.length > 0);
+                          setGameDetailsConfigForm({ ...gameDetailsConfigForm, visibleOnPages: pages });
+                        }}
+                        className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                      />
+                    </div>
+
+                    {/* Save Button */}
+                    <div className="flex justify-end pt-4 border-t border-[hsl(235,13%,30%)]">
+                      <Button
+                        onClick={handleSaveGameDetailsConfig}
+                        disabled={savingGameDetailsConfig}
+                        className="bg-gradient-to-r from-[#94e2d5] to-[#7dd3c7] hover:from-[#7dd3c7] hover:to-[#94e2d5] text-[hsl(240,21%,15%)] font-bold flex items-center gap-2 transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                      >
+                        {savingGameDetailsConfig ? (
+                          <>
+                            <LoadingSpinner size="sm" />
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="h-4 w-4" />
+                            Save Configuration
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-[hsl(222,15%,60%)]">
+                    Failed to load game details configuration.
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

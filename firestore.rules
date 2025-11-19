@@ -124,6 +124,17 @@ service cloud.firestore {
     allow delete: if false;
   }
   
+  // Game Details Configuration
+  match /gameDetailsConfig/{configId} {
+    // Anyone can read (needed for displaying game details)
+    // This allows reading even when document doesn't exist
+    allow get, list: if true;
+    // Only admins can create/update
+    allow create, update: if isAdmin();
+    // No one can delete (game details config should always exist)
+    allow delete: if false;
+  }
+  
     // Download Categories
     match /downloadCategories/{categoryId} {
       // Anyone can read

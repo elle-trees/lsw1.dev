@@ -125,3 +125,34 @@ export interface PointsConfig {
   applyRankBonusesToIL: boolean;
   applyRankBonusesToCommunityGolds: boolean;
 }
+
+export interface GameDetailsNavItem {
+  id: string;
+  label: string;
+  route: string; // Route path (e.g., "/leaderboards", "/stats")
+  badgeCount?: number; // Optional badge count to display
+  order?: number; // Order for displaying items
+}
+
+export interface GameDetailsConfig {
+  id: string;
+  // Game information
+  title: string;
+  subtitle?: string; // Year or additional info
+  coverImageUrl?: string; // URL to game cover image
+  categories: string[]; // Array of category labels (e.g., ["LEGO Series", "Star Wars Series"])
+  // Platform buttons
+  platforms: Array<{
+    id: string;
+    label: string;
+    order?: number;
+  }>;
+  // Discord button
+  discordUrl?: string;
+  // Navigation items
+  navItems: GameDetailsNavItem[];
+  // Visibility configuration - which pages should show the component
+  visibleOnPages: string[]; // Array of route paths (e.g., ["/", "/leaderboards", "/stats"])
+  // Whether the component is enabled
+  enabled: boolean;
+}
