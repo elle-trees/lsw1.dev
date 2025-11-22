@@ -904,7 +904,7 @@ const Admin = () => {
         db.getUnverifiedLeaderboardEntries(),
         db.getImportedSRCRuns(),
         db.getDownloadEntries(),
-        getCategoriesFromFirestore('regular')
+        db.getCategoriesFromFirestore('regular')
       ]);
       setUnverifiedRuns(unverifiedData.filter(run => !run.importedFromSRC));
       setImportedSRCRuns(importedData);
@@ -926,8 +926,8 @@ const Admin = () => {
   const refreshAllRunData = async () => {
     try {
       const [unverifiedData, importedData] = await Promise.all([
-        getUnverifiedLeaderboardEntries(),
-        getImportedSRCRuns()
+        db.getUnverifiedLeaderboardEntries(),
+        db.getImportedSRCRuns()
       ]);
       // Only include manually submitted runs in unverified runs tab
       // Imported runs stay in their own tab unless they're edited and ready for verification
@@ -960,14 +960,14 @@ const Admin = () => {
 
   const fetchUnverifiedRuns = async () => {
     try {
-      const data = await getUnverifiedLeaderboardEntries();
+      const data = await db.getUnverifiedLeaderboardEntries();
       // Only include manually submitted runs in unverified runs tab
       // Imported runs stay in their own tab
       setUnverifiedRuns(data.filter(run => !run.importedFromSRC));
       setUnverifiedPage(1); // Reset to first page when data changes
       
       try {
-        const importedData = await getImportedSRCRuns();
+        const importedData = await db.getImportedSRCRuns();
         setImportedSRCRuns(importedData);
         setImportedPage(1); // Reset to first page when data changes
       } catch (importError) {
@@ -988,7 +988,7 @@ const Admin = () => {
 
   const fetchDownloadEntries = async () => {
     try {
-      const data = await getDownloadEntries();
+      const data = await db.getDownloadEntries();
       setDownloadEntries(data);
     } catch (error) {
       toast({
@@ -1318,8 +1318,8 @@ const Admin = () => {
       
       // Fetch ALL categories (regular and IL) for linking
       const [regularCats, ilCats] = await Promise.all([
-        getCategoriesFromFirestore('regular'),
-        getCategoriesFromFirestore('individual-level')
+        db.        db.getCategoriesFromFirestore('regular'),
+        db.getCategoriesFromFirestore('individual-level')
       ]);
       setAllCategoriesForSRCLinking([...regularCats, ...ilCats]);
     } catch (error: any) {
@@ -1456,9 +1456,9 @@ const Admin = () => {
         verifiedBy,
         db.updateRunVerificationStatus,
         db.updateLeaderboardEntry,
-        getCategoriesFromFirestore,
+        db.getCategoriesFromFirestore,
         db.getPlatformsFromFirestore,
-        getLevels,
+        db.getLevels,
         20, // Process 20 runs in parallel
         (_processed, _total) => {
           // Optional: Could show progress here if needed
@@ -1571,9 +1571,9 @@ const Admin = () => {
         verifiedBy,
         db.updateRunVerificationStatus,
         db.updateLeaderboardEntry,
-        getCategoriesFromFirestore,
+        db.getCategoriesFromFirestore,
         db.getPlatformsFromFirestore,
-        getLevels,
+        db.getLevels,
         20, // Process 20 runs in parallel
         (_processed, _total) => {
           // Optional: Could show progress here if needed
@@ -2101,7 +2101,7 @@ const Admin = () => {
         setNewSubcategoryName("");
         await fetchCategories(categoryLeaderboardType);
         // Refresh selected category
-        const updated = await getCategoriesFromFirestore(categoryLeaderboardType);
+        const updated = await db.getCategoriesFromFirestore(categoryLeaderboardType);
         const refreshed = updated.find(c => c.id === selectedCategoryForSubcategories.id) as Category | undefined;
         if (refreshed) {
           setSelectedCategoryForSubcategories(refreshed);
@@ -2162,7 +2162,7 @@ const Admin = () => {
         setEditingSubcategoryName("");
         await fetchCategories(categoryLeaderboardType);
         // Refresh selected category
-        const updated = await getCategoriesFromFirestore(categoryLeaderboardType);
+        const updated = await db.getCategoriesFromFirestore(categoryLeaderboardType);
         const refreshed = updated.find(c => c.id === selectedCategoryForSubcategories.id) as Category | undefined;
         if (refreshed) {
           setSelectedCategoryForSubcategories(refreshed);
@@ -2202,7 +2202,7 @@ const Admin = () => {
         });
         await fetchCategories(categoryLeaderboardType);
         // Refresh selected category
-        const updated = await getCategoriesFromFirestore(categoryLeaderboardType);
+        const updated = await db.getCategoriesFromFirestore(categoryLeaderboardType);
         const refreshed = updated.find(c => c.id === selectedCategoryForSubcategories.id) as Category | undefined;
         if (refreshed) {
           setSelectedCategoryForSubcategories(refreshed);
@@ -2244,7 +2244,7 @@ const Admin = () => {
       if (success) {
         await fetchCategories(categoryLeaderboardType);
         // Refresh selected category
-        const updated = await getCategoriesFromFirestore(categoryLeaderboardType);
+        const updated = await db.getCategoriesFromFirestore(categoryLeaderboardType);
         const refreshed = updated.find(c => c.id === selectedCategoryForSubcategories.id) as Category | undefined;
         if (refreshed) {
           setSelectedCategoryForSubcategories(refreshed);
@@ -2288,7 +2288,7 @@ const Admin = () => {
       if (success) {
         await fetchCategories(categoryLeaderboardType);
         // Refresh selected category
-        const updated = await getCategoriesFromFirestore(categoryLeaderboardType);
+        const updated = await db.getCategoriesFromFirestore(categoryLeaderboardType);
         const refreshed = updated.find(c => c.id === selectedCategoryForSubcategories.id) as Category | undefined;
         if (refreshed) {
           setSelectedCategoryForSubcategories(refreshed);
@@ -2327,7 +2327,7 @@ const Admin = () => {
         });
         await fetchCategories(categoryLeaderboardType);
         // Refresh selected category
-        const updated = await getCategoriesFromFirestore(categoryLeaderboardType);
+        const updated = await db.getCategoriesFromFirestore(categoryLeaderboardType);
         const refreshed = updated.find(c => c.id === selectedCategoryForSubcategories.id) as Category | undefined;
         if (refreshed) {
           setSelectedCategoryForSubcategories(refreshed);
@@ -2408,7 +2408,7 @@ const Admin = () => {
         });
         await fetchCategories(categoryLeaderboardType);
         // Refresh selected category
-        const updated = await getCategoriesFromFirestore(categoryLeaderboardType);
+        const updated = await db.getCategoriesFromFirestore(categoryLeaderboardType);
         const refreshed = updated.find(c => c.id === selectedCategoryForSubcategories.id) as Category | undefined;
         if (refreshed) {
           setSelectedCategoryForSubcategories(refreshed);
