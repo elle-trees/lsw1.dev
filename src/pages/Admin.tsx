@@ -16,8 +16,33 @@ import { Switch } from "@/components/ui/switch";
 import { Pagination } from "@/components/Pagination";
 import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
-// Use namespace import to avoid initialization order issues with Rolldown bundler
-import * as db from "@/lib/db";
+// Lazy load db module to avoid circular dependency initialization issues
+// Create a proxy that loads the module on first property access
+let dbModule: typeof import("@/lib/db") | null = null;
+const loadDb = async () => {
+  if (!dbModule) {
+    dbModule = await import("@/lib/db");
+  }
+  return dbModule;
+};
+
+// Create a synchronous proxy that will trigger async load on first access
+// This allows us to use db.* syntax while still lazy loading
+const db = new Proxy({} as typeof import("@/lib/db"), {
+  get: (_target, prop) => {
+    // Return a function that loads the module and calls the actual function
+    const handler = async (...args: any[]) => {
+      const module = await loadDb();
+      const fn = (module as any)[prop];
+      if (typeof fn === 'function') {
+        return fn(...args);
+      }
+      return fn;
+    };
+    // Preserve function properties for React hooks and other cases
+    return handler;
+  }
+}) as typeof import("@/lib/db");
 // Dynamic import to avoid circular dependency at module initialization
 type ImportResult = {
   imported: number;
@@ -900,6 +925,7 @@ const Admin = () => {
     if (hasFetchedData) return;
     setLoading(true);
     try {
+      const db = await getDb();
       const [unverifiedData, importedData, downloadData, categoriesData] = await Promise.all([
         db.getUnverifiedLeaderboardEntries(),
         db.getImportedSRCRuns(),

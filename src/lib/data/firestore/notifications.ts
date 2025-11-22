@@ -57,16 +57,26 @@ export const getUserNotificationsFirestore = async (userId: string, limitCount: 
 export const getUnreadUserNotificationsFirestore = async (userId: string): Promise<Notification[]> => {
   if (!db) return [];
   try {
+    // Query without orderBy to avoid requiring a composite index
+    // We'll sort client-side instead
     const q = query(
       collection(db, NOTIFICATIONS_COLLECTION),
       where("userId", "==", userId),
-      where("read", "==", false),
-      orderBy("createdAt", "desc")
+      where("read", "==", false)
     );
     const snapshot = await getDocs(q);
-    return snapshot.docs.map((doc) => doc.data() as Notification);
-  } catch (error) {
-    console.error("Error fetching unread user notifications:", error);
+    const notifications = snapshot.docs.map((doc) => doc.data() as Notification);
+    // Sort by createdAt descending client-side
+    return notifications.sort((a, b) => {
+      const aTime = a.createdAt?.toMillis?.() || a.createdAt || 0;
+      const bTime = b.createdAt?.toMillis?.() || b.createdAt || 0;
+      return bTime - aTime;
+    });
+  } catch (error: any) {
+    // Only log if it's not an index error to avoid spam
+    if (error?.code !== 'failed-precondition' && !error?.message?.includes('index')) {
+      console.error("Error fetching unread user notifications:", error);
+    }
     return [];
   }
 };
