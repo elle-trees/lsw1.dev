@@ -16,6 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { Pagination } from "@/components/Pagination";
 import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
+// Import db functions normally - the circular dependency is fixed at the importService level
 import { 
   getUnverifiedLeaderboardEntries, 
   updateRunVerificationStatus, 
@@ -64,7 +65,13 @@ import {
   getGameDetailsConfig,
   updateGameDetailsConfig,
 } from "@/lib/db";
-import { importSRCRuns, type ImportResult } from "@/lib/speedruncom/importService";
+// Dynamic import to avoid circular dependency at module initialization
+type ImportResult = {
+  imported: number;
+  skipped: number;
+  unmatchedPlayers: Map<string, { player1?: string; player2?: string }>;
+  errors: string[];
+};
 import { fetchCategoryVariables, getLSWGameId, fetchCategories as fetchSRCCategories, type SRCCategory } from "@/lib/speedruncom";
 import { useUploadThing } from "@/lib/uploadthing";
 import { LeaderboardEntry, DownloadEntry, Category, Level, Subcategory, PointsConfig, GameDetailsConfig, GameDetailsHeaderLink } from "@/types/database";
@@ -72,7 +79,7 @@ import { useNavigate } from "react-router-dom";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { formatTime } from "@/lib/utils";
 import { getCategoryName, getPlatformName, getLevelName, normalizeCategoryId, normalizePlatformId, normalizeLevelId } from "@/lib/dataValidation";
-import { prepareRunForVerification, batchVerifyRuns } from "@/lib/data/runFieldService";
+// Dynamic import to avoid circular dependency at module initialization
 
 const Admin = () => {
   const { currentUser, loading: authLoading } = useAuth();
@@ -1286,7 +1293,8 @@ const Admin = () => {
         description: "Fetching runs from speedrun.com...",
       });
 
-      // Use the new import service
+      // Dynamic import to avoid circular dependency
+      const { importSRCRuns } = await import("@/lib/speedruncom/importService");
       const result: ImportResult = await importSRCRuns((progress) => {
         setImportProgress(progress);
       });
@@ -1487,6 +1495,8 @@ const Admin = () => {
     const verifiedBy = currentUser.displayName || currentUser.email || currentUser.uid;
 
     try {
+      // Dynamic import to avoid circular dependency
+      const { batchVerifyRuns } = await import("@/lib/data/runFieldService");
       // Use optimized batch verification service
       const result = await batchVerifyRuns(
         unverifiedImported,
@@ -1600,6 +1610,8 @@ const Admin = () => {
     const verifiedBy = currentUser.displayName || currentUser.email || currentUser.uid;
 
     try {
+      // Dynamic import to avoid circular dependency
+      const { batchVerifyRuns } = await import("@/lib/data/runFieldService");
       // Use optimized batch verification service
       const result = await batchVerifyRuns(
         unverifiedImported,
