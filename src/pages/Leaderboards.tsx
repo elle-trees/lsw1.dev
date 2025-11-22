@@ -311,7 +311,7 @@ const Leaderboards = () => {
                     {[...Array(6)].map((_, index) => (
                       <Skeleton 
                         key={index} 
-                        className="h-9 w-24 flex-shrink-0 rounded-md"
+                        className="h-9 w-24 flex-shrink-0 rounded-none"
                         style={{ animationDelay: `${index * 50}ms` }}
                       />
                     ))}
@@ -360,7 +360,7 @@ const Leaderboards = () => {
                               {[...Array(4)].map((_, index) => (
                                 <Skeleton 
                                   key={index} 
-                                  className="h-8 w-28 flex-shrink-0 rounded-md"
+                                  className="h-8 w-28 flex-shrink-0 rounded-none"
                                   style={{ animationDelay: `${index * 50}ms` }}
                                 />
                               ))}

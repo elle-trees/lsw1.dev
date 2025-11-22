@@ -3292,7 +3292,7 @@ const Admin = () => {
                 
                 {duplicateRuns.length > 0 && (
                   <div className="mb-4 space-y-4">
-                    <div className="p-4 bg-[hsl(240,21%,12%)] rounded-lg border border-[hsl(235,13%,30%)]">
+                    <div className="p-4 bg-[hsl(240,21%,12%)] rounded-none border border-[hsl(235,13%,30%)]">
                       <p className="text-sm font-semibold text-ctp-text mb-2">
                         Found {duplicateRuns.length} duplicate group(s) with {duplicateRuns.reduce((sum, group) => sum + group.runs.length, 0)} total runs
                       </p>
@@ -3622,7 +3622,7 @@ const Admin = () => {
 
                 {ilRunsToFix.length > 0 && (
                   <div className="space-y-4">
-                    <div className="p-4 bg-[hsl(240,21%,12%)] rounded-lg border border-[hsl(235,13%,30%)]">
+                    <div className="p-4 bg-[hsl(240,21%,12%)] rounded-none border border-[hsl(235,13%,30%)]">
                       <p className="text-sm font-semibold text-ctp-text mb-2">
                         Found {ilRunsToFix.length} run(s) that need fixing
                       </p>
@@ -3720,7 +3720,7 @@ const Admin = () => {
               </CardHeader>
               <CardContent className="pt-6">
                 {/* Wipe All Imported Runs Tool */}
-                <div className="mb-6 p-4 bg-[hsl(240,21%,12%)] rounded-lg border border-[hsl(235,13%,30%)]">
+                <div className="mb-6 p-4 bg-[hsl(240,21%,12%)] rounded-none border border-[hsl(235,13%,30%)]">
                   <div className="flex items-center justify-between mb-2">
                     <div>
                       <h4 className="text-sm font-semibold text-[#f2cdcd] mb-1">Wipe All Imported SRC Runs</h4>
@@ -4141,7 +4141,7 @@ const Admin = () => {
                       id="manualVerified"
                       checked={manualRun.verified}
                       onChange={(e) => setManualRun({ ...manualRun, verified: e.target.checked })}
-                      className="w-4 h-4 rounded border-[hsl(235,13%,30%)] bg-[hsl(240,21%,15%)]"
+                      className="w-4 h-4 rounded-none border-[hsl(235,13%,30%)] bg-[hsl(240,21%,15%)]"
                     />
                     <Label htmlFor="manualVerified" className="cursor-pointer">
                       Mark as verified
@@ -4231,10 +4231,10 @@ const Admin = () => {
                   </div>
 
                   {foundPlayer && (
-                    <div className="bg-gradient-to-br from-[hsl(235,19%,13%)] to-[hsl(235,19%,11%)] border border-[hsl(235,13%,30%)] rounded-lg p-5 space-y-4 shadow-lg transition-all duration-300 animate-fade-in hover:border-[#cba6f7]/50 hover:shadow-xl hover:shadow-[#cba6f7]/10">
+                    <div className="bg-gradient-to-br from-[hsl(235,19%,13%)] to-[hsl(235,19%,11%)] border border-[hsl(235,13%,30%)] rounded-none p-5 space-y-4 shadow-lg transition-all duration-300 animate-fade-in hover:border-[#cba6f7]/50 hover:shadow-xl hover:shadow-[#cba6f7]/10">
                       <div>
                         <h4 className="font-semibold mb-3 text-lg flex items-center gap-2">
-                          <div className="p-1 rounded bg-gradient-to-br from-[#cba6f7] to-[#b4a0e2]">
+                          <div className="p-1 rounded-none bg-gradient-to-br from-[#cba6f7] to-[#b4a0e2]">
                             <CheckCircle className="h-4 w-4 text-[hsl(240,21%,15%)]" />
                           </div>
                           <span className="bg-gradient-to-r from-[#cba6f7] to-[#f38ba8] bg-clip-text text-transparent">
@@ -4296,7 +4296,7 @@ const Admin = () => {
                 ) : gameDetailsConfig ? (
                   <div className="space-y-6">
                     {/* Enable/Disable */}
-                    <div className="flex items-center justify-between p-4 bg-[hsl(240,21%,15%)] border border-[hsl(235,13%,30%)] rounded">
+                    <div className="flex items-center justify-between p-4 bg-[hsl(240,21%,15%)] border border-[hsl(235,13%,30%)] rounded-none">
                       <div className="space-y-0.5">
                         <Label htmlFor="enabled" className="text-base">
                           Enable Game Details Component
@@ -4499,7 +4499,7 @@ const Admin = () => {
                                 id="headerLinkAdminOnly"
                                 checked={newHeaderLink.adminOnly}
                                 onChange={(e) => setNewHeaderLink({ ...newHeaderLink, adminOnly: e.target.checked })}
-                                className="rounded"
+                                className="rounded-none"
                               />
                               <Label htmlFor="headerLinkAdminOnly" className="text-sm cursor-pointer">
                                 Admin Only
@@ -4624,7 +4624,7 @@ const Admin = () => {
                                           <div className="flex items-center gap-2">
                                             <span className="text-[hsl(222,15%,60%)]">{link.color || "—"}</span>
                                             {link.color && (
-                                              <div className="w-4 h-4 rounded border border-ctp-surface1" style={{ backgroundColor: link.color }}></div>
+                                              <div className="w-4 h-4 rounded-none border border-ctp-surface1" style={{ backgroundColor: link.color }}></div>
                                             )}
                                           </div>
                                         )}
@@ -4635,7 +4635,7 @@ const Admin = () => {
                                             type="checkbox"
                                             checked={editingHeaderLinkForm.adminOnly}
                                             onChange={(e) => setEditingHeaderLinkForm({ ...editingHeaderLinkForm, adminOnly: e.target.checked })}
-                                            className="rounded"
+                                            className="rounded-none"
                                           />
                                         ) : (
                                           <span className="text-[hsl(222,15%,60%)]">{link.adminOnly ? "Yes" : "No"}</span>
@@ -5058,34 +5058,34 @@ const Admin = () => {
                               {Array.from({ length: 5 }).map((_, index) => (
                                 <TableRow key={index} className="border-b border-[hsl(235,13%,30%)]">
                                   <TableCell className="py-3 px-4">
-                                    <div className="h-4 bg-[hsl(240,21%,18%)] rounded animate-pulse w-24"></div>
+                                    <div className="h-4 bg-[hsl(240,21%,18%)] rounded-none animate-pulse w-24"></div>
                                   </TableCell>
                                   <TableCell className="py-3 px-4">
-                                    <div className="h-4 bg-[hsl(240,21%,18%)] rounded animate-pulse w-32"></div>
+                                    <div className="h-4 bg-[hsl(240,21%,18%)] rounded-none animate-pulse w-32"></div>
                                   </TableCell>
                                   <TableCell className="py-3 px-4">
-                                    <div className="h-4 bg-[hsl(240,21%,18%)] rounded animate-pulse w-20"></div>
+                                    <div className="h-4 bg-[hsl(240,21%,18%)] rounded-none animate-pulse w-20"></div>
                                   </TableCell>
                                   <TableCell className="py-3 px-4">
-                                    <div className="h-4 bg-[hsl(240,21%,18%)] rounded animate-pulse w-28"></div>
+                                    <div className="h-4 bg-[hsl(240,21%,18%)] rounded-none animate-pulse w-28"></div>
                                   </TableCell>
                                   <TableCell className="py-3 px-4">
-                                    <div className="h-4 bg-[hsl(240,21%,18%)] rounded animate-pulse w-16"></div>
+                                    <div className="h-4 bg-[hsl(240,21%,18%)] rounded-none animate-pulse w-16"></div>
                                   </TableCell>
                                   <TableCell className="py-3 px-4">
-                                    <div className="h-4 bg-[hsl(240,21%,18%)] rounded animate-pulse w-20"></div>
+                                    <div className="h-4 bg-[hsl(240,21%,18%)] rounded-none animate-pulse w-20"></div>
                                   </TableCell>
                                   <TableCell className="py-3 px-4">
-                                    <div className="h-4 bg-[hsl(240,21%,18%)] rounded animate-pulse w-12"></div>
+                                    <div className="h-4 bg-[hsl(240,21%,18%)] rounded-none animate-pulse w-12"></div>
                                   </TableCell>
                                   <TableCell className="py-3 px-4">
-                                    <div className="h-4 bg-[hsl(240,21%,18%)] rounded animate-pulse w-20"></div>
+                                    <div className="h-4 bg-[hsl(240,21%,18%)] rounded-none animate-pulse w-20"></div>
                                   </TableCell>
                                   <TableCell className="py-3 px-4">
-                                    <div className="h-4 bg-[hsl(240,21%,18%)] rounded animate-pulse w-16"></div>
+                                    <div className="h-4 bg-[hsl(240,21%,18%)] rounded-none animate-pulse w-16"></div>
                                   </TableCell>
                                   <TableCell className="py-3 px-4 text-center">
-                                    <div className="h-8 bg-[hsl(240,21%,18%)] rounded animate-pulse w-20 mx-auto"></div>
+                                    <div className="h-8 bg-[hsl(240,21%,18%)] rounded-none animate-pulse w-20 mx-auto"></div>
                                   </TableCell>
                                 </TableRow>
                               ))}
@@ -5343,7 +5343,7 @@ const Admin = () => {
                               {category.variablesData && category.variablesData.length > 0 ? (
                                 <div className="space-y-2">
                                   {category.variablesData.map((variable) => (
-                                    <div key={variable.id} className="bg-[hsl(240,21%,15%)] rounded p-2 border border-[hsl(235,13%,30%)]">
+                                    <div key={variable.id} className="bg-[hsl(240,21%,15%)] rounded-none p-2 border border-[hsl(235,13%,30%)]">
                                       <div className="font-medium text-sm mb-1">{variable.name}</div>
                                       <div className="text-xs text-[hsl(222,15%,60%)] mb-1">
                                         Variable ID: <code className="text-[#cba6f7]">{variable.id}</code>
@@ -5954,7 +5954,7 @@ const Admin = () => {
                     </div>
                   )}
                 </div>
-                <div className="bg-[hsl(240,21%,15%)] rounded-lg p-3 border border-[hsl(235,13%,30%)]">
+                <div className="bg-[hsl(240,21%,15%)] rounded-none p-3 border border-[hsl(235,13%,30%)]">
                   <div className="text-sm space-y-1">
                     <div><strong>Player:</strong> {verifyingRun.playerName}</div>
                     {verifyingRun.player2Name && <div><strong>Player 2:</strong> {verifyingRun.player2Name}</div>}
@@ -6084,7 +6084,7 @@ const Admin = () => {
                 {/* Inner tabs for Categories vs Subcategories (only show subcategories for regular) */}
                 {categoryLeaderboardType === 'regular' ? (
                   <Tabs value={categoryManagementTab} onValueChange={(value) => setCategoryManagementTab(value as 'categories' | 'subcategories')} className="mb-4">
-                    <TabsList className="grid w-full grid-cols-2 rounded-lg p-0.5 gap-1 mb-4">
+                    <TabsList className="grid w-full grid-cols-2 rounded-none p-0.5 gap-1 mb-4">
                       <TabsTrigger 
                         value="categories" 
                         className="data-[state=active]:bg-[#cba6f7] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#cba6f7]/50 py-2 px-3 text-sm"
@@ -6277,7 +6277,7 @@ const Admin = () => {
                           <>
                             {/* SRC Variables Section */}
                             {selectedCategoryForSubcategories.srcCategoryId && (
-                              <div className="bg-[hsl(240,21%,15%)] rounded-lg p-4 border border-[hsl(235,13%,30%)]">
+                              <div className="bg-[hsl(240,21%,15%)] rounded-none p-4 border border-[hsl(235,13%,30%)]">
                                 <div className="flex items-center justify-between mb-3">
                                   <h4 className="text-sm font-semibold text-[#f2cdcd]">Speedrun.com Variables</h4>
                                   {srcVariables.length > 0 && (
@@ -6337,7 +6337,7 @@ const Admin = () => {
                                         return (
                                           <div 
                                             key={variable.id} 
-                                            className={`text-xs p-2 rounded border ${
+                                            className={`text-xs p-2 rounded-none border ${
                                               isSelected 
                                                 ? 'bg-[hsl(240,21%,18%)] border-[#94e2d5]' 
                                                 : 'bg-[hsl(240,21%,12%)] border-[hsl(235,13%,30%)]'
@@ -6375,7 +6375,7 @@ const Admin = () => {
                             )}
 
                             {/* Add Subcategory */}
-                            <div className="bg-[hsl(240,21%,15%)] rounded-lg p-4 border border-[hsl(235,13%,30%)]">
+                            <div className="bg-[hsl(240,21%,15%)] rounded-none p-4 border border-[hsl(235,13%,30%)]">
                               <h4 className="text-sm font-semibold mb-3 text-[#f2cdcd]">Add New Subcategory</h4>
                               <form onSubmit={(e) => { e.preventDefault(); handleAddSubcategory(); }} className="space-y-3">
                                 <div>
@@ -6870,7 +6870,7 @@ const Admin = () => {
                           
                           if (relevantCategories.length === 0) {
                             return (
-                              <div key={level.id} className="bg-[hsl(240,21%,15%)] rounded-lg p-4 border border-[hsl(235,13%,30%)]">
+                              <div key={level.id} className="bg-[hsl(240,21%,15%)] rounded-none p-4 border border-[hsl(235,13%,30%)]">
                                 <div className="font-medium text-sm mb-3 text-[#f2cdcd]">{level.name}</div>
                                 <p className="text-xs text-[hsl(222,15%,60%)]">
                                   No categories available for {levelLeaderboardType === 'community-golds' ? 'Community Golds' : 'Individual Level'} runs.
@@ -6884,13 +6884,13 @@ const Admin = () => {
                           };
                           
                           return (
-                            <div key={level.id} className="bg-[hsl(240,21%,15%)] rounded-lg p-4 border border-[hsl(235,13%,30%)]">
+                            <div key={level.id} className="bg-[hsl(240,21%,15%)] rounded-none p-4 border border-[hsl(235,13%,30%)]">
                               <div className="font-medium text-sm mb-3 text-[#f2cdcd]">{level.name}</div>
                               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                                 {relevantCategories.map((category) => (
                                   <label
                                     key={category.id}
-                                    className="flex items-center gap-2 p-2 rounded hover:bg-[hsl(235,19%,13%)] cursor-pointer transition-colors"
+                                    className="flex items-center gap-2 p-2 rounded-none hover:bg-[hsl(235,19%,13%)] cursor-pointer transition-colors"
                                   >
                                     <input
                                       type="checkbox"
@@ -6935,7 +6935,7 @@ const Admin = () => {
                                           });
                                         }
                                       }}
-                                      className="w-4 h-4 rounded border-[hsl(235,13%,30%)] bg-[hsl(240,21%,15%)] text-[#cba6f7] focus:ring-2 focus:ring-[#cba6f7] cursor-pointer"
+                                      className="w-4 h-4 rounded-none border-[hsl(235,13%,30%)] bg-[hsl(240,21%,15%)] text-[#cba6f7] focus:ring-2 focus:ring-[#cba6f7] cursor-pointer"
                                     />
                                     <span className={`text-xs ${isDisabled(category.id) ? 'text-[hsl(222,15%,50%)] line-through' : 'text-[hsl(222,15%,70%)]'}`}>
                                       {category.name}
@@ -7589,7 +7589,7 @@ const Admin = () => {
                     <div className="space-y-4">
                       <Label className="text-base font-semibold">Rank Bonus Options</Label>
                       <div className="space-y-3">
-                        <div className="flex items-center justify-between p-4 bg-[hsl(240,21%,15%)] border border-[hsl(235,13%,30%)] rounded">
+                        <div className="flex items-center justify-between p-4 bg-[hsl(240,21%,15%)] border border-[hsl(235,13%,30%)] rounded-none">
                           <div className="space-y-0.5">
                             <Label htmlFor="applyRankBonusesToIL" className="text-base">
                               Apply Rank Bonuses to Individual Levels
@@ -7604,7 +7604,7 @@ const Admin = () => {
                             onCheckedChange={(checked) => setPointsConfigForm({ ...pointsConfigForm, applyRankBonusesToIL: checked })}
                           />
                         </div>
-                        <div className="flex items-center justify-between p-4 bg-[hsl(240,21%,15%)] border border-[hsl(235,13%,30%)] rounded">
+                        <div className="flex items-center justify-between p-4 bg-[hsl(240,21%,15%)] border border-[hsl(235,13%,30%)] rounded-none">
                           <div className="space-y-0.5">
                             <Label htmlFor="applyRankBonusesToCommunityGolds" className="text-base">
                               Apply Rank Bonuses to Community Golds

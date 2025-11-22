@@ -306,7 +306,7 @@ const PlayerDetails = () => {
               <Clock className="h-5 w-5 text-ctp-yellow" />
               Pending Submissions
             </h3>
-            <div className="overflow-x-auto scrollbar-custom rounded-md border border-ctp-surface1/50">
+            <div className="overflow-x-auto scrollbar-custom rounded-none border border-ctp-surface1/50">
               <Table>
                 <TableHeader>
                   <TableRow className="border-b border-ctp-surface1/50 hover:bg-transparent bg-ctp-surface0/50">
@@ -600,7 +600,7 @@ const PlayerDetails = () => {
                           <p className="text-ctp-overlay0">No runs found matching the selected filters</p>
                         </div>
                       ) : (
-                        <div className="overflow-x-auto scrollbar-custom rounded-md border border-ctp-surface1/20">
+                        <div className="overflow-x-auto scrollbar-custom rounded-none border border-ctp-surface1/20">
                       <Table>
                         <TableHeader>
                           <TableRow className="border-b border-ctp-surface1/50 hover:bg-transparent bg-ctp-surface0/50">

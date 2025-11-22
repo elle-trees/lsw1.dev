@@ -659,11 +659,11 @@ const UserSettings = () => {
                   </p>
                 ) : (
                 <>
-                  <div className="grid grid-cols-3 mb-3 gap-1 bg-ctp-surface0/50 rounded-lg border border-ctp-surface1 p-0.5">
+                  <div className="grid grid-cols-3 mb-3 gap-1 bg-ctp-surface0/50 rounded-none border border-ctp-surface1 p-0.5">
                     <Button
                       variant={unclaimedLeaderboardType === 'regular' ? "default" : "ghost"}
                       onClick={() => setUnclaimedLeaderboardType('regular')}
-                      className={`h-auto py-2 px-3 rounded-md transition-all duration-300 ${
+                      className={`h-auto py-2 px-3 rounded-none transition-all duration-300 ${
                         unclaimedLeaderboardType === 'regular' 
                           ? "bg-[#f9e2af] text-[#11111b] hover:bg-[#f9e2af]/90 shadow-sm" 
                           : "text-ctp-text hover:bg-ctp-surface1 hover:text-ctp-text"
@@ -678,7 +678,7 @@ const UserSettings = () => {
                     <Button
                       variant={unclaimedLeaderboardType === 'individual-level' ? "default" : "ghost"}
                       onClick={() => setUnclaimedLeaderboardType('individual-level')}
-                      className={`h-auto py-2 px-3 rounded-md transition-all duration-300 ${
+                      className={`h-auto py-2 px-3 rounded-none transition-all duration-300 ${
                         unclaimedLeaderboardType === 'individual-level' 
                           ? "bg-[#f9e2af] text-[#11111b] hover:bg-[#f9e2af]/90 shadow-sm" 
                           : "text-ctp-text hover:bg-ctp-surface1 hover:text-ctp-text"
@@ -693,7 +693,7 @@ const UserSettings = () => {
                     <Button
                       variant={unclaimedLeaderboardType === 'community-golds' ? "default" : "ghost"}
                       onClick={() => setUnclaimedLeaderboardType('community-golds')}
-                      className={`h-auto py-2 px-3 rounded-md transition-all duration-300 ${
+                      className={`h-auto py-2 px-3 rounded-none transition-all duration-300 ${
                         unclaimedLeaderboardType === 'community-golds' 
                           ? "bg-[#f9e2af] text-[#11111b] hover:bg-[#f9e2af]/90 shadow-sm" 
                           : "text-ctp-text hover:bg-ctp-surface1 hover:text-ctp-text"

@@ -189,7 +189,7 @@ export function LeaderboardTable({ data, platforms = [], categories = [], levels
               <TableCell className="py-2.5 px-2 hidden md:table-cell">
                 <Link to={`/run/${entry.id}`} className="hover:text-[#cba6f7] flex items-center gap-1">
                   <Clock className="h-3.5 w-3.5 text-ctp-overlay0" />
-                  <span className="text-sm text-ctp-subtext1">{entry.date}</span>
+                  <span className="text-sm text-ctp-subtext1 whitespace-nowrap">{entry.date}</span>
                 </Link>
               </TableCell>
               <TableCell className="py-2.5 px-2 hidden lg:table-cell">

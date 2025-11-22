@@ -937,7 +937,7 @@ const Stats = () => {
                 <>
                   {/* WR Statistics */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                      <div className="p-4 border rounded-lg bg-muted/50">
+                      <div className="p-4 border rounded-none bg-muted/50">
                         <div className="text-sm text-muted-foreground mb-1">First WR</div>
                         <div className="text-lg font-semibold">
                           {new Date(filteredWRTimeProgression[0].date).toLocaleDateString('en-US', { 
@@ -950,7 +950,7 @@ const Stats = () => {
                           {formatTime(filteredWRTimeProgression[0].timeString)}
                         </div>
                       </div>
-                      <div className="p-4 border rounded-lg bg-muted/50">
+                      <div className="p-4 border rounded-none bg-muted/50">
                         <div className="text-sm text-muted-foreground mb-1">Current WR</div>
                         <div className="text-lg font-semibold">
                           {new Date(filteredWRTimeProgression[filteredWRTimeProgression.length - 1].date).toLocaleDateString('en-US', { 
@@ -963,7 +963,7 @@ const Stats = () => {
                           {formatTime(filteredWRTimeProgression[filteredWRTimeProgression.length - 1].timeString)}
                         </div>
                       </div>
-                      <div className="p-4 border rounded-lg bg-muted/50">
+                      <div className="p-4 border rounded-none bg-muted/50">
                         <div className="text-sm text-muted-foreground mb-1">Improvement</div>
                         <div className="text-lg font-semibold">
                           {(() => {
@@ -1016,7 +1016,7 @@ const Stats = () => {
                             const levelName = run.level ? getLevelName(run.level, levels) : null;
                             
                             return (
-                              <div className="rounded-lg border bg-background p-3 shadow-lg max-w-md">
+                              <div className="rounded-none border bg-background p-3 shadow-lg max-w-md">
                                 <div className="grid gap-3">
                                   <div className="flex items-center justify-between gap-4 border-b pb-2">
                                     <span className="text-sm font-medium">Date</span>

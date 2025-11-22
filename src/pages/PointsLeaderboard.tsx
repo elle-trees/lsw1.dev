@@ -435,7 +435,7 @@ const PointsLeaderboard = () => {
                     </div>
                   </div>
 
-                  <div className="bg-[hsl(240,21%,18%)] border border-[hsl(235,13%,30%)] p-4 rounded">
+                  <div className="bg-[hsl(240,21%,18%)] border border-[hsl(235,13%,30%)] p-4 rounded-none">
                     <p className="text-sm text-ctp-text leading-relaxed">
                       <strong className="text-[#fab387]">Note:</strong> Only verified runs count toward studs. 
                       Studs are automatically calculated and updated when runs are verified. 

@@ -404,7 +404,7 @@ const SubmitRun = () => {
                 {/* Leaderboard Type Buttons */}
                 <div>
                   <Label className="text-sm font-semibold mb-2 block">Leaderboard Type *</Label>
-                  <div className="grid grid-cols-3 p-0.5 gap-1 bg-ctp-surface0/50 rounded-lg border border-ctp-surface1">
+                  <div className="grid grid-cols-3 p-0.5 gap-1 bg-ctp-surface0/50 rounded-none border border-ctp-surface1">
                     <Button
                       type="button"
                       variant={leaderboardType === 'regular' ? "default" : "ghost"}
@@ -844,7 +844,7 @@ const SubmitRun = () => {
                       <div className="space-y-6 text-base text-[hsl(222,15%,70%)]">
                         <div>
                           <h3 className="text-lg font-semibold text-[hsl(220,17%,92%)] mb-3 flex items-center gap-2">
-                            <span className="w-7 h-7 rounded-full bg-[hsl(240,21%,18%)] flex items-center justify-center text-sm font-bold border border-[hsl(235,13%,30%)] flex-shrink-0">1</span>
+                            <span className="w-7 h-7 rounded-none bg-[hsl(240,21%,18%)] flex items-center justify-center text-sm font-bold border border-[hsl(235,13%,30%)] flex-shrink-0">1</span>
                             Game Rules
                           </h3>
                           <ul className="list-disc pl-6 space-y-2 text-sm">
@@ -860,7 +860,7 @@ const SubmitRun = () => {
 
                         <div>
                           <h3 className="text-lg font-semibold text-[hsl(220,17%,92%)] mb-3 flex items-center gap-2">
-                            <span className="w-7 h-7 rounded-full bg-[hsl(240,21%,18%)] flex items-center justify-center text-sm font-bold border border-[hsl(235,13%,30%)] flex-shrink-0">2</span>
+                            <span className="w-7 h-7 rounded-none bg-[hsl(240,21%,18%)] flex items-center justify-center text-sm font-bold border border-[hsl(235,13%,30%)] flex-shrink-0">2</span>
                             Video Rules
                           </h3>
                           <ul className="list-disc pl-6 space-y-2 text-sm">
@@ -873,7 +873,7 @@ const SubmitRun = () => {
 
                         <div>
                           <h3 className="text-lg font-semibold text-[hsl(220,17%,92%)] mb-3 flex items-center gap-2">
-                            <span className="w-7 h-7 rounded-full bg-[hsl(240,21%,18%)] flex items-center justify-center text-sm font-bold border border-[hsl(235,13%,30%)] flex-shrink-0">3</span>
+                            <span className="w-7 h-7 rounded-none bg-[hsl(240,21%,18%)] flex items-center justify-center text-sm font-bold border border-[hsl(235,13%,30%)] flex-shrink-0">3</span>
                             Emulator Rules
                           </h3>
                           <ul className="list-disc pl-6 space-y-2 text-sm">
@@ -885,7 +885,7 @@ const SubmitRun = () => {
 
                         <div>
                           <h3 className="text-lg font-semibold text-[hsl(220,17%,92%)] mb-3 flex items-center gap-2">
-                            <span className="w-7 h-7 rounded-full bg-[hsl(240,21%,18%)] flex items-center justify-center text-sm font-bold border border-[hsl(235,13%,30%)] flex-shrink-0">4</span>
+                            <span className="w-7 h-7 rounded-none bg-[hsl(240,21%,18%)] flex items-center justify-center text-sm font-bold border border-[hsl(235,13%,30%)] flex-shrink-0">4</span>
                             PC Rules
                           </h3>
                           <ul className="list-disc pl-6 space-y-2 text-sm">
@@ -895,7 +895,7 @@ const SubmitRun = () => {
 
                         <div>
                           <h3 className="text-lg font-semibold text-[hsl(220,17%,92%)] mb-3 flex items-center gap-2">
-                            <span className="w-7 h-7 rounded-full bg-[hsl(240,21%,18%)] flex items-center justify-center text-sm font-bold border border-[hsl(235,13%,30%)] flex-shrink-0">5</span>
+                            <span className="w-7 h-7 rounded-none bg-[hsl(240,21%,18%)] flex items-center justify-center text-sm font-bold border border-[hsl(235,13%,30%)] flex-shrink-0">5</span>
                             Solo Rules
                           </h3>
                           <ul className="list-disc pl-6 space-y-2 text-sm">

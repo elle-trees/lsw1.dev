@@ -12,7 +12,7 @@ const AnimatedCard = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLD
         transition={{ duration: 0.3 }}
         whileHover={{ y: -5 }}
         className={cn(
-          "rounded-lg border bg-card text-card-foreground shadow-sm",
+          "rounded-none border bg-card text-card-foreground shadow-sm",
           className
         )}
         {...props}
