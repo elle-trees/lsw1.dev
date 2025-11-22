@@ -18,7 +18,7 @@ import { leaderboardEntryConverter } from "./converters";
 import { normalizeLeaderboardEntry, validateLeaderboardEntry } from "@/lib/dataValidation";
 // Removed unused imports from src-imports to break circular dependency chain
 // checkSRCRunExistsFirestore and tryAutoAssignRunFirestore are not actually used in this file
-import { createNotificationFirestore } from "./notifications";
+// Make notification import dynamic to avoid circular dependency
 
 // We need to be careful about circular dependencies. 
 // checkSRCRunExistsFirestore is in the main file currently. 
@@ -194,6 +194,7 @@ export const updateRunVerificationStatusFirestore = async (runId: string, verifi
             if (docSnap.exists()) {
                 const run = docSnap.data();
                 if (run.playerId) {
+                    const { createNotificationFirestore } = await import("./notifications");
                     await createNotificationFirestore({
                         userId: run.playerId,
                         type: 'run_verified',

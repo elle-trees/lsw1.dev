@@ -11,8 +11,8 @@ const ADMIN_UID = import.meta.env.VITE_ADMIN_UID;
 onAuthStateChanged(auth, async (user) => {
   if (user && ADMIN_UID && user.uid === ADMIN_UID) {
     try {
-      // Lazy load to avoid circular dependency
-      const { setPlayerAdminStatus } = await import("./lib/db");
+      // Lazy load to avoid circular dependency - import from smaller module directly
+      const { setPlayerAdminStatus } = await import("./lib/db/players");
       await setPlayerAdminStatus(ADMIN_UID, true);
     } catch (_error) {
       // Silent fail - admin status will be set on next auth check
