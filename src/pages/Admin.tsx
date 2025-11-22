@@ -16,29 +16,8 @@ import { Switch } from "@/components/ui/switch";
 import { Pagination } from "@/components/Pagination";
 import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
-// Import from smaller db modules to reduce initialization complexity
-// This avoids loading the entire db.ts barrel file at once
-const getDbRuns = async () => import("@/lib/db/runs");
-const getDbPlayers = async () => import("@/lib/db/players");
-const getDbCategories = async () => import("@/lib/db/categories");
-const getDbDownloads = async () => import("@/lib/db/downloads");
-const getDbConfig = async () => import("@/lib/db/config");
-const getDbSrcImports = async () => import("@/lib/db/src-imports");
-const getDbNotifications = async () => import("@/lib/db/notifications");
-
-// Helper to get all db modules (for backward compatibility)
-const getDb = async () => {
-  const [runs, players, categories, downloads, config, srcImports, notifications] = await Promise.all([
-    getDbRuns(),
-    getDbPlayers(),
-    getDbCategories(),
-    getDbDownloads(),
-    getDbConfig(),
-    getDbSrcImports(),
-    getDbNotifications()
-  ]);
-  return { ...runs, ...players, ...categories, ...downloads, ...config, ...srcImports, ...notifications };
-};
+// No module-level db imports - all db functions will be loaded dynamically at call sites
+// This completely avoids any initialization-time circular dependencies
 // Dynamic import to avoid circular dependency at module initialization
 type ImportResult = {
   imported: number;
@@ -220,8 +199,8 @@ const Admin = () => {
     // Load initial categories for imported runs filter
     const initImportedRunsCategories = async () => {
       try {
-        const db = await getDb();
-        const categoriesData = await db.getCategories('regular');
+        const { getCategories } = await import("@/lib/db/categories");
+        const categoriesData = await getCategories('regular');
         setImportedRunsCategories(categoriesData);
         // Start with "All Categories" selected
         setImportedRunsCategory("__all__");
@@ -233,8 +212,8 @@ const Admin = () => {
     // Load initial categories for level management (should match levelLeaderboardType initial state)
     const initLevelCategories = async () => {
       try {
-        const db = await getDb();
-        const categoriesData = await db.getCategories('individual-level');
+        const { getCategories } = await import("@/lib/db/categories");
+        const categoriesData = await getCategories('individual-level');
         setFirestoreCategories(categoriesData);
       } catch (_error) {
         // Silent fail
@@ -247,8 +226,8 @@ const Admin = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const db = await getDb();
-        const categoriesData = await db.getCategories(importedRunsLeaderboardType);
+        const { getCategories } = await import("@/lib/db/categories");
+        const categoriesData = await getCategories(importedRunsLeaderboardType);
         setImportedRunsCategories(categoriesData);
         // Reset to "All Categories" when switching types
         setImportedRunsCategory("__all__");
@@ -267,8 +246,8 @@ const Admin = () => {
       const fetchImportedRuns = async () => {
         setLoadingImportedRuns(true);
         try {
-          const db = await getDb();
-          const importedData = await db.getImportedSRCRuns();
+        const { getImportedSRCRuns } = await import("@/lib/db/src-imports");
+          const importedData = await getImportedSRCRuns();
           setImportedSRCRuns(importedData);
         } catch (_error) {
           // Error handled silently
@@ -288,8 +267,8 @@ const Admin = () => {
       const loadPointsConfig = async () => {
         setLoadingPointsConfig(true);
         try {
-          const db = await getDb();
-          const config = await db.getPointsConfig();
+        const { getPointsConfig } = await import("@/lib/db/config");
+          const config = await getPointsConfig();
           setPointsConfig(config);
           setPointsConfigForm(config);
         } catch (error) {
@@ -312,8 +291,8 @@ const Admin = () => {
       const loadGameDetailsConfig = async () => {
         setLoadingGameDetailsConfig(true);
         try {
-          const db = await getDb();
-          const config = await db.getGameDetailsConfig();
+        const { getGameDetailsConfig } = await import("@/lib/db/config");
+          const config = await getGameDetailsConfig();
           setGameDetailsConfig(config);
           setGameDetailsConfigForm(config || {
             id: "default",
@@ -345,12 +324,12 @@ const Admin = () => {
     
     setSavingPointsConfig(true);
     try {
-      const db = await getDb();
-      const success = await db.updatePointsConfig(pointsConfigForm as PointsConfig);
+        const { updatePointsConfig } = await import("@/lib/db/config");
+      const success = await updatePointsConfig(pointsConfigForm as PointsConfig);
       if (success) {
         // Reload config to get updated values
-        const db = await getDb();
-        const updatedConfig = await db.getPointsConfig();
+        const { getPointsConfig } = await import("@/lib/db/config");
+        const updatedConfig = await getPointsConfig();
         setPointsConfig(updatedConfig);
         setPointsConfigForm(updatedConfig);
         
@@ -599,12 +578,12 @@ const Admin = () => {
         visibleOnPages: gameDetailsConfigForm.visibleOnPages ?? gameDetailsConfig.visibleOnPages ?? [],
         enabled: gameDetailsConfigForm.enabled ?? gameDetailsConfig.enabled ?? true,
       };
-      const db = await getDb();
-      const success = await db.updateGameDetailsConfig(configToSave);
+        const { updateGameDetailsConfig } = await import("@/lib/db/config");
+      const success = await updateGameDetailsConfig(configToSave);
       if (success) {
         // Reload config to get updated values
-        const db = await getDb();
-        const updatedConfig = await db.getGameDetailsConfig();
+        const { getGameDetailsConfig } = await import("@/lib/db/config");
+        const updatedConfig = await getGameDetailsConfig();
         setGameDetailsConfig(updatedConfig);
         setGameDetailsConfigForm(updatedConfig || gameDetailsConfigForm);
         
@@ -632,8 +611,8 @@ const Admin = () => {
       try {
         // For community-golds, use community-golds categories (now configurable)
         // For individual-level, use individual-level categories
-        const db = await getDb();
-        const categoriesData = await db.getCategoriesFromFirestore(levelLeaderboardType);
+        const { getCategoriesFromFirestore } = await import("@/lib/db/categories");
+        const categoriesData = await getCategoriesFromFirestore(levelLeaderboardType);
         setFirestoreCategories(categoriesData);
       } catch (_error) {
         // Silent fail
@@ -670,9 +649,10 @@ const Admin = () => {
     const fetchSubcategories = async () => {
       if (editingImportedRun && editingImportedRun.leaderboardType === 'regular' && editingImportedRunForm.category) {
         try {
-          const db = await getDb();
+          // Dynamic import at call site
 
-          const categories = await db.getCategoriesFromFirestore('regular');
+          const { getCategoriesFromFirestore } = await import("@/lib/db/categories");
+          const categories = await getCategoriesFromFirestore('regular');
           const category = categories.find(c => c.id === editingImportedRunForm.category);
           if (category && category.subcategories && category.subcategories.length > 0) {
             const sorted = [...category.subcategories].sort((a, b) => {
@@ -727,8 +707,8 @@ const Admin = () => {
   // Note: fetchImportedRunsCategories was declared but never used - removed for now
   // const fetchImportedRunsCategories = async (leaderboardType: 'regular' | 'individual-level') => {
   //   try {
-  //     const db = await getDb();
-  //     const categoriesData = await db.getCategories(leaderboardType);
+  //     const { getCategories } = await import("@/lib/db/categories");
+  //     const categoriesData = await getCategories(leaderboardType);
   //     setImportedRunsCategories(categoriesData);
   //   } catch (_error) {
   //     // Silent fail
@@ -737,9 +717,10 @@ const Admin = () => {
 
   const fetchDownloadCategories = useCallback(async () => {
     try {
-      const db = await getDb();
+      // Dynamic import at call site
 
-      const categoriesData = await db.getDownloadCategories();
+      const { getDownloadCategories } = await import("@/lib/db/downloads");
+      const categoriesData = await getDownloadCategories();
       setDownloadCategories(categoriesData);
       // Update newDownload category if empty
       setNewDownload(prev => {
@@ -759,9 +740,10 @@ const Admin = () => {
 
   const fetchLevels = useCallback(async () => {
     try {
-      const db = await getDb();
+      // Dynamic import at call site
 
-      const levelsData = await db.getLevels();
+      const { getLevels } = await import("@/lib/db/categories");
+      const levelsData = await getLevels();
       setAvailableLevels(levelsData);
     } catch (_error) {
       toast({
@@ -775,9 +757,10 @@ const Admin = () => {
   const fetchCategories = useCallback(async (leaderboardType?: 'regular' | 'individual-level' | 'community-golds') => {
     try {
       const type = leaderboardType || categoryLeaderboardType;
-      const db = await getDb();
+      // Dynamic import at call site
 
-      const categoriesData = await db.getCategoriesFromFirestore(type);
+      const { getCategoriesFromFirestore } = await import("@/lib/db/categories");
+      const categoriesData = await getCategoriesFromFirestore(type);
       setFirestoreCategories(categoriesData);
     } catch (_error) {
       toast({
@@ -940,12 +923,17 @@ const Admin = () => {
     if (hasFetchedData) return;
     setLoading(true);
     try {
-      const db = await getDb();
+      const [runsModule, srcImportsModule, downloadsModule, categoriesModule] = await Promise.all([
+        import("@/lib/db/runs"),
+        import("@/lib/db/src-imports"),
+        import("@/lib/db/downloads"),
+        import("@/lib/db/categories")
+      ]);
       const [unverifiedData, importedData, downloadData, categoriesData] = await Promise.all([
-        db.getUnverifiedLeaderboardEntries(),
-        db.getImportedSRCRuns(),
-        db.getDownloadEntries(),
-        db.getCategoriesFromFirestore('regular')
+        runsModule.getUnverifiedLeaderboardEntries(),
+        srcImportsModule.getImportedSRCRuns(),
+        downloadsModule.getDownloadEntries(),
+        categoriesModule.getCategoriesFromFirestore('regular')
       ]);
       setUnverifiedRuns(unverifiedData.filter(run => !run.importedFromSRC));
       setImportedSRCRuns(importedData);
@@ -966,10 +954,13 @@ const Admin = () => {
   // Helper function to refresh all run data
   const refreshAllRunData = async () => {
     try {
-      const db = await getDb();
+      const [runsModule, srcImportsModule] = await Promise.all([
+        import("@/lib/db/runs"),
+        import("@/lib/db/src-imports")
+      ]);
       const [unverifiedData, importedData] = await Promise.all([
-        db.getUnverifiedLeaderboardEntries(),
-        db.getImportedSRCRuns()
+        runsModule.getUnverifiedLeaderboardEntries(),
+        srcImportsModule.getImportedSRCRuns()
       ]);
       // Only include manually submitted runs in unverified runs tab
       // Imported runs stay in their own tab unless they're edited and ready for verification
@@ -989,9 +980,8 @@ const Admin = () => {
 
   const fetchPlatforms = useCallback(async () => {
     try {
-      const db = await getDb();
-
-      const platformsData = await db.getPlatformsFromFirestore();
+      const { getPlatformsFromFirestore } = await import("@/lib/db/categories");
+      const platformsData = await getPlatformsFromFirestore();
       setFirestorePlatforms(platformsData);
     } catch (_error) {
       toast({
@@ -1004,18 +994,20 @@ const Admin = () => {
 
   const fetchUnverifiedRuns = async () => {
     try {
-      const db = await getDb();
+      // Dynamic import at call site
 
-      const data = await db.getUnverifiedLeaderboardEntries();
+      const { getUnverifiedLeaderboardEntries } = await import("@/lib/db/runs");
+      const data = await getUnverifiedLeaderboardEntries();
       // Only include manually submitted runs in unverified runs tab
       // Imported runs stay in their own tab
       setUnverifiedRuns(data.filter(run => !run.importedFromSRC));
       setUnverifiedPage(1); // Reset to first page when data changes
       
       try {
-        const db = await getDb();
+        // Dynamic import at call site
 
-        const importedData = await db.getImportedSRCRuns();
+        const { getImportedSRCRuns } = await import("@/lib/db/src-imports");
+        const importedData = await getImportedSRCRuns();
         setImportedSRCRuns(importedData);
         setImportedPage(1); // Reset to first page when data changes
       } catch (importError) {
@@ -1036,9 +1028,10 @@ const Admin = () => {
 
   const fetchDownloadEntries = async () => {
     try {
-      const db = await getDb();
+      // Dynamic import at call site
 
-      const data = await db.getDownloadEntries();
+      const { getDownloadEntries } = await import("@/lib/db/downloads");
+      const data = await getDownloadEntries();
       setDownloadEntries(data);
     } catch (error) {
       toast({
@@ -1143,14 +1136,15 @@ const Admin = () => {
 
       // Update run data if needed (including player assignment), then verify
       if (Object.keys(updateData).length > 0) {
-        const db = await getDb();
-        await db.updateLeaderboardEntry(runId, updateData);
+        const { updateLeaderboardEntry } = await import("@/lib/db/runs");
+        await updateLeaderboardEntry(runId, updateData);
       }
 
       // Verify the run
-      const db = await getDb();
+      // Dynamic import at call site
 
-      const success = await db.updateRunVerificationStatus(runId, true, verifiedBy);
+      const { updateRunVerificationStatus } = await import("@/lib/db/runs");
+      const success = await updateRunVerificationStatus(runId, true, verifiedBy);
       if (success) {
         toast({
           title: "Run Verified",
@@ -1176,9 +1170,10 @@ const Admin = () => {
 
   const handleReject = async (runId: string) => {
     try {
-      const db = await getDb();
+      // Dynamic import at call site
 
-      const success = await db.deleteLeaderboardEntry(runId);
+      const { deleteLeaderboardEntry } = await import("@/lib/db/runs");
+      const success = await deleteLeaderboardEntry(runId);
       if (success) {
         toast({
           title: "Run Rejected and Removed",
@@ -1266,10 +1261,11 @@ const Admin = () => {
         updateData.comment = finalForm.comment.trim();
       }
 
-      const db = await getDb();
+      // Dynamic import at call site
 
 
-      const success = await db.updateLeaderboardEntry(editingImportedRun.id, updateData);
+      const { updateLeaderboardEntry } = await import("@/lib/db/runs");
+      const success = await updateLeaderboardEntry(editingImportedRun.id, updateData);
       if (success) {
         toast({
           title: "Run Updated",
@@ -1375,10 +1371,10 @@ const Admin = () => {
       setSrcCategoriesWithVars(categoriesWithVars);
       
       // Fetch ALL categories (regular and IL) for linking
-      const db = await getDb();
+      const { getCategoriesFromFirestore } = await import("@/lib/db/categories");
       const [regularCats, ilCats] = await Promise.all([
-        db.getCategoriesFromFirestore('regular'),
-        db.getCategoriesFromFirestore('individual-level')
+        getCategoriesFromFirestore('regular'),
+        getCategoriesFromFirestore('individual-level')
       ]);
       setAllCategoriesForSRCLinking([...regularCats, ...ilCats]);
     } catch (error: any) {
@@ -1400,9 +1396,10 @@ const Admin = () => {
 
     setClearingImportedRuns(true);
     try {
-      const db = await getDb();
+      // Dynamic import at call site
 
-      const result = await db.deleteAllImportedSRCRuns();
+      const { deleteAllImportedSRCRuns } = await import("@/lib/db/src-imports");
+      const result = await deleteAllImportedSRCRuns();
       
       if (result.errors.length > 0) {
         // Check if there are permission errors
@@ -1511,16 +1508,19 @@ const Admin = () => {
     try {
       // Dynamic import to avoid circular dependency
       const { batchVerifyRuns } = await import("@/lib/data/runFieldService");
-      const db = await getDb();
+      const [runsModule, categoriesModule] = await Promise.all([
+        import("@/lib/db/runs"),
+        import("@/lib/db/categories")
+      ]);
       // Use optimized batch verification service
       const result = await batchVerifyRuns(
         unverifiedImported,
         verifiedBy,
-        db.updateRunVerificationStatus,
-        db.updateLeaderboardEntry,
-        db.getCategoriesFromFirestore,
-        db.getPlatformsFromFirestore,
-        db.getLevels,
+        runsModule.updateRunVerificationStatus,
+        runsModule.updateLeaderboardEntry,
+        categoriesModule.getCategoriesFromFirestore,
+        categoriesModule.getPlatformsFromFirestore,
+        categoriesModule.getLevels,
         20, // Process 20 runs in parallel
         (_processed, _total) => {
           // Optional: Could show progress here if needed
@@ -1627,16 +1627,19 @@ const Admin = () => {
     try {
       // Dynamic import to avoid circular dependency
       const { batchVerifyRuns } = await import("@/lib/data/runFieldService");
-      const db = await getDb();
+      const [runsModule, categoriesModule] = await Promise.all([
+        import("@/lib/db/runs"),
+        import("@/lib/db/categories")
+      ]);
       // Use optimized batch verification service
       const result = await batchVerifyRuns(
         unverifiedImported,
         verifiedBy,
-        db.updateRunVerificationStatus,
-        db.updateLeaderboardEntry,
-        db.getCategoriesFromFirestore,
-        db.getPlatformsFromFirestore,
-        db.getLevels,
+        runsModule.updateRunVerificationStatus,
+        runsModule.updateLeaderboardEntry,
+        categoriesModule.getCategoriesFromFirestore,
+        categoriesModule.getPlatformsFromFirestore,
+        categoriesModule.getLevels,
         20, // Process 20 runs in parallel
         (_processed, _total) => {
           // Optional: Could show progress here if needed
@@ -1708,9 +1711,10 @@ const Admin = () => {
 
       for (const run of runsToDelete) {
         try {
-          const db = await getDb();
+          // Dynamic import at call site
 
-          const success = await db.deleteLeaderboardEntry(run.id);
+          const { deleteLeaderboardEntry } = await import("@/lib/db/runs");
+          const success = await deleteLeaderboardEntry(run.id);
           if (success) {
             deletedCount++;
           } else {
@@ -1812,10 +1816,11 @@ const Admin = () => {
         ),
       };
       
-      const db = await getDb();
+      // Dynamic import at call site
 
       
-      const success = await db.addDownloadEntry(downloadEntry);
+      const { addDownloadEntry } = await import("@/lib/db/downloads");
+      const success = await addDownloadEntry(downloadEntry);
       if (success) {
         toast({
           title: "Download Added",
@@ -1850,9 +1855,10 @@ const Admin = () => {
       return;
     }
     try {
-      const db = await getDb();
+      // Dynamic import at call site
 
-      const success = await db.deleteDownloadEntry(downloadId);
+      const { deleteDownloadEntry } = await import("@/lib/db/downloads");
+      const success = await deleteDownloadEntry(downloadId);
       if (success) {
         toast({
           title: "Download Deleted",
@@ -1875,9 +1881,10 @@ const Admin = () => {
     if (reorderingDownload) return;
     setReorderingDownload(downloadId);
     try {
-      const db = await getDb();
+      // Dynamic import at call site
 
-      const success = await db.moveDownloadUp(downloadId);
+      const { moveDownloadUp } = await import("@/lib/db/downloads");
+      const success = await moveDownloadUp(downloadId);
       if (success) {
         await fetchDownloadEntries();
       } else {
@@ -1902,9 +1909,10 @@ const Admin = () => {
     if (reorderingDownload) return;
     setReorderingDownload(downloadId);
     try {
-      const db = await getDb();
+      // Dynamic import at call site
 
-      const success = await db.moveDownloadDown(downloadId);
+      const { moveDownloadDown } = await import("@/lib/db/downloads");
+      const success = await moveDownloadDown(downloadId);
       if (success) {
         await fetchDownloadEntries();
       } else {
@@ -1939,9 +1947,10 @@ const Admin = () => {
     
     setAddingCategory(true);
     try {
-      const db = await getDb();
+      // Dynamic import at call site
 
-      const result = await db.addCategory(newCategoryName.trim(), categoryLeaderboardType);
+      const { addCategory } = await import("@/lib/db/categories");
+      const result = await addCategory(newCategoryName.trim(), categoryLeaderboardType);
       if (result) {
         toast({
           title: "Category Added",
@@ -1987,10 +1996,11 @@ const Admin = () => {
       const subcategories = currentCategory?.subcategories || [];
       const srcCategoryId = editingCategorySrcId.trim() || null;
       
-      const db = await getDb();
+      // Dynamic import at call site
 
       
-      const success = await db.updateCategory(editingCategory.id, editingCategoryName.trim(), subcategories, srcCategoryId);
+      const { updateCategory } = await import("@/lib/db/categories");
+      const success = await updateCategory(editingCategory.id, editingCategoryName.trim(), subcategories, srcCategoryId);
       if (success) {
         toast({
           title: "Category Updated",
@@ -2026,9 +2036,10 @@ const Admin = () => {
       return;
     }
     try {
-      const db = await getDb();
+      // Dynamic import at call site
 
-      const success = await db.deleteCategory(categoryId);
+      const { deleteCategory } = await import("@/lib/db/categories");
+      const success = await deleteCategory(categoryId);
       if (success) {
         toast({
           title: "Category Deleted",
@@ -2050,9 +2061,10 @@ const Admin = () => {
   const handleMoveCategoryUp = async (categoryId: string) => {
     setReorderingCategory(categoryId);
     try {
-      const db = await getDb();
+      // Dynamic import at call site
 
-      const success = await db.moveCategoryUp(categoryId);
+      const { moveCategoryUp } = await import("@/lib/db/categories");
+      const success = await moveCategoryUp(categoryId);
       if (success) {
         await fetchCategories(categoryLeaderboardType);
       } else {
@@ -2076,9 +2088,10 @@ const Admin = () => {
   const handleMoveCategoryDown = async (categoryId: string) => {
     setReorderingCategory(categoryId);
     try {
-      const db = await getDb();
+      // Dynamic import at call site
 
-      const success = await db.moveCategoryDown(categoryId);
+      const { moveCategoryDown } = await import("@/lib/db/categories");
+      const success = await moveCategoryDown(categoryId);
       if (success) {
         await fetchCategories(categoryLeaderboardType);
       } else {
@@ -2176,9 +2189,10 @@ const Admin = () => {
       };
       
       const updatedSubcategories = [...existingSubcategories, newSubcategory];
-      const db = await getDb();
+      // Dynamic import at call site
 
-      const success = await db.updateCategory(selectedCategoryForSubcategories.id, selectedCategoryForSubcategories.name, updatedSubcategories);
+      const { updateCategory } = await import("@/lib/db/categories");
+      const success = await updateCategory(selectedCategoryForSubcategories.id, selectedCategoryForSubcategories.name, updatedSubcategories);
       
       if (success) {
         toast({
@@ -2188,9 +2202,10 @@ const Admin = () => {
         setNewSubcategoryName("");
         await fetchCategories(categoryLeaderboardType);
         // Refresh selected category
-        const db = await getDb();
+        // Dynamic import at call site
 
-        const updated = await db.getCategoriesFromFirestore(categoryLeaderboardType);
+        const { getCategoriesFromFirestore } = await import("@/lib/db/categories");
+        const updated = await getCategoriesFromFirestore(categoryLeaderboardType);
         const refreshed = updated.find(c => c.id === selectedCategoryForSubcategories.id) as Category | undefined;
         if (refreshed) {
           setSelectedCategoryForSubcategories(refreshed);
@@ -2240,10 +2255,11 @@ const Admin = () => {
           : s
       );
       
-      const db = await getDb();
+      // Dynamic import at call site
 
       
-      const success = await db.updateCategory(selectedCategoryForSubcategories.id, selectedCategoryForSubcategories.name, updatedSubcategories);
+      const { updateCategory } = await import("@/lib/db/categories");
+      const success = await updateCategory(selectedCategoryForSubcategories.id, selectedCategoryForSubcategories.name, updatedSubcategories);
       
       if (success) {
         toast({
@@ -2254,9 +2270,10 @@ const Admin = () => {
         setEditingSubcategoryName("");
         await fetchCategories(categoryLeaderboardType);
         // Refresh selected category
-        const db = await getDb();
+        // Dynamic import at call site
 
-        const updated = await db.getCategoriesFromFirestore(categoryLeaderboardType);
+        const { getCategoriesFromFirestore } = await import("@/lib/db/categories");
+        const updated = await getCategoriesFromFirestore(categoryLeaderboardType);
         const refreshed = updated.find(c => c.id === selectedCategoryForSubcategories.id) as Category | undefined;
         if (refreshed) {
           setSelectedCategoryForSubcategories(refreshed);
@@ -2287,10 +2304,11 @@ const Admin = () => {
       const existingSubcategories = currentCategory?.subcategories || [];
       const updatedSubcategories = existingSubcategories.filter(s => s.id !== subcategoryId);
       
-      const db = await getDb();
+      // Dynamic import at call site
 
       
-      const success = await db.updateCategory(selectedCategoryForSubcategories.id, selectedCategoryForSubcategories.name, updatedSubcategories);
+      const { updateCategory } = await import("@/lib/db/categories");
+      const success = await updateCategory(selectedCategoryForSubcategories.id, selectedCategoryForSubcategories.name, updatedSubcategories);
       
       if (success) {
         toast({
@@ -2299,9 +2317,10 @@ const Admin = () => {
         });
         await fetchCategories(categoryLeaderboardType);
         // Refresh selected category
-        const db = await getDb();
+        // Dynamic import at call site
 
-        const updated = await db.getCategoriesFromFirestore(categoryLeaderboardType);
+        const { getCategoriesFromFirestore } = await import("@/lib/db/categories");
+        const updated = await getCategoriesFromFirestore(categoryLeaderboardType);
         const refreshed = updated.find(c => c.id === selectedCategoryForSubcategories.id) as Category | undefined;
         if (refreshed) {
           setSelectedCategoryForSubcategories(refreshed);
@@ -2338,17 +2357,19 @@ const Admin = () => {
       updatedSubcategories[index].order = prevOrder;
       updatedSubcategories[index - 1].order = currentOrder;
       
-      const db = await getDb();
+      // Dynamic import at call site
 
       
-      const success = await db.updateCategory(selectedCategoryForSubcategories.id, selectedCategoryForSubcategories.name, updatedSubcategories);
+      const { updateCategory } = await import("@/lib/db/categories");
+      const success = await updateCategory(selectedCategoryForSubcategories.id, selectedCategoryForSubcategories.name, updatedSubcategories);
       
       if (success) {
         await fetchCategories(categoryLeaderboardType);
         // Refresh selected category
-        const db = await getDb();
+        // Dynamic import at call site
 
-        const updated = await db.getCategoriesFromFirestore(categoryLeaderboardType);
+        const { getCategoriesFromFirestore } = await import("@/lib/db/categories");
+        const updated = await getCategoriesFromFirestore(categoryLeaderboardType);
         const refreshed = updated.find(c => c.id === selectedCategoryForSubcategories.id) as Category | undefined;
         if (refreshed) {
           setSelectedCategoryForSubcategories(refreshed);
@@ -2387,17 +2408,19 @@ const Admin = () => {
       updatedSubcategories[index].order = nextOrder;
       updatedSubcategories[index + 1].order = currentOrder;
       
-      const db = await getDb();
+      // Dynamic import at call site
 
       
-      const success = await db.updateCategory(selectedCategoryForSubcategories.id, selectedCategoryForSubcategories.name, updatedSubcategories);
+      const { updateCategory } = await import("@/lib/db/categories");
+      const success = await updateCategory(selectedCategoryForSubcategories.id, selectedCategoryForSubcategories.name, updatedSubcategories);
       
       if (success) {
         await fetchCategories(categoryLeaderboardType);
         // Refresh selected category
-        const db = await getDb();
+        // Dynamic import at call site
 
-        const updated = await db.getCategoriesFromFirestore(categoryLeaderboardType);
+        const { getCategoriesFromFirestore } = await import("@/lib/db/categories");
+        const updated = await getCategoriesFromFirestore(categoryLeaderboardType);
         const refreshed = updated.find(c => c.id === selectedCategoryForSubcategories.id) as Category | undefined;
         if (refreshed) {
           setSelectedCategoryForSubcategories(refreshed);
@@ -2421,9 +2444,10 @@ const Admin = () => {
     
     setUpdatingSubcategory(true);
     try {
-      const db = await getDb();
+      // Dynamic import at call site
 
-      const success = await db.updateCategory(
+      const { updateCategory } = await import("@/lib/db/categories");
+      const success = await updateCategory(
         selectedCategoryForSubcategories.id,
         selectedCategoryForSubcategories.name,
         selectedCategoryForSubcategories.subcategories,
@@ -2438,9 +2462,10 @@ const Admin = () => {
         });
         await fetchCategories(categoryLeaderboardType);
         // Refresh selected category
-        const db = await getDb();
+        // Dynamic import at call site
 
-        const updated = await db.getCategoriesFromFirestore(categoryLeaderboardType);
+        const { getCategoriesFromFirestore } = await import("@/lib/db/categories");
+        const updated = await getCategoriesFromFirestore(categoryLeaderboardType);
         const refreshed = updated.find(c => c.id === selectedCategoryForSubcategories.id) as Category | undefined;
         if (refreshed) {
           setSelectedCategoryForSubcategories(refreshed);
@@ -2512,9 +2537,10 @@ const Admin = () => {
       }
       
       const updatedSubcategories = [...existingSubcategories, ...newSubcategories];
-      const db = await getDb();
+      // Dynamic import at call site
 
-      const success = await db.updateCategory(selectedCategoryForSubcategories.id, selectedCategoryForSubcategories.name, updatedSubcategories);
+      const { updateCategory } = await import("@/lib/db/categories");
+      const success = await updateCategory(selectedCategoryForSubcategories.id, selectedCategoryForSubcategories.name, updatedSubcategories);
       
       if (success) {
         toast({
@@ -2523,9 +2549,10 @@ const Admin = () => {
         });
         await fetchCategories(categoryLeaderboardType);
         // Refresh selected category
-        const db = await getDb();
+        // Dynamic import at call site
 
-        const updated = await db.getCategoriesFromFirestore(categoryLeaderboardType);
+        const { getCategoriesFromFirestore } = await import("@/lib/db/categories");
+        const updated = await getCategoriesFromFirestore(categoryLeaderboardType);
         const refreshed = updated.find(c => c.id === selectedCategoryForSubcategories.id) as Category | undefined;
         if (refreshed) {
           setSelectedCategoryForSubcategories(refreshed);
@@ -2551,9 +2578,10 @@ const Admin = () => {
     }
     setAddingPlatform(true);
     try {
-      const db = await getDb();
+      // Dynamic import at call site
 
-      const platformId = await db.addPlatform(newPlatformName.trim());
+      const { addPlatform } = await import("@/lib/db/categories");
+      const platformId = await addPlatform(newPlatformName.trim());
       if (platformId) {
         toast({
           title: "Platform Added",
@@ -2592,9 +2620,10 @@ const Admin = () => {
     
     setUpdatingPlatform(true);
     try {
-      const db = await getDb();
+      // Dynamic import at call site
 
-      const success = await db.updatePlatform(editingPlatform.id, editingPlatformName.trim());
+      const { updatePlatform } = await import("@/lib/db/categories");
+      const success = await updatePlatform(editingPlatform.id, editingPlatformName.trim());
       if (success) {
         toast({
           title: "Platform Updated",
@@ -2622,9 +2651,10 @@ const Admin = () => {
       return;
     }
     try {
-      const db = await getDb();
+      // Dynamic import at call site
 
-      const success = await db.deletePlatform(platformId);
+      const { deletePlatform } = await import("@/lib/db/categories");
+      const success = await deletePlatform(platformId);
       if (success) {
         toast({
           title: "Platform Deleted",
@@ -2646,9 +2676,10 @@ const Admin = () => {
   const handleMovePlatformUp = async (platformId: string) => {
     setReorderingPlatform(platformId);
     try {
-      const db = await getDb();
+      // Dynamic import at call site
 
-      const success = await db.movePlatformUp(platformId);
+      const { movePlatformUp } = await import("@/lib/db/categories");
+      const success = await movePlatformUp(platformId);
       if (success) {
         await fetchPlatforms();
       } else {
@@ -2672,9 +2703,10 @@ const Admin = () => {
   const handleMovePlatformDown = async (platformId: string) => {
     setReorderingPlatform(platformId);
     try {
-      const db = await getDb();
+      // Dynamic import at call site
 
-      const success = await db.movePlatformDown(platformId);
+      const { movePlatformDown } = await import("@/lib/db/categories");
+      const success = await movePlatformDown(platformId);
       if (success) {
         await fetchPlatforms();
       } else {
@@ -2702,9 +2734,10 @@ const Admin = () => {
     }
     setAddingLevel(true);
     try {
-      const db = await getDb();
+      // Dynamic import at call site
 
-      const levelId = await db.addLevel(newLevelName.trim());
+      const { addLevel } = await import("@/lib/db/categories");
+      const levelId = await addLevel(newLevelName.trim());
       if (levelId) {
         toast({
           title: "Level Added",
@@ -2743,9 +2776,10 @@ const Admin = () => {
     
     setUpdatingLevel(true);
     try {
-      const db = await getDb();
+      // Dynamic import at call site
 
-      const success = await db.updateLevel(editingLevel.id, editingLevelName.trim());
+      const { updateLevel } = await import("@/lib/db/categories");
+      const success = await updateLevel(editingLevel.id, editingLevelName.trim());
       if (success) {
         toast({
           title: "Level Updated",
@@ -2773,9 +2807,10 @@ const Admin = () => {
       return;
     }
     try {
-      const db = await getDb();
+      // Dynamic import at call site
 
-      const success = await db.deleteLevel(levelId);
+      const { deleteLevel } = await import("@/lib/db/categories");
+      const success = await deleteLevel(levelId);
       if (success) {
         toast({
           title: "Level Deleted",
@@ -2797,9 +2832,10 @@ const Admin = () => {
   const handleMoveLevelUp = async (levelId: string) => {
     setReorderingLevel(levelId);
     try {
-      const db = await getDb();
+      // Dynamic import at call site
 
-      const success = await db.moveLevelUp(levelId);
+      const { moveLevelUp } = await import("@/lib/db/categories");
+      const success = await moveLevelUp(levelId);
       if (success) {
         await fetchLevels();
       } else {
@@ -2823,9 +2859,10 @@ const Admin = () => {
   const handleMoveLevelDown = async (levelId: string) => {
     setReorderingLevel(levelId);
     try {
-      const db = await getDb();
+      // Dynamic import at call site
 
-      const success = await db.moveLevelDown(levelId);
+      const { moveLevelDown } = await import("@/lib/db/categories");
+      const success = await moveLevelDown(levelId);
       if (success) {
         await fetchLevels();
       } else {
@@ -2863,11 +2900,11 @@ const Admin = () => {
     try {
       let player = null;
       if (adminSearchType === "displayName") {
-        const db = await getDb();
-        player = await db.getPlayerByDisplayName(adminUserInput.trim());
+        const { getPlayerByDisplayName } = await import("@/lib/db/players");
+        player = await getPlayerByDisplayName(adminUserInput.trim());
       } else {
-        const db = await getDb();
-        player = await db.getPlayerByUid(adminUserInput.trim());
+        const { getPlayerByUid } = await import("@/lib/db/players");
+        player = await getPlayerByUid(adminUserInput.trim());
       }
 
       if (player) {
@@ -2898,9 +2935,10 @@ const Admin = () => {
   const handleSetAdminStatus = async (uid: string, isAdmin: boolean) => {
     setSettingAdmin(true);
     try {
-      const db = await getDb();
+      // Dynamic import at call site
 
-      const success = await db.setPlayerAdminStatus(uid, isAdmin);
+      const { setPlayerAdminStatus } = await import("@/lib/db/players");
+      const success = await setPlayerAdminStatus(uid, isAdmin);
       if (success) {
         toast({
           title: "Success",
@@ -2932,9 +2970,10 @@ const Admin = () => {
   const fetchPlayers = useCallback(async () => {
     setLoadingPlayers(true);
     try {
-      const db = await getDb();
+      // Dynamic import at call site
 
-      const players = await db.getAllPlayers(playersSortBy, playersSortOrder);
+      const { getAllPlayers } = await import("@/lib/db/players");
+      const players = await getAllPlayers(playersSortBy, playersSortOrder);
       setAllPlayers(players);
     } catch (_error) {
       toast({
@@ -2959,9 +2998,10 @@ const Admin = () => {
       const checkDuplicates = async () => {
         setLoadingDuplicates(true);
         try {
-          const db = await getDb();
+          // Dynamic import at call site
 
-          const duplicates = await db.findDuplicateRuns();
+          const { findDuplicateRuns } = await import("@/lib/db/src-imports");
+          const duplicates = await findDuplicateRuns();
           setDuplicateRuns(duplicates);
         } catch (_error: any) {
           // Don't show toast on auto-check, only on manual check
@@ -2992,9 +3032,10 @@ const Admin = () => {
     
     setSavingPlayer(true);
     try {
-      const db = await getDb();
+      // Dynamic import at call site
 
-      const success = await db.updatePlayer(editingPlayer.id, editingPlayerForm);
+      const { updatePlayer } = await import("@/lib/db/players");
+      const success = await updatePlayer(editingPlayer.id, editingPlayerForm);
       if (success) {
         toast({
           title: "Success",
@@ -3027,9 +3068,10 @@ const Admin = () => {
     
     setDeletingPlayerId(playerToDelete.id);
     try {
-      const db = await getDb();
+      // Dynamic import at call site
 
-      const result = await db.deletePlayer(playerToDelete.id, deletePlayerRuns);
+      const { deletePlayer } = await import("@/lib/db/players");
+      const result = await deletePlayer(playerToDelete.id, deletePlayerRuns);
       if (result.success) {
         toast({
           title: "User Deleted",
@@ -3110,9 +3152,10 @@ const Admin = () => {
       
       // Try to find player by display name first (if provided)
       if (manualRun.playerUsername.trim()) {
-        const db = await getDb();
+        // Dynamic import at call site
 
-        const player = await db.getPlayerByDisplayName(manualRun.playerUsername.trim());
+        const { getPlayerByDisplayName } = await import("@/lib/db/players");
+        const player = await getPlayerByDisplayName(manualRun.playerUsername.trim());
         if (player) {
           playerId = player.uid;
           // Use the player's displayName from database if found
@@ -3127,9 +3170,10 @@ const Admin = () => {
       
       // If not found by display name, try to find by playerName
       if (!playerId && manualRun.playerName.trim()) {
-        const db = await getDb();
+        // Dynamic import at call site
 
-        const player = await db.getPlayerByDisplayName(manualRun.playerName.trim());
+        const { getPlayerByDisplayName } = await import("@/lib/db/players");
+        const player = await getPlayerByDisplayName(manualRun.playerName.trim());
         if (player) {
           playerId = player.uid;
         }
@@ -3181,10 +3225,11 @@ const Admin = () => {
         }
       }
       
-      const db = await getDb();
+      // Dynamic import at call site
 
       
-      const result = await db.addLeaderboardEntry(entry);
+      const { addLeaderboardEntry } = await import("@/lib/db/runs");
+      const result = await addLeaderboardEntry(entry);
       if (result) {
         toast({
           title: "Run Added",
@@ -3442,9 +3487,10 @@ const Admin = () => {
                     onClick={async () => {
                       setLoadingDuplicates(true);
                       try {
-                        const db = await getDb();
+                        // Dynamic import at call site
 
-                        const duplicates = await db.findDuplicateRuns();
+                        const { findDuplicateRuns } = await import("@/lib/db/src-imports");
+                        const duplicates = await findDuplicateRuns();
                         setDuplicateRuns(duplicates);
                         if (duplicates.length === 0) {
                           toast({
@@ -3495,9 +3541,10 @@ const Admin = () => {
                         
                         setRemovingDuplicates(true);
                         try {
-                          const db = await getDb();
+                          // Dynamic import at call site
 
-                          const result = await db.removeDuplicateRuns(duplicateRuns);
+                          const { removeDuplicateRuns } = await import("@/lib/db/src-imports");
+                          const result = await removeDuplicateRuns(duplicateRuns);
                           if (result.errors.length > 0) {
                             toast({
                               title: "Removal Complete with Errors",
@@ -5037,8 +5084,8 @@ const Admin = () => {
                                       try {
                                         const currentCategory = allCategoriesForSRCLinking.find(c => c.id === linkedCategory.id);
                                         const subcategories = currentCategory?.subcategories || [];
-                                        const db = await getDb();
-        await db.updateCategory(linkedCategory.id, linkedCategory.name, subcategories, null);
+                                        const { updateCategory } = await import("@/lib/db/categories");
+        await updateCategory(linkedCategory.id, linkedCategory.name, subcategories, null);
                                         toast({
                                           title: "Unlinked",
                                           description: `Category "${linkedCategory.name}" has been unlinked from SRC category.`,
@@ -5073,8 +5120,8 @@ const Admin = () => {
                                       const targetCategory = allCategoriesForSRCLinking.find(c => c.id === categoryId);
                                       if (!targetCategory) return;
                                       const subcategories = targetCategory.subcategories || [];
-                                      const db = await getDb();
-        await db.updateCategory(categoryId, targetCategory.name, subcategories, category.id);
+                                      const { updateCategory } = await import("@/lib/db/categories");
+        await updateCategory(categoryId, targetCategory.name, subcategories, category.id);
                                       toast({
                                         title: "Linked",
                                         description: `Category "${targetCategory.name}" has been linked to SRC category "${category.name}".`,
@@ -6357,9 +6404,10 @@ const Admin = () => {
                                       onChange={async (e) => {
                                         const disabled = !e.target.checked;
                                         try {
-                                          const db = await getDb();
+                                          // Dynamic import at call site
 
-                                          const success = await db.updateLevelCategoryDisabled(
+                                          const { updateLevelCategoryDisabled } = await import("@/lib/db/categories");
+                                          const success = await updateLevelCategoryDisabled(
                                             level.id,
                                             category.id,
                                             disabled
@@ -7149,9 +7197,10 @@ const Admin = () => {
                       // Run in background - don't block UI
                       setTimeout(async () => {
                         try {
-                          const db = await getDb();
+                          // Dynamic import at call site
 
-                          const result = await db.backfillPointsForAllRuns();
+                          const { backfillPointsForAllRuns } = await import("@/lib/db/config");
+                          const result = await backfillPointsForAllRuns();
                           if (result.errors.length > 0) {
                             toast({
                               title: "Recalculation Complete with Errors",
@@ -7837,10 +7886,11 @@ const Admin = () => {
                       }
                     }
 
-                    const db = await getDb();
+                    // Dynamic import at call site
 
 
-                    const success = await db.updateLeaderboardEntry(editingImportedRun.id, updateData);
+                    const { updateLeaderboardEntry } = await import("@/lib/db/runs");
+                    const success = await updateLeaderboardEntry(editingImportedRun.id, updateData);
                     if (success) {
                       toast({
                         title: "Run Verified",
