@@ -16,10 +16,28 @@ import { Switch } from "@/components/ui/switch";
 import { Pagination } from "@/components/Pagination";
 import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
-// Lazy load db module to avoid circular dependency initialization issues
-// Load the module only when needed via dynamic import
+// Import from smaller db modules to reduce initialization complexity
+// This avoids loading the entire db.ts barrel file at once
+const getDbRuns = async () => import("@/lib/db/runs");
+const getDbPlayers = async () => import("@/lib/db/players");
+const getDbCategories = async () => import("@/lib/db/categories");
+const getDbDownloads = async () => import("@/lib/db/downloads");
+const getDbConfig = async () => import("@/lib/db/config");
+const getDbSrcImports = async () => import("@/lib/db/src-imports");
+const getDbNotifications = async () => import("@/lib/db/notifications");
+
+// Helper to get all db modules (for backward compatibility)
 const getDb = async () => {
-  return await import("@/lib/db");
+  const [runs, players, categories, downloads, config, srcImports, notifications] = await Promise.all([
+    getDbRuns(),
+    getDbPlayers(),
+    getDbCategories(),
+    getDbDownloads(),
+    getDbConfig(),
+    getDbSrcImports(),
+    getDbNotifications()
+  ]);
+  return { ...runs, ...players, ...categories, ...downloads, ...config, ...srcImports, ...notifications };
 };
 // Dynamic import to avoid circular dependency at module initialization
 type ImportResult = {
