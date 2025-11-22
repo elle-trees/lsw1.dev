@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -191,36 +189,7 @@ const Admin = () => {
   const [updatingHeaderLink, setUpdatingHeaderLink] = useState(false);
   const [reorderingHeaderLink, setReorderingHeaderLink] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchPlatforms();
-    fetchCategories('regular'); // Load regular categories by default
-    fetchLevels();
-    fetchDownloadCategories();
-    // Load initial categories for imported runs filter
-    const initImportedRunsCategories = async () => {
-      try {
-        const { getCategories } = await import("@/lib/db/categories");
-        const categoriesData = await getCategories('regular');
-        setImportedRunsCategories(categoriesData);
-        // Start with "All Categories" selected
-        setImportedRunsCategory("__all__");
-      } catch (_error) {
-        // Silent fail
-      }
-    };
-    initImportedRunsCategories();
-    // Load initial categories for level management (should match levelLeaderboardType initial state)
-    const initLevelCategories = async () => {
-      try {
-        const { getCategories } = await import("@/lib/db/categories");
-        const categoriesData = await getCategories('individual-level');
-        setFirestoreCategories(categoriesData);
-      } catch (_error) {
-        // Silent fail
-      }
-    };
-    initLevelCategories();
-  }, [fetchPlatforms, fetchCategories, fetchLevels, fetchDownloadCategories]);
+  // This useEffect will be moved after function definitions to avoid initialization errors
 
   // Fetch categories for imported runs filter when leaderboard type changes
   useEffect(() => {
@@ -991,6 +960,38 @@ const Admin = () => {
       });
     }
   }, [toast]);
+
+  // Initialize data on mount - moved here after function definitions to avoid initialization errors
+  useEffect(() => {
+    fetchPlatforms();
+    fetchCategories('regular'); // Load regular categories by default
+    fetchLevels();
+    fetchDownloadCategories();
+    // Load initial categories for imported runs filter
+    const initImportedRunsCategories = async () => {
+      try {
+        const { getCategories } = await import("@/lib/db/categories");
+        const categoriesData = await getCategories('regular');
+        setImportedRunsCategories(categoriesData);
+        // Start with "All Categories" selected
+        setImportedRunsCategory("__all__");
+      } catch (_error) {
+        // Silent fail
+      }
+    };
+    initImportedRunsCategories();
+    // Load initial categories for level management (should match levelLeaderboardType initial state)
+    const initLevelCategories = async () => {
+      try {
+        const { getCategories } = await import("@/lib/db/categories");
+        const categoriesData = await getCategories('individual-level');
+        setFirestoreCategories(categoriesData);
+      } catch (_error) {
+        // Silent fail
+      }
+    };
+    initLevelCategories();
+  }, [fetchPlatforms, fetchCategories, fetchLevels, fetchDownloadCategories]);
 
   const fetchUnverifiedRuns = async () => {
     try {
