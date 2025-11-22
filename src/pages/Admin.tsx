@@ -17,32 +17,10 @@ import { Pagination } from "@/components/Pagination";
 import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
 // Lazy load db module to avoid circular dependency initialization issues
-// Create a proxy that loads the module on first property access
-let dbModule: typeof import("@/lib/db") | null = null;
-const loadDb = async () => {
-  if (!dbModule) {
-    dbModule = await import("@/lib/db");
-  }
-  return dbModule;
+// Load the module only when needed via dynamic import
+const getDb = async () => {
+  return await import("@/lib/db");
 };
-
-// Create a synchronous proxy that will trigger async load on first access
-// This allows us to use db.* syntax while still lazy loading
-const db = new Proxy({} as typeof import("@/lib/db"), {
-  get: (_target, prop) => {
-    // Return a function that loads the module and calls the actual function
-    const handler = async (...args: any[]) => {
-      const module = await loadDb();
-      const fn = (module as any)[prop];
-      if (typeof fn === 'function') {
-        return fn(...args);
-      }
-      return fn;
-    };
-    // Preserve function properties for React hooks and other cases
-    return handler;
-  }
-}) as typeof import("@/lib/db");
 // Dynamic import to avoid circular dependency at module initialization
 type ImportResult = {
   imported: number;
@@ -224,6 +202,7 @@ const Admin = () => {
     // Load initial categories for imported runs filter
     const initImportedRunsCategories = async () => {
       try {
+        const db = await getDb();
         const categoriesData = await db.getCategories('regular');
         setImportedRunsCategories(categoriesData);
         // Start with "All Categories" selected
@@ -236,6 +215,7 @@ const Admin = () => {
     // Load initial categories for level management (should match levelLeaderboardType initial state)
     const initLevelCategories = async () => {
       try {
+        const db = await getDb();
         const categoriesData = await db.getCategories('individual-level');
         setFirestoreCategories(categoriesData);
       } catch (_error) {
@@ -249,6 +229,7 @@ const Admin = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        const db = await getDb();
         const categoriesData = await db.getCategories(importedRunsLeaderboardType);
         setImportedRunsCategories(categoriesData);
         // Reset to "All Categories" when switching types
@@ -268,6 +249,7 @@ const Admin = () => {
       const fetchImportedRuns = async () => {
         setLoadingImportedRuns(true);
         try {
+          const db = await getDb();
           const importedData = await db.getImportedSRCRuns();
           setImportedSRCRuns(importedData);
         } catch (_error) {
@@ -288,6 +270,7 @@ const Admin = () => {
       const loadPointsConfig = async () => {
         setLoadingPointsConfig(true);
         try {
+          const db = await getDb();
           const config = await db.getPointsConfig();
           setPointsConfig(config);
           setPointsConfigForm(config);
@@ -311,6 +294,7 @@ const Admin = () => {
       const loadGameDetailsConfig = async () => {
         setLoadingGameDetailsConfig(true);
         try {
+          const db = await getDb();
           const config = await db.getGameDetailsConfig();
           setGameDetailsConfig(config);
           setGameDetailsConfigForm(config || {
@@ -343,9 +327,11 @@ const Admin = () => {
     
     setSavingPointsConfig(true);
     try {
+      const db = await getDb();
       const success = await db.updatePointsConfig(pointsConfigForm as PointsConfig);
       if (success) {
         // Reload config to get updated values
+        const db = await getDb();
         const updatedConfig = await db.getPointsConfig();
         setPointsConfig(updatedConfig);
         setPointsConfigForm(updatedConfig);
@@ -595,10 +581,11 @@ const Admin = () => {
         visibleOnPages: gameDetailsConfigForm.visibleOnPages ?? gameDetailsConfig.visibleOnPages ?? [],
         enabled: gameDetailsConfigForm.enabled ?? gameDetailsConfig.enabled ?? true,
       };
-      
+      const db = await getDb();
       const success = await db.updateGameDetailsConfig(configToSave);
       if (success) {
         // Reload config to get updated values
+        const db = await getDb();
         const updatedConfig = await db.getGameDetailsConfig();
         setGameDetailsConfig(updatedConfig);
         setGameDetailsConfigForm(updatedConfig || gameDetailsConfigForm);
@@ -627,6 +614,7 @@ const Admin = () => {
       try {
         // For community-golds, use community-golds categories (now configurable)
         // For individual-level, use individual-level categories
+        const db = await getDb();
         const categoriesData = await db.getCategoriesFromFirestore(levelLeaderboardType);
         setFirestoreCategories(categoriesData);
       } catch (_error) {
@@ -664,6 +652,8 @@ const Admin = () => {
     const fetchSubcategories = async () => {
       if (editingImportedRun && editingImportedRun.leaderboardType === 'regular' && editingImportedRunForm.category) {
         try {
+          const db = await getDb();
+
           const categories = await db.getCategoriesFromFirestore('regular');
           const category = categories.find(c => c.id === editingImportedRunForm.category);
           if (category && category.subcategories && category.subcategories.length > 0) {
@@ -719,7 +709,8 @@ const Admin = () => {
   // Note: fetchImportedRunsCategories was declared but never used - removed for now
   // const fetchImportedRunsCategories = async (leaderboardType: 'regular' | 'individual-level') => {
   //   try {
-  //     const categoriesData = await db.getCategories(leaderboardType);
+  //     const db = await getDb();
+     const categoriesData = await db.getCategories(leaderboardType);
   //     setImportedRunsCategories(categoriesData);
   //   } catch (_error) {
   //     // Silent fail
@@ -728,6 +719,8 @@ const Admin = () => {
 
   const fetchDownloadCategories = useCallback(async () => {
     try {
+      const db = await getDb();
+
       const categoriesData = await db.getDownloadCategories();
       setDownloadCategories(categoriesData);
       // Update newDownload category if empty
@@ -748,6 +741,8 @@ const Admin = () => {
 
   const fetchLevels = useCallback(async () => {
     try {
+      const db = await getDb();
+
       const levelsData = await db.getLevels();
       setAvailableLevels(levelsData);
     } catch (_error) {
@@ -762,6 +757,8 @@ const Admin = () => {
   const fetchCategories = useCallback(async (leaderboardType?: 'regular' | 'individual-level' | 'community-golds') => {
     try {
       const type = leaderboardType || categoryLeaderboardType;
+      const db = await getDb();
+
       const categoriesData = await db.getCategoriesFromFirestore(type);
       setFirestoreCategories(categoriesData);
     } catch (_error) {
@@ -926,6 +923,7 @@ const Admin = () => {
     setLoading(true);
     try {
       const db = await getDb();
+      const db = await getDb();
       const [unverifiedData, importedData, downloadData, categoriesData] = await Promise.all([
         db.getUnverifiedLeaderboardEntries(),
         db.getImportedSRCRuns(),
@@ -951,6 +949,7 @@ const Admin = () => {
   // Helper function to refresh all run data
   const refreshAllRunData = async () => {
     try {
+      const db = await getDb();
       const [unverifiedData, importedData] = await Promise.all([
         db.getUnverifiedLeaderboardEntries(),
         db.getImportedSRCRuns()
@@ -973,6 +972,9 @@ const Admin = () => {
 
   const fetchPlatforms = useCallback(async () => {
     try {
+      const db = await getDb();
+      const db = await getDb();
+
       const platformsData = await db.getPlatformsFromFirestore();
       setFirestorePlatforms(platformsData);
     } catch (_error) {
@@ -986,6 +988,9 @@ const Admin = () => {
 
   const fetchUnverifiedRuns = async () => {
     try {
+      const db = await getDb();
+      const db = await getDb();
+
       const data = await db.getUnverifiedLeaderboardEntries();
       // Only include manually submitted runs in unverified runs tab
       // Imported runs stay in their own tab
@@ -993,6 +998,8 @@ const Admin = () => {
       setUnverifiedPage(1); // Reset to first page when data changes
       
       try {
+        const db = await getDb();
+
         const importedData = await db.getImportedSRCRuns();
         setImportedSRCRuns(importedData);
         setImportedPage(1); // Reset to first page when data changes
@@ -1014,6 +1021,9 @@ const Admin = () => {
 
   const fetchDownloadEntries = async () => {
     try {
+      const db = await getDb();
+      const db = await getDb();
+
       const data = await db.getDownloadEntries();
       setDownloadEntries(data);
     } catch (error) {
@@ -1119,10 +1129,13 @@ const Admin = () => {
 
       // Update run data if needed (including player assignment), then verify
       if (Object.keys(updateData).length > 0) {
+        const db = await getDb();
         await db.updateLeaderboardEntry(runId, updateData);
       }
 
       // Verify the run
+      const db = await getDb();
+
       const success = await db.updateRunVerificationStatus(runId, true, verifiedBy);
       if (success) {
         toast({
@@ -1149,6 +1162,8 @@ const Admin = () => {
 
   const handleReject = async (runId: string) => {
     try {
+      const db = await getDb();
+
       const success = await db.deleteLeaderboardEntry(runId);
       if (success) {
         toast({
@@ -1236,6 +1251,9 @@ const Admin = () => {
       if (finalForm.comment && finalForm.comment.trim()) {
         updateData.comment = finalForm.comment.trim();
       }
+
+      const db = await getDb();
+
 
       const success = await db.updateLeaderboardEntry(editingImportedRun.id, updateData);
       if (success) {
@@ -1367,6 +1385,8 @@ const Admin = () => {
 
     setClearingImportedRuns(true);
     try {
+      const db = await getDb();
+
       const result = await db.deleteAllImportedSRCRuns();
       
       if (result.errors.length > 0) {
@@ -1483,8 +1503,8 @@ const Admin = () => {
         db.updateRunVerificationStatus,
         db.updateLeaderboardEntry,
         db.getCategoriesFromFirestore,
-        getPlatformsFromFirestore,
-        getLevels,
+        db.getPlatformsFromFirestore,
+        db.getLevels,
         20, // Process 20 runs in parallel
         (_processed, _total) => {
           // Optional: Could show progress here if needed
@@ -1598,8 +1618,8 @@ const Admin = () => {
         db.updateRunVerificationStatus,
         db.updateLeaderboardEntry,
         db.getCategoriesFromFirestore,
-        getPlatformsFromFirestore,
-        getLevels,
+        db.getPlatformsFromFirestore,
+        db.getLevels,
         20, // Process 20 runs in parallel
         (_processed, _total) => {
           // Optional: Could show progress here if needed
@@ -1671,6 +1691,8 @@ const Admin = () => {
 
       for (const run of runsToDelete) {
         try {
+          const db = await getDb();
+
           const success = await db.deleteLeaderboardEntry(run.id);
           if (success) {
             deletedCount++;
@@ -1773,6 +1795,9 @@ const Admin = () => {
         ),
       };
       
+      const db = await getDb();
+
+      
       const success = await db.addDownloadEntry(downloadEntry);
       if (success) {
         toast({
@@ -1808,6 +1833,8 @@ const Admin = () => {
       return;
     }
     try {
+      const db = await getDb();
+
       const success = await db.deleteDownloadEntry(downloadId);
       if (success) {
         toast({
@@ -1831,6 +1858,8 @@ const Admin = () => {
     if (reorderingDownload) return;
     setReorderingDownload(downloadId);
     try {
+      const db = await getDb();
+
       const success = await db.moveDownloadUp(downloadId);
       if (success) {
         await fetchDownloadEntries();
@@ -1856,6 +1885,8 @@ const Admin = () => {
     if (reorderingDownload) return;
     setReorderingDownload(downloadId);
     try {
+      const db = await getDb();
+
       const success = await db.moveDownloadDown(downloadId);
       if (success) {
         await fetchDownloadEntries();
@@ -1891,6 +1922,8 @@ const Admin = () => {
     
     setAddingCategory(true);
     try {
+      const db = await getDb();
+
       const result = await db.addCategory(newCategoryName.trim(), categoryLeaderboardType);
       if (result) {
         toast({
@@ -1937,6 +1970,9 @@ const Admin = () => {
       const subcategories = currentCategory?.subcategories || [];
       const srcCategoryId = editingCategorySrcId.trim() || null;
       
+      const db = await getDb();
+
+      
       const success = await db.updateCategory(editingCategory.id, editingCategoryName.trim(), subcategories, srcCategoryId);
       if (success) {
         toast({
@@ -1973,6 +2009,8 @@ const Admin = () => {
       return;
     }
     try {
+      const db = await getDb();
+
       const success = await db.deleteCategory(categoryId);
       if (success) {
         toast({
@@ -1995,6 +2033,8 @@ const Admin = () => {
   const handleMoveCategoryUp = async (categoryId: string) => {
     setReorderingCategory(categoryId);
     try {
+      const db = await getDb();
+
       const success = await db.moveCategoryUp(categoryId);
       if (success) {
         await fetchCategories(categoryLeaderboardType);
@@ -2019,6 +2059,8 @@ const Admin = () => {
   const handleMoveCategoryDown = async (categoryId: string) => {
     setReorderingCategory(categoryId);
     try {
+      const db = await getDb();
+
       const success = await db.moveCategoryDown(categoryId);
       if (success) {
         await fetchCategories(categoryLeaderboardType);
@@ -2117,6 +2159,8 @@ const Admin = () => {
       };
       
       const updatedSubcategories = [...existingSubcategories, newSubcategory];
+      const db = await getDb();
+
       const success = await db.updateCategory(selectedCategoryForSubcategories.id, selectedCategoryForSubcategories.name, updatedSubcategories);
       
       if (success) {
@@ -2127,6 +2171,8 @@ const Admin = () => {
         setNewSubcategoryName("");
         await fetchCategories(categoryLeaderboardType);
         // Refresh selected category
+        const db = await getDb();
+
         const updated = await db.getCategoriesFromFirestore(categoryLeaderboardType);
         const refreshed = updated.find(c => c.id === selectedCategoryForSubcategories.id) as Category | undefined;
         if (refreshed) {
@@ -2177,6 +2223,9 @@ const Admin = () => {
           : s
       );
       
+      const db = await getDb();
+
+      
       const success = await db.updateCategory(selectedCategoryForSubcategories.id, selectedCategoryForSubcategories.name, updatedSubcategories);
       
       if (success) {
@@ -2188,6 +2237,8 @@ const Admin = () => {
         setEditingSubcategoryName("");
         await fetchCategories(categoryLeaderboardType);
         // Refresh selected category
+        const db = await getDb();
+
         const updated = await db.getCategoriesFromFirestore(categoryLeaderboardType);
         const refreshed = updated.find(c => c.id === selectedCategoryForSubcategories.id) as Category | undefined;
         if (refreshed) {
@@ -2219,6 +2270,9 @@ const Admin = () => {
       const existingSubcategories = currentCategory?.subcategories || [];
       const updatedSubcategories = existingSubcategories.filter(s => s.id !== subcategoryId);
       
+      const db = await getDb();
+
+      
       const success = await db.updateCategory(selectedCategoryForSubcategories.id, selectedCategoryForSubcategories.name, updatedSubcategories);
       
       if (success) {
@@ -2228,6 +2282,8 @@ const Admin = () => {
         });
         await fetchCategories(categoryLeaderboardType);
         // Refresh selected category
+        const db = await getDb();
+
         const updated = await db.getCategoriesFromFirestore(categoryLeaderboardType);
         const refreshed = updated.find(c => c.id === selectedCategoryForSubcategories.id) as Category | undefined;
         if (refreshed) {
@@ -2265,11 +2321,16 @@ const Admin = () => {
       updatedSubcategories[index].order = prevOrder;
       updatedSubcategories[index - 1].order = currentOrder;
       
+      const db = await getDb();
+
+      
       const success = await db.updateCategory(selectedCategoryForSubcategories.id, selectedCategoryForSubcategories.name, updatedSubcategories);
       
       if (success) {
         await fetchCategories(categoryLeaderboardType);
         // Refresh selected category
+        const db = await getDb();
+
         const updated = await db.getCategoriesFromFirestore(categoryLeaderboardType);
         const refreshed = updated.find(c => c.id === selectedCategoryForSubcategories.id) as Category | undefined;
         if (refreshed) {
@@ -2309,11 +2370,16 @@ const Admin = () => {
       updatedSubcategories[index].order = nextOrder;
       updatedSubcategories[index + 1].order = currentOrder;
       
+      const db = await getDb();
+
+      
       const success = await db.updateCategory(selectedCategoryForSubcategories.id, selectedCategoryForSubcategories.name, updatedSubcategories);
       
       if (success) {
         await fetchCategories(categoryLeaderboardType);
         // Refresh selected category
+        const db = await getDb();
+
         const updated = await db.getCategoriesFromFirestore(categoryLeaderboardType);
         const refreshed = updated.find(c => c.id === selectedCategoryForSubcategories.id) as Category | undefined;
         if (refreshed) {
@@ -2338,6 +2404,8 @@ const Admin = () => {
     
     setUpdatingSubcategory(true);
     try {
+      const db = await getDb();
+
       const success = await db.updateCategory(
         selectedCategoryForSubcategories.id,
         selectedCategoryForSubcategories.name,
@@ -2353,6 +2421,8 @@ const Admin = () => {
         });
         await fetchCategories(categoryLeaderboardType);
         // Refresh selected category
+        const db = await getDb();
+
         const updated = await db.getCategoriesFromFirestore(categoryLeaderboardType);
         const refreshed = updated.find(c => c.id === selectedCategoryForSubcategories.id) as Category | undefined;
         if (refreshed) {
@@ -2425,6 +2495,8 @@ const Admin = () => {
       }
       
       const updatedSubcategories = [...existingSubcategories, ...newSubcategories];
+      const db = await getDb();
+
       const success = await db.updateCategory(selectedCategoryForSubcategories.id, selectedCategoryForSubcategories.name, updatedSubcategories);
       
       if (success) {
@@ -2434,6 +2506,8 @@ const Admin = () => {
         });
         await fetchCategories(categoryLeaderboardType);
         // Refresh selected category
+        const db = await getDb();
+
         const updated = await db.getCategoriesFromFirestore(categoryLeaderboardType);
         const refreshed = updated.find(c => c.id === selectedCategoryForSubcategories.id) as Category | undefined;
         if (refreshed) {
@@ -2460,6 +2534,8 @@ const Admin = () => {
     }
     setAddingPlatform(true);
     try {
+      const db = await getDb();
+
       const platformId = await db.addPlatform(newPlatformName.trim());
       if (platformId) {
         toast({
@@ -2499,6 +2575,8 @@ const Admin = () => {
     
     setUpdatingPlatform(true);
     try {
+      const db = await getDb();
+
       const success = await db.updatePlatform(editingPlatform.id, editingPlatformName.trim());
       if (success) {
         toast({
@@ -2527,6 +2605,8 @@ const Admin = () => {
       return;
     }
     try {
+      const db = await getDb();
+
       const success = await db.deletePlatform(platformId);
       if (success) {
         toast({
@@ -2549,6 +2629,8 @@ const Admin = () => {
   const handleMovePlatformUp = async (platformId: string) => {
     setReorderingPlatform(platformId);
     try {
+      const db = await getDb();
+
       const success = await db.movePlatformUp(platformId);
       if (success) {
         await fetchPlatforms();
@@ -2573,6 +2655,8 @@ const Admin = () => {
   const handleMovePlatformDown = async (platformId: string) => {
     setReorderingPlatform(platformId);
     try {
+      const db = await getDb();
+
       const success = await db.movePlatformDown(platformId);
       if (success) {
         await fetchPlatforms();
@@ -2601,6 +2685,8 @@ const Admin = () => {
     }
     setAddingLevel(true);
     try {
+      const db = await getDb();
+
       const levelId = await db.addLevel(newLevelName.trim());
       if (levelId) {
         toast({
@@ -2640,6 +2726,8 @@ const Admin = () => {
     
     setUpdatingLevel(true);
     try {
+      const db = await getDb();
+
       const success = await db.updateLevel(editingLevel.id, editingLevelName.trim());
       if (success) {
         toast({
@@ -2668,6 +2756,8 @@ const Admin = () => {
       return;
     }
     try {
+      const db = await getDb();
+
       const success = await db.deleteLevel(levelId);
       if (success) {
         toast({
@@ -2690,6 +2780,8 @@ const Admin = () => {
   const handleMoveLevelUp = async (levelId: string) => {
     setReorderingLevel(levelId);
     try {
+      const db = await getDb();
+
       const success = await db.moveLevelUp(levelId);
       if (success) {
         await fetchLevels();
@@ -2714,6 +2806,8 @@ const Admin = () => {
   const handleMoveLevelDown = async (levelId: string) => {
     setReorderingLevel(levelId);
     try {
+      const db = await getDb();
+
       const success = await db.moveLevelDown(levelId);
       if (success) {
         await fetchLevels();
@@ -2752,9 +2846,11 @@ const Admin = () => {
     try {
       let player = null;
       if (adminSearchType === "displayName") {
-        player = await db.getPlayerByDisplayName(adminUserInput.trim());
+        player = const db = await getDb();
+        await db.getPlayerByDisplayName(adminUserInput.trim());
       } else {
-        player = await db.getPlayerByUid(adminUserInput.trim());
+        player = const db = await getDb();
+        await db.getPlayerByUid(adminUserInput.trim());
       }
 
       if (player) {
@@ -2785,6 +2881,8 @@ const Admin = () => {
   const handleSetAdminStatus = async (uid: string, isAdmin: boolean) => {
     setSettingAdmin(true);
     try {
+      const db = await getDb();
+
       const success = await db.setPlayerAdminStatus(uid, isAdmin);
       if (success) {
         toast({
@@ -2817,6 +2915,8 @@ const Admin = () => {
   const fetchPlayers = useCallback(async () => {
     setLoadingPlayers(true);
     try {
+      const db = await getDb();
+
       const players = await db.getAllPlayers(playersSortBy, playersSortOrder);
       setAllPlayers(players);
     } catch (_error) {
@@ -2842,6 +2942,8 @@ const Admin = () => {
       const checkDuplicates = async () => {
         setLoadingDuplicates(true);
         try {
+          const db = await getDb();
+
           const duplicates = await db.findDuplicateRuns();
           setDuplicateRuns(duplicates);
         } catch (_error: any) {
@@ -2873,6 +2975,8 @@ const Admin = () => {
     
     setSavingPlayer(true);
     try {
+      const db = await getDb();
+
       const success = await db.updatePlayer(editingPlayer.id, editingPlayerForm);
       if (success) {
         toast({
@@ -2906,6 +3010,8 @@ const Admin = () => {
     
     setDeletingPlayerId(playerToDelete.id);
     try {
+      const db = await getDb();
+
       const result = await db.deletePlayer(playerToDelete.id, db.deletePlayerRuns);
       if (result.success) {
         toast({
@@ -2987,6 +3093,8 @@ const Admin = () => {
       
       // Try to find player by display name first (if provided)
       if (manualRun.playerUsername.trim()) {
+        const db = await getDb();
+
         const player = await db.getPlayerByDisplayName(manualRun.playerUsername.trim());
         if (player) {
           playerId = player.uid;
@@ -3002,6 +3110,8 @@ const Admin = () => {
       
       // If not found by display name, try to find by playerName
       if (!playerId && manualRun.playerName.trim()) {
+        const db = await getDb();
+
         const player = await db.getPlayerByDisplayName(manualRun.playerName.trim());
         if (player) {
           playerId = player.uid;
@@ -3053,6 +3163,9 @@ const Admin = () => {
           entry.verifiedBy = currentUser.displayName || currentUser.email || currentUser.uid;
         }
       }
+      
+      const db = await getDb();
+
       
       const result = await db.addLeaderboardEntry(entry);
       if (result) {
@@ -3312,6 +3425,8 @@ const Admin = () => {
                     onClick={async () => {
                       setLoadingDuplicates(true);
                       try {
+                        const db = await getDb();
+
                         const duplicates = await db.findDuplicateRuns();
                         setDuplicateRuns(duplicates);
                         if (duplicates.length === 0) {
@@ -3363,6 +3478,8 @@ const Admin = () => {
                         
                         setRemovingDuplicates(true);
                         try {
+                          const db = await getDb();
+
                           const result = await db.removeDuplicateRuns(duplicateRuns);
                           if (result.errors.length > 0) {
                             toast({
@@ -4903,7 +5020,8 @@ const Admin = () => {
                                       try {
                                         const currentCategory = allCategoriesForSRCLinking.find(c => c.id === linkedCategory.id);
                                         const subcategories = currentCategory?.subcategories || [];
-                                        await db.updateCategory(linkedCategory.id, linkedCategory.name, subcategories, null);
+                                        const db = await getDb();
+        await db.updateCategory(linkedCategory.id, linkedCategory.name, subcategories, null);
                                         toast({
                                           title: "Unlinked",
                                           description: `Category "${linkedCategory.name}" has been unlinked from SRC category.`,
@@ -4938,7 +5056,8 @@ const Admin = () => {
                                       const targetCategory = allCategoriesForSRCLinking.find(c => c.id === categoryId);
                                       if (!targetCategory) return;
                                       const subcategories = targetCategory.subcategories || [];
-                                      await db.updateCategory(categoryId, targetCategory.name, subcategories, category.id);
+                                      const db = await getDb();
+        await db.updateCategory(categoryId, targetCategory.name, subcategories, category.id);
                                       toast({
                                         title: "Linked",
                                         description: `Category "${targetCategory.name}" has been linked to SRC category "${category.name}".`,
@@ -6221,6 +6340,8 @@ const Admin = () => {
                                       onChange={async (e) => {
                                         const disabled = !e.target.checked;
                                         try {
+                                          const db = await getDb();
+
                                           const success = await db.updateLevelCategoryDisabled(
                                             level.id,
                                             category.id,
@@ -7011,6 +7132,8 @@ const Admin = () => {
                       // Run in background - don't block UI
                       setTimeout(async () => {
                         try {
+                          const db = await getDb();
+
                           const result = await db.backfillPointsForAllRuns();
                           if (result.errors.length > 0) {
                             toast({
@@ -7696,6 +7819,9 @@ const Admin = () => {
                         updateData.subcategory = undefined;
                       }
                     }
+
+                    const db = await getDb();
+
 
                     const success = await db.updateLeaderboardEntry(editingImportedRun.id, updateData);
                     if (success) {
