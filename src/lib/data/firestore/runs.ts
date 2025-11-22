@@ -16,7 +16,8 @@ import {
 import { LeaderboardEntry } from "@/types/database";
 import { leaderboardEntryConverter } from "./converters";
 import { normalizeLeaderboardEntry, validateLeaderboardEntry } from "@/lib/dataValidation";
-import { checkSRCRunExistsFirestore, tryAutoAssignRunFirestore } from "./src-imports";
+// Removed unused imports from src-imports to break circular dependency chain
+// checkSRCRunExistsFirestore and tryAutoAssignRunFirestore are not actually used in this file
 import { createNotificationFirestore } from "./notifications";
 
 // We need to be careful about circular dependencies. 
