@@ -55,17 +55,14 @@ import {
   getAllRunsForDuplicateCheck,
   deleteAllImportedSRCRuns,
   getCategories,
-  getVerifiedRunsWithInvalidData,
   updateLevelCategoryDisabled,
   getUnassignedRuns,
   findDuplicateRuns,
   removeDuplicateRuns,
   claimRun,
-  getRecentRuns,
   getAllPlayers,
   updatePlayer,
   deletePlayer,
-  getIlRunsToFix,
   wipeAllImportedSRCRuns,
   getPointsConfig,
   updatePointsConfig,
@@ -93,14 +90,9 @@ const Admin = () => {
 
   const [unverifiedRuns, setUnverifiedRuns] = useState<LeaderboardEntry[]>([]);
   const [importedSRCRuns, setImportedSRCRuns] = useState<LeaderboardEntry[]>([]);
-  const [verifiedRunsWithInvalidData, setVerifiedRunsWithInvalidData] = useState<LeaderboardEntry[]>([]);
   const [importingRuns, setImportingRuns] = useState(false);
   const [loadingImportedRuns, setLoadingImportedRuns] = useState(false);
   const [importProgress, setImportProgress] = useState({ total: 0, imported: 0, skipped: 0 });
-  // IL runs fix tooling
-  const [ilRunsToFix, setIlRunsToFix] = useState<LeaderboardEntry[]>([]);
-  const [loadingIlRunsToFix, setLoadingIlRunsToFix] = useState(false);
-  const [fixingIlRuns, setFixingIlRuns] = useState(false);
   const [editingImportedRun, setEditingImportedRun] = useState<LeaderboardEntry | null>(null);
   const [editingImportedRunForm, setEditingImportedRunForm] = useState<Partial<LeaderboardEntry>>({});
   const [savingImportedRun, setSavingImportedRun] = useState(false);
@@ -115,11 +107,6 @@ const Admin = () => {
   const [showConfirmClearUnverifiedDialog, setShowConfirmClearUnverifiedDialog] = useState(false);
   const [batchVerifying, setBatchVerifying] = useState(false);
   const [batchVerifyingAll, setBatchVerifyingAll] = useState(false);
-  const [recentRuns, setRecentRuns] = useState<LeaderboardEntry[]>([]);
-  const [loadingRecentRuns, setLoadingRecentRuns] = useState(false);
-  const [deletingRunId, setDeletingRunId] = useState<string | null>(null);
-  const [wipingImportedRuns, setWipingImportedRuns] = useState(false);
-  const [wipingProgress, setWipingProgress] = useState(0);
   const itemsPerPage = 25;
   // SRC categories with variables
   const [srcCategoriesWithVars, setSrcCategoriesWithVars] = useState<Array<SRCCategory & { variablesData?: Array<{ id: string; name: string; values: { values: Record<string, { label: string }> } }> }>>([]);
@@ -958,16 +945,14 @@ const Admin = () => {
     if (hasFetchedData) return;
     setLoading(true);
     try {
-      const [unverifiedData, importedData, downloadData, categoriesData, invalidVerifiedData] = await Promise.all([
+      const [unverifiedData, importedData, downloadData, categoriesData] = await Promise.all([
         getUnverifiedLeaderboardEntries(),
         getImportedSRCRuns(),
         getDownloadEntries(),
-        getCategoriesFromFirestore('regular'),
-        getVerifiedRunsWithInvalidData()
+        getCategoriesFromFirestore('regular')
       ]);
       setUnverifiedRuns(unverifiedData.filter(run => !run.importedFromSRC));
       setImportedSRCRuns(importedData);
-      setVerifiedRunsWithInvalidData(invalidVerifiedData);
       setDownloadEntries(downloadData);
       setFirestoreCategories(categoriesData);
       setHasFetchedData(true);
@@ -985,73 +970,18 @@ const Admin = () => {
   // Helper function to refresh all run data
   const refreshAllRunData = async () => {
     try {
-      const [unverifiedData, importedData, invalidVerifiedData] = await Promise.all([
+      const [unverifiedData, importedData] = await Promise.all([
         getUnverifiedLeaderboardEntries(),
-        getImportedSRCRuns(),
-        getVerifiedRunsWithInvalidData()
+        getImportedSRCRuns()
       ]);
       // Only include manually submitted runs in unverified runs tab
       // Imported runs stay in their own tab unless they're edited and ready for verification
       setUnverifiedRuns(unverifiedData.filter(run => !run.importedFromSRC));
       setImportedSRCRuns(importedData);
-      setVerifiedRunsWithInvalidData(invalidVerifiedData);
-      // Also refresh recent runs
-      await fetchRecentRuns();
     } catch (error) {
       // Error handled silently
     }
   };
-
-  const fetchRecentRuns = async () => {
-    setLoadingRecentRuns(true);
-    try {
-      const data = await getRecentRuns(50); // Fetch 50 most recent runs
-      setRecentRuns(data);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to load recent runs.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingRecentRuns(false);
-    }
-  };
-
-  const handleDeleteRecentRun = async (runId: string) => {
-    if (!window.confirm("Are you sure you want to delete this run? This action cannot be undone.")) {
-      return;
-    }
-    
-    setDeletingRunId(runId);
-    try {
-      const success = await deleteLeaderboardEntry(runId);
-      if (success) {
-        toast({
-          title: "Run Deleted",
-          description: "The run has been successfully deleted.",
-        });
-        // Remove from local state and refresh
-        setRecentRuns(prev => prev.filter(run => run.id !== runId));
-        await refreshAllRunData();
-      } else {
-        throw new Error("Failed to delete run.");
-      }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to delete run.",
-        variant: "destructive",
-      });
-    } finally {
-      setDeletingRunId(null);
-    }
-  };
-
-  // Fetch recent runs on mount
-  useEffect(() => {
-    fetchRecentRuns();
-  }, []);
 
   // Fetch data on mount
   useEffect(() => {
@@ -3250,14 +3180,12 @@ const Admin = () => {
               value="points" 
               className="data-[state=active]:bg-[#f9e2af] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#f9e2af]/50 text-xs sm:text-sm py-1.5 sm:py-2 px-2 sm:px-3 whitespace-nowrap"
             >
-              <Coins className="h-4 w-4 mr-1.5" />
               Points
             </TabsTrigger>
             <TabsTrigger 
               value="game-details" 
               className="data-[state=active]:bg-[#f9e2af] data-[state=active]:text-[#11111b] bg-ctp-surface0 text-ctp-text transition-all duration-300 font-medium border border-transparent hover:bg-ctp-surface1 hover:border-[#f9e2af]/50 text-xs sm:text-sm py-1.5 sm:py-2 px-2 sm:px-3 whitespace-nowrap"
             >
-              <Gamepad2 className="h-4 w-4 mr-1.5" />
               Game Details
             </TabsTrigger>
             <TabsTrigger 
@@ -3497,394 +3425,6 @@ const Admin = () => {
                     </Button>
                   )}
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* IL Runs Fix Card */}
-            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
-              <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
-                <CardTitle className="flex items-center gap-2 text-xl text-[#f2cdcd]">
-                  <Wrench className="h-5 w-5" />
-                  <span>Fix Individual Level Runs</span>
-                </CardTitle>
-                <p className="text-sm text-ctp-subtext1 mt-2">
-                  Find and fix verified runs that have a level field but incorrect leaderboardType. These runs should be marked as 'individual-level' but may have been saved with 'regular' or missing leaderboardType.
-                </p>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <div className="flex flex-col sm:flex-row gap-3 mb-6">
-                  <Button
-                    onClick={async () => {
-                      setLoadingIlRunsToFix(true);
-                      try {
-                        const runs = await getIlRunsToFix();
-                        setIlRunsToFix(runs);
-                        if (runs.length === 0) {
-                          toast({
-                            title: "No Issues Found",
-                            description: "All IL runs have the correct leaderboardType set.",
-                          });
-                        } else {
-                          toast({
-                            title: "Issues Found",
-                            description: `Found ${runs.length} run(s) that need to be fixed.`,
-                          });
-                        }
-                      } catch (error: any) {
-                        toast({
-                          title: "Error",
-                          description: error.message || "Failed to find IL runs to fix.",
-                          variant: "destructive",
-                        });
-                      } finally {
-                        setLoadingIlRunsToFix(false);
-                      }
-                    }}
-                    disabled={loadingIlRunsToFix}
-                    className="bg-gradient-to-r from-[#cba6f7] to-[#b4a0e2] hover:from-[#b4a0e2] hover:to-[#cba6f7] text-[hsl(240,21%,15%)] font-semibold transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-[#cba6f7]/50"
-                  >
-                    {loadingIlRunsToFix ? (
-                      <>
-                        <LoadingSpinner size="sm" className="mr-2" />
-                        Scanning...
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Find IL Runs to Fix
-                      </>
-                    )}
-                  </Button>
-                  {ilRunsToFix.length > 0 && (
-                    <Button
-                      onClick={async () => {
-                        if (!window.confirm(
-                          `This will update ${ilRunsToFix.length} run(s) to set leaderboardType='individual-level'. Continue?`
-                        )) {
-                          return;
-                        }
-                        setFixingIlRuns(true);
-                        try {
-                          let fixed = 0;
-                          let errors = 0;
-                          for (const run of ilRunsToFix) {
-                            try {
-                              await updateLeaderboardEntry(run.id, {
-                                leaderboardType: 'individual-level'
-                              });
-                              fixed++;
-                            } catch (error) {
-                              errors++;
-                            }
-                          }
-                          if (errors > 0) {
-                            toast({
-                              title: "Fix Complete with Errors",
-                              description: `Fixed ${fixed} run(s). ${errors} error(s) occurred.`,
-                              variant: "destructive",
-                            });
-                          } else {
-                            toast({
-                              title: "Runs Fixed",
-                              description: `Successfully fixed ${fixed} run(s). They should now appear on IL leaderboards.`,
-                            });
-                          }
-                          setIlRunsToFix([]);
-                          // Refresh all run data
-                          await refreshAllRunData();
-                        } catch (error: any) {
-                          toast({
-                            title: "Error",
-                            description: error.message || "Failed to fix IL runs.",
-                            variant: "destructive",
-                          });
-                        } finally {
-                          setFixingIlRuns(false);
-                        }
-                      }}
-                      disabled={fixingIlRuns}
-                      className="bg-gradient-to-r from-[#94e2d5] to-[#74c7b0] hover:from-[#74c7b0] hover:to-[#94e2d5] text-[hsl(240,21%,15%)] font-semibold transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-[#94e2d5]/50"
-                    >
-                      {fixingIlRuns ? (
-                        <>
-                          <LoadingSpinner size="sm" className="mr-2" />
-                          Fixing...
-                        </>
-                      ) : (
-                        <>
-                          <CheckCircle className="h-4 w-4 mr-2" />
-                          Fix All ({ilRunsToFix.length})
-                        </>
-                      )}
-                    </Button>
-                  )}
-                </div>
-
-                {ilRunsToFix.length > 0 && (
-                  <div className="space-y-4">
-                    <div className="p-4 bg-[hsl(240,21%,12%)] rounded-none border border-[hsl(235,13%,30%)]">
-                      <p className="text-sm font-semibold text-ctp-text mb-2">
-                        Found {ilRunsToFix.length} run(s) that need fixing
-                      </p>
-                      <p className="text-xs text-ctp-subtext1">
-                        These runs have a level field but leaderboardType is not set to 'individual-level'. They will be updated to leaderboardType='individual-level'.
-                      </p>
-                    </div>
-
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="border-b border-[hsl(235,13%,30%)] hover:bg-transparent">
-                            <TableHead className="py-3 px-4 text-left">Player(s)</TableHead>
-                            <TableHead className="py-3 px-4 text-left">Category</TableHead>
-                            <TableHead className="py-3 px-4 text-left">Platform</TableHead>
-                            <TableHead className="py-3 px-4 text-left">Level</TableHead>
-                            <TableHead className="py-3 px-4 text-left">Time</TableHead>
-                            <TableHead className="py-3 px-4 text-left">Current Type</TableHead>
-                            <TableHead className="py-3 px-4 text-left">Will Fix To</TableHead>
-                            <TableHead className="py-3 px-4 text-center">Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {ilRunsToFix.map((run) => {
-                            const categoryName = getCategoryName(run.category, firestoreCategories, run.srcCategoryName);
-                            const platformName = getPlatformName(run.platform, firestorePlatforms, run.srcPlatformName);
-                            const levelName = getLevelName(run.level || '', availableLevels, run.srcLevelName);
-                            return (
-                              <TableRow key={run.id} className="border-b border-[hsl(235,13%,30%)] hover:bg-[hsl(235,19%,13%)] transition-all duration-200">
-                                <TableCell className="py-3 px-4 font-medium">
-                                  <span style={{ color: run.nameColor || 'inherit' }}>{run.playerName}</span>
-                                  {run.player2Name && (
-                                    <>
-                                      <span className="text-muted-foreground"> & </span>
-                                      <span style={{ color: run.player2Color || 'inherit' }}>{run.player2Name}</span>
-                                    </>
-                                  )}
-                                </TableCell>
-                                <TableCell className="py-3 px-4">{categoryName || "—"}</TableCell>
-                                <TableCell className="py-3 px-4">{platformName || "—"}</TableCell>
-                                <TableCell className="py-3 px-4">{levelName || run.level || "—"}</TableCell>
-                                <TableCell className="py-3 px-4 font-mono">{formatTime(run.time || '00:00:00')}</TableCell>
-                                <TableCell className="py-3 px-4">
-                                  <Badge variant="outline" className="text-xs">
-                                    {run.leaderboardType || 'regular'}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell className="py-3 px-4">
-                                  <Badge variant="default" className="bg-green-600/20 text-green-400 border-green-600/50 text-xs">
-                                    individual-level
-                                  </Badge>
-                                </TableCell>
-                                <TableCell className="py-3 px-4 text-center">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => navigate(`/run/${run.id}`)}
-                                    className="text-blue-500 hover:bg-blue-900/20"
-                                  >
-                                    <ExternalLink className="h-4 w-4" />
-                                  </Button>
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Recent Runs Card */}
-            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
-              <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2 text-xl text-[#f2cdcd]">
-                    <Play className="h-5 w-5" />
-                    <span>Recent Runs</span>
-                  </CardTitle>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      onClick={fetchRecentRuns}
-                      disabled={loadingRecentRuns || wipingImportedRuns}
-                      variant="outline"
-                      size="sm"
-                      className="border-[hsl(235,13%,30%)] bg-gradient-to-r from-transparent via-[hsl(237,16%,24%)]/50 to-transparent hover:from-[hsl(237,16%,24%)] hover:via-[hsl(237,16%,28%)] hover:to-[hsl(237,16%,24%)] hover:border-[#cba6f7]/50"
-                    >
-                      <RefreshCw className={`h-4 w-4 mr-2 ${loadingRecentRuns ? 'animate-spin' : ''}`} />
-                      Refresh
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-6">
-                {/* Wipe All Imported Runs Tool */}
-                <div className="mb-6 p-4 bg-[hsl(240,21%,12%)] rounded-none border border-[hsl(235,13%,30%)]">
-                  <div className="flex items-center justify-between mb-2">
-                    <div>
-                      <h4 className="text-sm font-semibold text-[#f2cdcd] mb-1">Wipe All Imported SRC Runs</h4>
-                      <p className="text-xs text-[hsl(222,15%,60%)]">
-                        Delete all runs imported from Speedrun.com (both verified and unverified). This action cannot be undone.
-                      </p>
-                    </div>
-                  </div>
-                  {wipingImportedRuns && (
-                    <div className="mt-3 mb-3">
-                      <div className="flex items-center gap-2 text-sm text-[hsl(222,15%,60%)]">
-                        <LoadingSpinner size="sm" />
-                        <span>Deleting imported runs... {wipingProgress > 0 && `${wipingProgress} deleted so far`}</span>
-                      </div>
-                    </div>
-                  )}
-                  <Button
-                    onClick={async () => {
-                      if (!window.confirm(
-                        "WARNING: This will delete ALL runs imported from Speedrun.com, including verified runs.\n\n" +
-                        "This action cannot be undone. Are you absolutely sure you want to continue?"
-                      )) {
-                        return;
-                      }
-                      
-                      setWipingImportedRuns(true);
-                      setWipingProgress(0);
-                      try {
-                        const result = await wipeAllImportedSRCRuns((deleted) => {
-                          setWipingProgress(deleted);
-                        });
-                        
-                        if (result.errors.length > 0) {
-                          toast({
-                            title: "Wipe Complete with Errors",
-                            description: `Deleted ${result.deleted} imported run(s). ${result.errors.length} error(s) occurred.`,
-                            variant: "destructive",
-                          });
-                        } else {
-                          toast({
-                            title: "All Imported Runs Deleted",
-                            description: `Successfully deleted ${result.deleted} imported run(s) from the leaderboards.`,
-                          });
-                        }
-                        
-                        // Refresh recent runs and all data
-                        await fetchRecentRuns();
-                        await refreshAllRunData();
-                      } catch (error: any) {
-                        toast({
-                          title: "Error",
-                          description: error.message || "Failed to wipe imported runs.",
-                          variant: "destructive",
-                        });
-                      } finally {
-                        setWipingImportedRuns(false);
-                        setWipingProgress(0);
-                      }
-                    }}
-                    disabled={wipingImportedRuns}
-                    variant="destructive"
-                    size="sm"
-                    className="bg-red-600/20 hover:bg-red-600/30 text-red-400 border-red-600/50 font-semibold transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-red-600/50"
-                  >
-                    {wipingImportedRuns ? (
-                      <>
-                        <LoadingSpinner size="sm" className="mr-2" />
-                        Wiping...
-                      </>
-                    ) : (
-                      <>
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Wipe All Imported Runs
-                      </>
-                    )}
-                  </Button>
-                </div>
-                {loadingRecentRuns ? (
-                  <div className="flex items-center justify-center py-8">
-                    <LoadingSpinner size="md" />
-                  </div>
-                ) : recentRuns.length === 0 ? (
-                  <p className="text-sm text-ctp-subtext1 text-center py-8">
-                    No recent runs found.
-                  </p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="border-[hsl(235,13%,30%)]">
-                          <TableHead className="text-ctp-text">Date</TableHead>
-                          <TableHead className="text-ctp-text">Player(s)</TableHead>
-                          <TableHead className="text-ctp-text">Time</TableHead>
-                          <TableHead className="text-ctp-text">Category</TableHead>
-                          <TableHead className="text-ctp-text">Platform</TableHead>
-                          <TableHead className="text-ctp-text">Type</TableHead>
-                          <TableHead className="text-ctp-text">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {recentRuns.map((run) => {
-                          const categoryName = getCategoryName(run.category, firestoreCategories, run.srcCategoryName);
-                          const platformName = getPlatformName(run.platform, firestorePlatforms, run.srcPlatformName);
-                          const isUnclaimed = !run.playerId || run.playerId.trim() === "";
-                          
-                          return (
-                            <TableRow key={run.id} className="border-[hsl(235,13%,30%)]">
-                              <TableCell className="text-ctp-text">{run.date}</TableCell>
-                              <TableCell className="text-ctp-text">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span style={{ color: run.nameColor || '#cba6f7' }}>
-                                    {run.playerName || "Unknown"}
-                                  </span>
-                                  {run.player2Name && (
-                                    <>
-                                      <span className="text-ctp-overlay0">&</span>
-                                      <span style={{ color: run.player2Color || '#cba6f7' }}>
-                                        {run.player2Name}
-                                      </span>
-                                    </>
-                                  )}
-                                  {isUnclaimed && (
-                                    <Badge variant="outline" className="border-yellow-600/50 bg-yellow-600/10 text-yellow-400 text-xs">
-                                      Unclaimed
-                                    </Badge>
-                                  )}
-                                </div>
-                              </TableCell>
-                              <TableCell className="text-ctp-text font-mono">{formatTime(run.time)}</TableCell>
-                              <TableCell className="text-ctp-text">{categoryName}</TableCell>
-                              <TableCell className="text-ctp-text">{platformName}</TableCell>
-                              <TableCell className="text-ctp-text">
-                                <Badge variant="outline" className="border-[hsl(235,13%,30%)]">
-                                  {run.runType === 'co-op' ? 'Co-op' : 'Solo'}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                <Button
-                                  onClick={() => handleDeleteRecentRun(run.id)}
-                                  disabled={deletingRunId === run.id}
-                                  variant="destructive"
-                                  size="sm"
-                                  className="bg-red-600/20 hover:bg-red-600/30 text-red-400 border-red-600/50"
-                                >
-                                  {deletingRunId === run.id ? (
-                                    <>
-                                      <LoadingSpinner size="sm" className="mr-2" />
-                                      Deleting...
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Trash2 className="h-4 w-4 mr-2" />
-                                      Delete
-                                    </>
-                                  )}
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
               </CardContent>
             </Card>
 
@@ -5571,203 +5111,6 @@ const Admin = () => {
                     totalItems={unverifiedRuns.length}
                   />
                 )}
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Verified Runs with Invalid Data Card */}
-        <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl border-yellow-500/30">
-          <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
-            <CardTitle className="flex items-center gap-2 text-xl text-yellow-400">
-              <AlertTriangle className="h-5 w-5" />
-              <span>Verified Runs with Invalid Data</span>
-            </CardTitle>
-            <p className="text-sm text-[hsl(222,15%,60%)] mt-2">
-              These runs are verified but won't appear on leaderboards due to missing or invalid category, platform, or level data.
-            </p>
-          </CardHeader>
-          <CardContent className="pt-6">
-            {verifiedRunsWithInvalidData.length === 0 ? (
-              <p className="text-[hsl(222,15%,60%)] text-center py-8">No verified runs with invalid data found.</p>
-            ) : (
-              <>
-                <div className="overflow-x-auto mb-4">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="border-b border-[hsl(235,13%,30%)] hover:bg-transparent">
-                        <TableHead className="py-3 px-4 text-left">Player(s)</TableHead>
-                        <TableHead className="py-3 px-4 text-left">Category</TableHead>
-                        <TableHead className="py-3 px-4 text-left">Platform</TableHead>
-                        <TableHead className="py-3 px-4 text-left">Level</TableHead>
-                        <TableHead className="py-3 px-4 text-left">Time</TableHead>
-                        <TableHead className="py-3 px-4 text-left">Issues</TableHead>
-                        <TableHead className="py-3 px-4 text-center">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {verifiedRunsWithInvalidData.map((run) => {
-                        const categoryExists = firestoreCategories.some(c => c.id === run.category);
-                        const platformExists = firestorePlatforms.some(p => p.id === run.platform);
-                        const levelExists = run.level ? availableLevels.some(l => l.id === run.level) : true;
-                        const isImportedWithSRCFallback = run.importedFromSRC && (run.srcCategoryName || run.srcPlatformName || run.srcLevelName);
-                        const issues: string[] = [];
-                        // For imported runs, only flag as invalid if no category ID AND no SRC fallback name
-                        if (!run.category || (!categoryExists && run.category && run.category.trim() !== "")) {
-                          if (!isImportedWithSRCFallback || !run.srcCategoryName) {
-                            issues.push("Invalid/Missing Category");
-                          }
-                        }
-                        // For imported runs, only flag as invalid if no platform ID AND no SRC fallback name
-                        if (!run.platform || (!platformExists && run.platform && run.platform.trim() !== "")) {
-                          if (!isImportedWithSRCFallback || !run.srcPlatformName) {
-                            issues.push("Invalid/Missing Platform");
-                          }
-                        }
-                        if ((run.leaderboardType === 'individual-level' || run.leaderboardType === 'community-golds') && (!run.level || !levelExists)) {
-                          if (!isImportedWithSRCFallback || !run.srcLevelName) {
-                            issues.push("Invalid/Missing Level");
-                          }
-                        }
-                        if (!run.playerName) issues.push("Missing Player Name");
-                        if (!run.time) issues.push("Missing Time");
-                        if (!run.date) issues.push("Missing Date");
-                        if (!run.runType) issues.push("Missing Run Type");
-                        
-                        return (
-                          <TableRow key={run.id} className="border-b border-[hsl(235,13%,30%)] hover:bg-[hsl(235,19%,13%)]">
-                            <TableCell className="py-3 px-4">
-                              <div className="flex flex-col gap-1">
-                                <span>{run.playerName || "Unknown"}</span>
-                                {run.player2Name && (
-                                  <span className="text-muted-foreground text-sm"> & {run.player2Name}</span>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell className="py-3 px-4">
-                              {categoryExists ? (
-                                getCategoryName(run.category, firestoreCategories, run.srcCategoryName)
-                              ) : (
-                                <span className="text-yellow-500">Invalid: {run.category || "Missing"}</span>
-                              )}
-                            </TableCell>
-                            <TableCell className="py-3 px-4">
-                              {platformExists ? (
-                                getPlatformName(run.platform, firestorePlatforms, run.srcPlatformName)
-                              ) : (
-                                <span className="text-yellow-500">Invalid: {run.platform || "Missing"}</span>
-                              )}
-                            </TableCell>
-                            <TableCell className="py-3 px-4">
-                              {run.level ? (
-                                levelExists ? (
-                                  getLevelName(run.level, availableLevels, run.srcLevelName)
-                                ) : (
-                                  <span className="text-yellow-500">Invalid: {run.level}</span>
-                                )
-                              ) : (
-                                run.leaderboardType === 'individual-level' || run.leaderboardType === 'community-golds' ? (
-                                  <span className="text-yellow-500">Missing</span>
-                                ) : (
-                                  <span className="text-muted-foreground">N/A</span>
-                                )
-                              )}
-                            </TableCell>
-                            <TableCell className="py-3 px-4 font-mono">{formatTime(run.time || '00:00:00')}</TableCell>
-                            <TableCell className="py-3 px-4">
-                              <div className="flex flex-col gap-1">
-                                {issues.map((issue, idx) => (
-                                  <Badge key={idx} variant="destructive" className="text-xs w-fit">
-                                    {issue}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </TableCell>
-                            <TableCell className="py-3 px-4">
-                              <div className="flex gap-2 justify-center">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => {
-                                    setEditingImportedRun(run);
-                                    setEditingImportedRunForm({
-                                      playerName: run.playerName,
-                                      player2Name: run.player2Name,
-                                      category: run.category,
-                                      subcategory: run.subcategory,
-                                      platform: run.platform,
-                                      level: run.level,
-                                      runType: run.runType,
-                                      leaderboardType: run.leaderboardType,
-                                      time: run.time,
-                                      date: run.date,
-                                      videoUrl: run.videoUrl,
-                                      comment: run.comment,
-                                    });
-                                  }}
-                                  className="text-blue-400 border-blue-400 hover:bg-blue-400/10"
-                                >
-                                  <Edit2 className="h-4 w-4 mr-1" />
-                                  Edit
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={async () => {
-                                    if (!window.confirm(`Unverify this run? It will be moved to unverified runs.`)) return;
-                                    try {
-                                      await updateRunVerificationStatus(run.id, false);
-                                      toast({
-                                        title: "Run Unverified",
-                                        description: "The run has been moved to unverified runs.",
-                                      });
-                                      await refreshAllRunData();
-                                    } catch (error: any) {
-                                      toast({
-                                        title: "Error",
-                                        description: error.message || "Failed to unverify run.",
-                                        variant: "destructive",
-                                      });
-                                    }
-                                  }}
-                                  className="text-yellow-400 border-yellow-400 hover:bg-yellow-400/10"
-                                >
-                                  <XCircle className="h-4 w-4 mr-1" />
-                                  Unverify
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  onClick={async () => {
-                                    if (!window.confirm(`Delete this run permanently? This action cannot be undone.`)) return;
-                                    try {
-                                      await deleteLeaderboardEntry(run.id);
-                                      toast({
-                                        title: "Run Deleted",
-                                        description: "The run has been deleted.",
-                                      });
-                                      await refreshAllRunData();
-                                    } catch (error: any) {
-                                      toast({
-                                        title: "Error",
-                                        description: error.message || "Failed to delete run.",
-                                        variant: "destructive",
-                                      });
-                                    }
-                                  }}
-                                  className="text-red-400 border-red-400 hover:bg-red-400/10"
-                                >
-                                  <Trash2 className="h-4 w-4 mr-1" />
-                                  Delete
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
               </>
             )}
           </CardContent>
