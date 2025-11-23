@@ -522,20 +522,20 @@ export function GameDetails({ className }: GameDetailsProps) {
               {/* Mobile Menu Button - Shown on all screens except xl and above */}
               <div className="flex items-center gap-2 xl:gap-3 flex-shrink-0">
                 {/* Mobile Menu Sheet */}
-            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-              <SheetTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  className="xl:hidden text-[hsl(220,17%,92%)] hover:bg-[#89b4fa]/20 hover:text-[#89b4fa] z-[100] flex-shrink-0"
-                  aria-label="Open navigation menu"
-                >
-                  <Menu className="h-6 w-6" />
-                  <span className="sr-only">Open menu</span>
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="w-[280px] bg-[#1e1e2e] border-ctp-surface1 z-[100]">
-                <div className="flex flex-col gap-6 mt-8">
+                <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+                  <SheetTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      className="xl:hidden text-[hsl(220,17%,92%)] hover:bg-[#89b4fa]/20 hover:text-[#89b4fa] z-[100] flex-shrink-0"
+                      aria-label="Open navigation menu"
+                    >
+                      <Menu className="h-6 w-6" />
+                      <span className="sr-only">Open menu</span>
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="left" className="w-[280px] bg-[#1e1e2e] border-ctp-surface1 z-[100]">
+                    <div className="flex flex-col gap-6 mt-8">
                   <div className="flex items-center space-x-2 mb-4">
                     <LegoStudIcon size={28} color="#60a5fa" />
                     <span className="text-lg font-bold text-[#74c7ec]">lsw1.dev</span>
@@ -722,8 +722,10 @@ export function GameDetails({ className }: GameDetailsProps) {
                 </Button>
               )}
               </div>
+              </div>
             </div>
           </div>
+        </div>
         </div>
       </header>
       <LoginModal open={isLoginOpen} onOpenChange={setIsLoginOpen} />
