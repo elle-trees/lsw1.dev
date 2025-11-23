@@ -139,22 +139,122 @@ const Live = () => {
               clearTimeout(timeoutId);
               
               if (statusResponse.ok) {
-                const statusData = await statusResponse.text();
+                // Try to get response as both text and check if it's JSON
+                const contentType = statusResponse.headers.get('content-type') || '';
+                let statusData: string;
+                let parsedData: any = null;
+                
+                try {
+                  statusData = await statusResponse.text();
+                  // Try parsing as JSON in case it's JSON
+                  if (contentType.includes('application/json') || statusData.trim().startsWith('{') || statusData.trim().startsWith('[')) {
+                    try {
+                      parsedData = JSON.parse(statusData);
+                      console.log(`[Live] Parsed JSON response for ${twitchUsernameLower}:`, parsedData);
+                    } catch {
+                      // Not JSON, continue with text
+                    }
+                  }
+                } catch {
+                  statusData = '';
+                }
+                
                 const trimmedStatus = statusData.trim().toLowerCase();
                 
                 console.log(`[Live] Raw status response for ${twitchUsernameLower}:`, JSON.stringify(statusData));
+                console.log(`[Live] Content-Type:`, contentType);
                 console.log(`[Live] Trimmed status for ${twitchUsernameLower}:`, JSON.stringify(trimmedStatus));
+                console.log(`[Live] Response length:`, trimmedStatus.length);
                 
-                // Check for various possible responses: "live", "online", "1", etc.
-                const isLive = trimmedStatus === 'live' || 
-                              trimmedStatus === 'online' || 
-                              trimmedStatus === '1' ||
-                              trimmedStatus.includes('live') ||
-                              trimmedStatus.includes('online');
+                // Check for explicit offline indicators
+                const isExplicitlyOffline = trimmedStatus === 'offline' || 
+                                           trimmedStatus === 'false' ||
+                                           trimmedStatus === '0' ||
+                                           trimmedStatus === '' ||
+                                           trimmedStatus === 'null' ||
+                                           trimmedStatus.match(/^(offline|false|0|error|not found|channel not found|null|undefined)$/i);
                 
-                console.log(`[Live] Is ${twitchUsernameLower} live?`, isLive);
+                // Check for explicit live indicators
+                const hasExplicitLiveIndicator = trimmedStatus === 'live' || 
+                                                trimmedStatus === 'online' || 
+                                                trimmedStatus === 'true' ||
+                                                trimmedStatus === '1' ||
+                                                trimmedStatus.includes('live') ||
+                                                trimmedStatus.includes('online') ||
+                                                trimmedStatus.includes('streaming');
                 
-                if (isLive) {
+                // If decapi.me returns anything other than explicitly offline, it might be live
+                // (decapi.me may return stream titles, game names, or "live" when the stream is live)
+                // We'll do a thumbnail check as confirmation if it's ambiguous
+                const isLive = hasExplicitLiveIndicator || (!isExplicitlyOffline && trimmedStatus.length > 0);
+                
+                console.log(`[Live] Is ${twitchUsernameLower} explicitly offline?`, isExplicitlyOffline);
+                console.log(`[Live] Does ${twitchUsernameLower} have explicit live indicator?`, hasExplicitLiveIndicator);
+                console.log(`[Live] Initial isLive check for ${twitchUsernameLower}:`, isLive);
+                
+                // Check parsed JSON data if available
+                let jsonIsLive = false;
+                if (parsedData) {
+                  // Handle various JSON response formats
+                  if (typeof parsedData === 'boolean') {
+                    jsonIsLive = parsedData;
+                  } else if (typeof parsedData === 'object') {
+                    jsonIsLive = parsedData.live === true || 
+                                parsedData.online === true || 
+                                parsedData.status === 'live' ||
+                                parsedData.status === 'online' ||
+                                (parsedData.data && Array.isArray(parsedData.data) && parsedData.data.length > 0);
+                  }
+                  console.log(`[Live] JSON indicates ${twitchUsernameLower} is live?`, jsonIsLive);
+                }
+                
+                // Always verify with thumbnail check if not explicitly offline
+                // The thumbnail check is the most reliable indicator
+                let finalIsLive = isLive || jsonIsLive;
+                
+                if (!isExplicitlyOffline) {
+                  console.log(`[Live] Verifying ${twitchUsernameLower} with thumbnail check (not explicitly offline)...`);
+                  try {
+                    const thumbnailUrl = `https://static-cdn.jtvnw.net/previews-ttv/live_user_${twitchUsernameLower}-320x180.jpg`;
+                    // Add timestamp to avoid cache
+                    const thumbnailCheckUrl = `${thumbnailUrl}?t=${Date.now()}`;
+                    const thumbnailResponse = await fetch(thumbnailCheckUrl, { 
+                      method: 'HEAD',
+                      cache: 'no-cache'
+                    });
+                    
+                    console.log(`[Live] Thumbnail response for ${twitchUsernameLower}:`, thumbnailResponse.status);
+                    
+                    // Twitch returns 200 for live streams with valid thumbnails
+                    // 404 or other errors typically mean the stream is offline
+                    if (thumbnailResponse.ok && thumbnailResponse.status === 200) {
+                      const contentType = thumbnailResponse.headers.get('content-type');
+                      const contentLength = thumbnailResponse.headers.get('content-length');
+                      
+                      // Check if it's actually an image with content
+                      if (contentType && contentType.startsWith('image/')) {
+                        // Check if it has actual content (not a 0-byte placeholder)
+                        if (!contentLength || parseInt(contentLength) > 0) {
+                          console.log(`[Live] Thumbnail check for ${twitchUsernameLower}: Stream is LIVE (thumbnail exists and is valid)`);
+                          finalIsLive = true;
+                        } else {
+                          console.log(`[Live] Thumbnail for ${twitchUsernameLower} exists but appears to be empty/placeholder`);
+                        }
+                      }
+                    } else {
+                      console.log(`[Live] Thumbnail check for ${twitchUsernameLower}: Stream appears offline (thumbnail not available)`);
+                      // If thumbnail check fails and we don't have explicit live indicator, mark as offline
+                      if (!hasExplicitLiveIndicator && !jsonIsLive) {
+                        finalIsLive = false;
+                      }
+                    }
+                  } catch (thumbError: any) {
+                    console.warn(`[Live] Thumbnail check error for ${twitchUsernameLower}:`, thumbError?.message || thumbError);
+                    // On error, rely on decapi.me result
+                  }
+                }
+                
+                if (finalIsLive) {
                   // Fetch viewer count
                   let viewerCount: number | undefined;
                   try {
