@@ -121,15 +121,16 @@ const Live = () => {
         const liveStatusChecks = await Promise.all(
           validPlayers.map(async (player) => {
             try {
-              const twitchUsername = player.twitchUsername.trim().toLowerCase();
-              console.log(`[Live] Checking status for: ${twitchUsername}`);
+              const originalTwitchUsername = player.twitchUsername.trim();
+              const twitchUsernameLower = originalTwitchUsername.toLowerCase();
+              console.log(`[Live] Checking status for: ${twitchUsernameLower} (original: ${originalTwitchUsername})`);
               
               // Create timeout controller
               const controller = new AbortController();
               const timeoutId = setTimeout(() => controller.abort(), 5000);
               
               const statusResponse = await fetch(
-                `https://decapi.me/twitch/status/${twitchUsername}`,
+                `https://decapi.me/twitch/status/${twitchUsernameLower}`,
                 { 
                   signal: controller.signal
                 }
@@ -141,9 +142,19 @@ const Live = () => {
                 const statusData = await statusResponse.text();
                 const trimmedStatus = statusData.trim().toLowerCase();
                 
-                console.log(`[Live] Status for ${twitchUsername}: ${trimmedStatus}`);
+                console.log(`[Live] Raw status response for ${twitchUsernameLower}:`, JSON.stringify(statusData));
+                console.log(`[Live] Trimmed status for ${twitchUsernameLower}:`, JSON.stringify(trimmedStatus));
                 
-                if (trimmedStatus === 'live') {
+                // Check for various possible responses: "live", "online", "1", etc.
+                const isLive = trimmedStatus === 'live' || 
+                              trimmedStatus === 'online' || 
+                              trimmedStatus === '1' ||
+                              trimmedStatus.includes('live') ||
+                              trimmedStatus.includes('online');
+                
+                console.log(`[Live] Is ${twitchUsernameLower} live?`, isLive);
+                
+                if (isLive) {
                   // Fetch viewer count
                   let viewerCount: number | undefined;
                   try {
@@ -152,7 +163,7 @@ const Live = () => {
                     const viewerTimeoutId = setTimeout(() => viewerController.abort(), 5000);
                     
                     const viewerResponse = await fetch(
-                      `https://decapi.me/twitch/viewercount/${twitchUsername}`,
+                      `https://decapi.me/twitch/viewercount/${twitchUsernameLower}`,
                       { 
                         signal: viewerController.signal
                       }
@@ -167,28 +178,40 @@ const Live = () => {
                       }
                     }
                   } catch (viewerError) {
-                    console.warn(`[Live] Failed to fetch viewer count for ${twitchUsername}:`, viewerError);
+                    console.warn(`[Live] Failed to fetch viewer count for ${twitchUsernameLower}:`, viewerError);
                     // Viewer count is optional, continue without it
                   }
                   
                   const liveRunner: LiveRunner = {
                     uid: player.uid,
                     displayName: player.displayName,
-                    twitchUsername: twitchUsername,
+                    twitchUsername: originalTwitchUsername, // Use original casing for display
                     nameColor: player.nameColor,
                     profilePicture: player.profilePicture,
                     viewerCount,
                   };
                   
-                  console.log(`[Live] Found live runner: ${player.displayName} (${twitchUsername})`);
+                  console.log(`[Live] Found live runner: ${player.displayName} (${originalTwitchUsername})`);
                   return liveRunner;
                 }
               } else {
-                console.warn(`[Live] Failed to check status for ${twitchUsername}:`, statusResponse.status);
+                console.warn(`[Live] Failed to check status for ${twitchUsernameLower}:`, statusResponse.status, statusResponse.statusText);
+                // Try to read the response body for more details
+                try {
+                  const errorText = await statusResponse.text();
+                  console.warn(`[Live] Error response body for ${twitchUsernameLower}:`, errorText);
+                } catch (_e) {
+                  // Ignore errors reading error response
+                }
               }
               return null;
-            } catch (error) {
+            } catch (error: any) {
               console.error(`[Live] Error checking player ${player.twitchUsername}:`, error);
+              if (error.name === 'AbortError') {
+                console.warn(`[Live] Request timeout for ${player.twitchUsername}`);
+              } else if (error.message) {
+                console.error(`[Live] Error message:`, error.message);
+              }
               return null;
             }
           })
@@ -314,18 +337,17 @@ const Live = () => {
           </div>
         )}
 
-        {/* Live Runners Section - Always show when there are live runners */}
-        {liveRunners.length > 0 && (
-          <FadeIn className="mt-8" delay={0.2}>
-            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
-              <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
-                <div className="flex items-center gap-2 text-xl text-[#f38ba8]">
-                  <Radio className="h-5 w-5" />
-                  <span>Community Streams</span>
-                </div>
-              </CardHeader>
-              <CardContent className="p-6">
-                {checkingRunners && liveRunners.length === 0 ? (
+        {/* Live Runners Section - Always show */}
+        <FadeIn className="mt-8" delay={0.2}>
+          <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
+            <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
+              <div className="flex items-center gap-2 text-xl text-[#f38ba8]">
+                <Radio className="h-5 w-5" />
+                <span>Community Streams</span>
+              </div>
+            </CardHeader>
+            <CardContent className="p-6">
+              {checkingRunners && liveRunners.length === 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {[1, 2, 3].map((i) => (
                       <AnimatedCard 
@@ -443,7 +465,6 @@ const Live = () => {
               </CardContent>
             </Card>
           </FadeIn>
-        )}
       </div>
     </div>
   );
