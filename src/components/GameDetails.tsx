@@ -354,6 +354,7 @@ export function GameDetails({ className }: GameDetailsProps) {
             </div>
           </div>
         </div>
+        </div>
       </header>
     );
   }
