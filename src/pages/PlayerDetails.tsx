@@ -279,6 +279,7 @@ const PlayerDetails = () => {
                 </div>
               </div>
             </CardHeader>
+            </FadeIn>
           </Card>
 
           {/* Runs Section Skeleton */}

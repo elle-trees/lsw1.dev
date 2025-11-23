@@ -353,7 +353,7 @@ const PointsLeaderboard = () => {
                             <div className="text-sm text-ctp-overlay0 uppercase tracking-wider font-semibold">studs</div>
                           </div>
                         </div>
-                      </div>
+                      </motion.div>
                     </div>
                   );
                 })}
