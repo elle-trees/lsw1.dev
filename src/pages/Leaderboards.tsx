@@ -252,8 +252,8 @@ const Leaderboards = () => {
             onClick={() => startTransition(() => setLeaderboardType('regular'))}
             className={`button-click-animation h-auto py-2 sm:py-3 px-2 sm:px-4 rounded-none transition-all duration-200 ${
               leaderboardType === 'regular' 
-                ? "bg-[#f9e2af] text-[#11111b] hover:bg-[#f9e2af]/90 shadow-sm" 
-                : "text-ctp-text hover:bg-ctp-surface1 hover:text-ctp-text"
+                ? "bg-[#f9e2af] text-[#11111b] shadow-sm" 
+                : "text-ctp-text"
             } ${isPending ? 'opacity-70' : ''}`}
           >
             <div className="flex items-center justify-center gap-2">
@@ -267,8 +267,8 @@ const Leaderboards = () => {
             onClick={() => startTransition(() => setLeaderboardType('individual-level'))}
             className={`button-click-animation h-auto py-2 sm:py-3 px-2 sm:px-4 rounded-none transition-all duration-200 ${
               leaderboardType === 'individual-level' 
-                ? "bg-[#f9e2af] text-[#11111b] hover:bg-[#f9e2af]/90 shadow-sm" 
-                : "text-ctp-text hover:bg-ctp-surface1 hover:text-ctp-text"
+                ? "bg-[#f9e2af] text-[#11111b] shadow-sm" 
+                : "text-ctp-text"
             } ${isPending ? 'opacity-70' : ''}`}
           >
             <div className="flex items-center justify-center gap-2">
@@ -282,8 +282,8 @@ const Leaderboards = () => {
             onClick={() => startTransition(() => setLeaderboardType('community-golds'))}
             className={`button-click-animation h-auto py-2 sm:py-3 px-2 sm:px-4 rounded-none transition-all duration-200 ${
               leaderboardType === 'community-golds' 
-                ? "bg-[#f9e2af] text-[#11111b] hover:bg-[#f9e2af]/90 shadow-sm" 
-                : "text-ctp-text hover:bg-ctp-surface1 hover:text-ctp-text"
+                ? "bg-[#f9e2af] text-[#11111b] shadow-sm" 
+                : "text-ctp-text"
             } ${isPending ? 'opacity-70' : ''}`}
           >
             <div className="flex items-center justify-center gap-2">
@@ -354,8 +354,8 @@ const Leaderboards = () => {
                               onClick={() => setSelectedCategory(category.id)}
                               className={`button-click-animation whitespace-nowrap px-4 py-2 h-9 text-sm font-medium transition-all duration-200 ${
                                 isSelected 
-                                  ? "bg-[#94e2d5] text-[#11111b] hover:bg-[#94e2d5]/90 border-transparent shadow-sm" 
-                                  : "bg-ctp-surface0 text-ctp-text border-ctp-surface1 hover:bg-ctp-surface1 hover:text-ctp-text hover:border-[#94e2d5]/50"
+                                  ? "bg-[#94e2d5] text-[#11111b] border-transparent shadow-sm" 
+                                  : "bg-ctp-surface0 text-ctp-text border-ctp-surface1"
                               }`}
                             >
                               {category.name}
@@ -425,8 +425,8 @@ const Leaderboards = () => {
                                     onClick={() => setSelectedSubcategory(subcategory.id)}
                                     className={`button-click-animation whitespace-nowrap px-4 py-2 h-8 text-xs sm:text-sm font-medium transition-all duration-200 ${
                                       isSelected 
-                                        ? "bg-[#cba6f7] text-[#11111b] hover:bg-[#cba6f7]/90 border-transparent shadow-sm" 
-                                        : "bg-ctp-surface0 text-ctp-text border-ctp-surface1 hover:bg-ctp-surface1 hover:text-ctp-text hover:border-[#cba6f7]/50"
+                                        ? "bg-[#cba6f7] text-[#11111b] border-transparent shadow-sm" 
+                                        : "bg-ctp-surface0 text-ctp-text border-ctp-surface1"
                                     }`}
                                   >
                                     {subcategory.name}

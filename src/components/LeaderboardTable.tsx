@@ -8,6 +8,7 @@ import { formatTime } from "@/lib/utils";
 import { getPlatformName, getLevelName } from "@/lib/dataValidation";
 import { motion } from "framer-motion";
 import { tableRowVariants } from "@/lib/animations";
+import { useState } from "react";
 
 const MotionTableRow = motion(TableRow);
 
@@ -20,6 +21,7 @@ interface LeaderboardTableProps {
 }
 
 export function LeaderboardTable({ data, platforms = [], categories = [], levels = [], leaderboardType }: LeaderboardTableProps) {
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
   // Determine if we should show level column (for IL and Community Golds)
   const showLevelColumn = leaderboardType === 'individual-level' || leaderboardType === 'community-golds';
   if (data.length === 0) {
@@ -62,6 +64,8 @@ export function LeaderboardTable({ data, platforms = [], categories = [], levels
               ? getLevelName(entry.level, levels, entry.srcLevelName)
               : undefined;
             
+            const isHighlighted = highlightedId === entry.id;
+            
             return (
             <MotionTableRow
               key={entry.id}
@@ -69,11 +73,9 @@ export function LeaderboardTable({ data, platforms = [], categories = [], levels
               initial="hidden"
               animate="visible"
               custom={index}
-              whileHover={{ 
-                backgroundColor: "rgba(30, 30, 46, 0.5)",
-                transition: { duration: 0.15 }
-              }}
-              className={`border-b border-ctp-surface1/20 cursor-pointer ${entry.isObsolete ? 'opacity-60 italic' : ''}`}
+              onMouseEnter={() => setHighlightedId(entry.id)}
+              onMouseLeave={() => setHighlightedId(null)}
+              className={`border-b border-ctp-surface1/20 cursor-pointer transition-colors duration-50 ${isHighlighted ? 'bg-ctp-surface0' : ''} ${entry.isObsolete ? 'opacity-60 italic' : ''}`}
             >
               <TableCell className="py-2.5 pl-3 pr-1">
                 <Link to={`/run/${entry.id}`} className="block">
@@ -131,7 +133,7 @@ export function LeaderboardTable({ data, platforms = [], categories = [], levels
                       <>
                         <Link 
                           to={`/player/${entry.playerId}`} 
-                          className="hover:opacity-80 inline-block"
+                          className="inline-block"
                           style={{ color: entry.nameColor || '#cba6f7' }}
                           onClick={(e) => e.stopPropagation()}
                         >
@@ -143,7 +145,7 @@ export function LeaderboardTable({ data, platforms = [], categories = [], levels
                             {entry.player2Id && entry.player2Id.trim() !== "" ? (
                               <Link 
                                 to={`/player/${entry.player2Id}`} 
-                                className="hover:opacity-80 inline-block"
+                                className="inline-block"
                                 style={{ color: entry.player2Color || '#cba6f7' }}
                                 onClick={(e) => e.stopPropagation()}
                               >
@@ -182,7 +184,7 @@ export function LeaderboardTable({ data, platforms = [], categories = [], levels
               </TableCell>
               {showLevelColumn && (
                 <TableCell className="py-2.5 px-2 hidden md:table-cell">
-                  <Link to={`/run/${entry.id}`} className="hover:text-[#cba6f7] flex items-center gap-1">
+                  <Link to={`/run/${entry.id}`} className="flex items-center gap-1">
                     <MapPin className="h-3.5 w-3.5 text-ctp-overlay0" />
                     <span className="text-sm text-ctp-subtext1">
                       {levelName || entry.srcLevelName || 'Unknown Level'}
@@ -191,14 +193,14 @@ export function LeaderboardTable({ data, platforms = [], categories = [], levels
                 </TableCell>
               )}
               <TableCell className="py-2.5 px-2 hidden sm:table-cell">
-                <Link to={`/run/${entry.id}`} className="hover:text-[#cba6f7]">
+                <Link to={`/run/${entry.id}`}>
                   <span className="text-sm font-semibold text-ctp-text">
                     {formatTime(entry.time)}
                   </span>
                 </Link>
               </TableCell>
               <TableCell className="py-2.5 px-2 hidden md:table-cell">
-                <Link to={`/run/${entry.id}`} className="hover:text-[#cba6f7]">
+                <Link to={`/run/${entry.id}`}>
                   <span className="text-sm text-ctp-subtext1 whitespace-nowrap">{entry.date}</span>
                 </Link>
               </TableCell>
@@ -223,7 +225,7 @@ export function LeaderboardTable({ data, platforms = [], categories = [], levels
                     href={entry.videoUrl} 
                     target="_blank" 
                     rel="noopener noreferrer" 
-                    className="text-[#cba6f7] hover:text-[#f5c2e7] flex items-center gap-1"
+                    className="text-[#cba6f7] flex items-center gap-1"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <ExternalLink className="h-3 w-3" />

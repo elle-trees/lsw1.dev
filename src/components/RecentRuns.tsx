@@ -20,6 +20,7 @@ interface RecentRunsProps {
 export function RecentRuns({ runs, loading, showRankBadge = true, maxRuns }: RecentRunsProps) {
   const [platforms, setPlatforms] = useState<{ id: string; name: string }[]>([]);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -43,8 +44,14 @@ export function RecentRuns({ runs, loading, showRankBadge = true, maxRuns }: Rec
     return category ? category.name : null;
   };
 
+  // Filter out individual level runs
+  const filteredRuns = runs.filter(run => {
+    const runLeaderboardType = run.leaderboardType || 'regular';
+    return runLeaderboardType !== 'individual-level';
+  });
+
   // Get visible runs based on maxRuns prop
-  const visibleRuns = maxRuns ? runs.slice(0, maxRuns) : runs;
+  const visibleRuns = maxRuns ? filteredRuns.slice(0, maxRuns) : filteredRuns;
 
   if (loading) {
     return (
@@ -95,7 +102,7 @@ export function RecentRuns({ runs, loading, showRankBadge = true, maxRuns }: Rec
     );
   }
 
-  if (runs.length === 0) {
+  if (filteredRuns.length === 0) {
     return (
       <div className="text-center py-16">
         <Sparkles className="h-16 w-16 mx-auto mb-4 text-ctp-overlay0 opacity-50" />
@@ -127,10 +134,14 @@ export function RecentRuns({ runs, loading, showRankBadge = true, maxRuns }: Rec
               run.srcPlatformName
             );
 
+            const isHighlighted = highlightedId === run.id;
+            
             return (
               <TableRow 
                 key={run.id} 
-                className={`table-row-animate border-b border-ctp-surface1/20 hover:bg-ctp-surface0 hover:brightness-125 transition-all duration-150 ${run.isObsolete ? 'opacity-60 italic' : ''}`}
+                onMouseEnter={() => setHighlightedId(run.id)}
+                onMouseLeave={() => setHighlightedId(null)}
+                className={`table-row-animate border-b border-ctp-surface1/20 transition-colors duration-50 ${isHighlighted ? 'bg-ctp-surface0' : ''} ${run.isObsolete ? 'opacity-60 italic' : ''}`}
                 style={{ animationDelay: `${index * 50}ms` }}
               >
                 {showRankBadge && (
@@ -191,7 +202,7 @@ export function RecentRuns({ runs, loading, showRankBadge = true, maxRuns }: Rec
                           <>
                             <Link 
                               to={`/player/${run.playerId}`} 
-                              className="hover:opacity-80 inline-block"
+                              className="inline-block"
                               style={{ color: run.nameColor || '#cba6f7' }}
                               onClick={(e) => e.stopPropagation()}
                             >
@@ -203,7 +214,7 @@ export function RecentRuns({ runs, loading, showRankBadge = true, maxRuns }: Rec
                                 {run.player2Id && run.player2Id.trim() !== "" ? (
                                   <Link 
                                     to={`/player/${run.player2Id}`} 
-                                    className="hover:opacity-80 inline-block"
+                                    className="inline-block"
                                     style={{ color: run.player2Color || '#cba6f7' }}
                                     onClick={(e) => e.stopPropagation()}
                                   >
@@ -243,14 +254,14 @@ export function RecentRuns({ runs, loading, showRankBadge = true, maxRuns }: Rec
                   </div>
                 </TableCell>
                 <TableCell className="py-4 px-3 hidden sm:table-cell">
-                  <Link to={`/run/${run.id}`} className="hover:text-[#cba6f7]" onClick={(e) => e.stopPropagation()}>
+                  <Link to={`/run/${run.id}`} onClick={(e) => e.stopPropagation()}>
                     <span className="text-base font-semibold text-ctp-text">
                       {formatTime(run.time)}
                     </span>
                   </Link>
                 </TableCell>
                 <TableCell className="py-4 px-3 hidden md:table-cell">
-                  <Link to={`/run/${run.id}`} className="hover:text-[#cba6f7]" onClick={(e) => e.stopPropagation()}>
+                  <Link to={`/run/${run.id}`} onClick={(e) => e.stopPropagation()}>
                     <span className="text-base text-ctp-subtext1 whitespace-nowrap">{run.date}</span>
                   </Link>
                 </TableCell>

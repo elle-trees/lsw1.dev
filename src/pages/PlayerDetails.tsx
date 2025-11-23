@@ -37,6 +37,7 @@ const PlayerDetails = () => {
   const [selectedLevel, setSelectedLevel] = useState("");
   const [selectedSubcategory, setSelectedSubcategory] = useState("");
   const [availableSubcategories, setAvailableSubcategories] = useState<Array<{ id: string; name: string }>>([]);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const isOwnProfile = currentUser?.uid === playerId;
 
   useEffect(() => {
@@ -632,10 +633,14 @@ const PlayerDetails = () => {
                               ? getLevelName(run.level, levels, run.srcLevelName)
                               : undefined;
                             
+                            const isHighlighted = highlightedId === run.id;
+                            
                             return (
                               <TableRow 
                                 key={run.id} 
-                                className="table-row-animate border-b border-ctp-surface1/20 hover:bg-ctp-surface0 hover:brightness-125 transition-all duration-150 cursor-pointer"
+                                onMouseEnter={() => setHighlightedId(run.id)}
+                                onMouseLeave={() => setHighlightedId(null)}
+                                className={`table-row-animate border-b border-ctp-surface1/20 transition-colors duration-50 cursor-pointer ${isHighlighted ? 'bg-ctp-surface0' : ''}`}
                                 style={{ animationDelay: `${index * 50}ms` }}
                                 onClick={() => navigate(`/run/${run.id}`)}
                               >
