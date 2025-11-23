@@ -14,12 +14,19 @@ import { Skeleton } from "@/components/ui/skeleton";
 import LegoGoldBrickIcon from "@/components/icons/LegoGoldBrickIcon";
 import { motion } from "framer-motion";
 import { staggerContainerVariants, staggerItemVariants, fadeSlideUpVariants, transitions } from "@/lib/animations";
+import { pageCache } from "@/lib/pageCache";
 
 const Leaderboards = () => {
   const [leaderboardType, setLeaderboardType] = useState<'regular' | 'individual-level' | 'community-golds'>('regular');
+  
+  // Check cache for static data (levels and platforms are shared across all types)
+  const getCacheKey = (type: string) => `leaderboards-${type}`;
+  const cachedLevels = pageCache.get<Level[]>(getCacheKey('levels'));
+  const cachedPlatforms = pageCache.get<{ id: string; name: string }[]>(getCacheKey('platforms'));
+  
   const [availableCategories, setAvailableCategories] = useState<Category[]>([]);
-  const [availableLevels, setAvailableLevels] = useState<Level[]>([]);
-  const [availablePlatforms, setAvailablePlatforms] = useState<{ id: string; name: string }[]>([]);
+  const [availableLevels, setAvailableLevels] = useState<Level[]>(cachedLevels || []);
+  const [availablePlatforms, setAvailablePlatforms] = useState<{ id: string; name: string }[]>(cachedPlatforms || []);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedLevel, setSelectedLevel] = useState("");
   const [selectedPlatform, setSelectedPlatform] = useState("");
@@ -28,8 +35,8 @@ const Leaderboards = () => {
   const [showObsoleteRuns, setShowObsoleteRuns] = useState("false");
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [categoriesLoading, setCategoriesLoading] = useState(true);
-  const [levelsLoading, setLevelsLoading] = useState(true);
+  const [categoriesLoading, setCategoriesLoading] = useState(!cachedCategories);
+  const [levelsLoading, setLevelsLoading] = useState(!cachedLevels);
   const [subcategoriesLoading, setSubcategoriesLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [availableSubcategories, setAvailableSubcategories] = useState<Array<{ id: string; name: string }>>([]);
@@ -41,23 +48,63 @@ const Leaderboards = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      setCategoriesLoading(true);
-      setLevelsLoading(true);
+      // Check cache for categories based on current leaderboardType
+      const categoryCacheKey = getCacheKey(`categories-${leaderboardType}`);
+      const cachedCategories = pageCache.get<Category[]>(categoryCacheKey);
+      
+      // Only show loading if not in cache
+      setCategoriesLoading(!cachedCategories);
+      setLevelsLoading(!cachedLevels);
+      
       try {
         // For Individual Level: fetch Story/Free Play categories
         // For Community Golds: fetch community-golds categories (now configurable)
         // For Regular: fetch regular categories
         const categoryType = leaderboardType;
         
-        const [fetchedCategories, fetchedLevels, fetchedPlatforms] = await Promise.all([
-          getCategories(categoryType),
-          getLevels(),
-          getPlatforms()
-        ]);
+        // Fetch only what's not cached
+        const fetchPromises: Promise<any>[] = [];
+        let fetchedCategories = cachedCategories || [];
+        let fetchedLevels = cachedLevels || [];
+        let fetchedPlatforms = cachedPlatforms || [];
         
-        setAvailableCategories(fetchedCategories);
-        setAvailableLevels(fetchedLevels);
-        setAvailablePlatforms(fetchedPlatforms);
+        if (!cachedCategories) {
+          fetchPromises.push(
+            getCategories(categoryType).then(cats => {
+              fetchedCategories = cats;
+              setAvailableCategories(cats);
+              pageCache.set(categoryCacheKey, cats, 1000 * 60 * 30); // 30 minutes
+            })
+          );
+        } else {
+          setAvailableCategories(fetchedCategories);
+        }
+        
+        if (!cachedLevels) {
+          fetchPromises.push(
+            getLevels().then(levels => {
+              fetchedLevels = levels;
+              setAvailableLevels(levels);
+              pageCache.set(getCacheKey('levels'), levels, 1000 * 60 * 30); // 30 minutes
+            })
+          );
+        } else {
+          setAvailableLevels(fetchedLevels);
+        }
+        
+        if (!cachedPlatforms) {
+          fetchPromises.push(
+            getPlatforms().then(platforms => {
+              fetchedPlatforms = platforms;
+              setAvailablePlatforms(platforms);
+              pageCache.set(getCacheKey('platforms'), platforms, 1000 * 60 * 30); // 30 minutes
+            })
+          );
+        } else {
+          setAvailablePlatforms(fetchedPlatforms);
+        }
+        
+        await Promise.all(fetchPromises);
         
         if (fetchedCategories.length > 0) {
           setSelectedCategory(fetchedCategories[0].id);
@@ -84,7 +131,7 @@ const Leaderboards = () => {
     };
     
     fetchData();
-  }, [leaderboardType]);
+  }, [leaderboardType, cachedLevels, cachedPlatforms]);
 
   // Fetch subcategories when category changes (only for regular leaderboard type)
   useEffect(() => {

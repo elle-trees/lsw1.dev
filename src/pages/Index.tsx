@@ -14,8 +14,12 @@ import { motion } from "framer-motion";
 import { buttonVariants } from "@/components/ui/button";
 import { AnimatedCard } from "@/components/ui/animated-card";
 import { fadeSlideUpVariants, scaleVariants, buttonVariants as motionButtonVariants, transitions } from "@/lib/animations";
+import { pageCache } from "@/lib/pageCache";
 
 const MotionLink = motion(Link);
+
+const CACHE_KEY_RECENT_RUNS = "index-recent-runs";
+const CACHE_KEY_STATS = "index-stats";
 
 // Format seconds into months, days, hours, minutes, seconds in compact format
 const formatTimeWithDays = (totalSeconds: number): string => {
@@ -47,11 +51,15 @@ const formatTimeWithDays = (totalSeconds: number): string => {
 };
 
 const Index = () => {
-  const [recentRunsData, setRecentRunsData] = useState<LeaderboardEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [totalVerifiedRuns, setTotalVerifiedRuns] = useState<number>(0);
-  const [totalTime, setTotalTime] = useState<string>("00:00:00");
-  const [statsLoading, setStatsLoading] = useState(true);
+  // Check cache first for instant display
+  const cachedRecentRuns = pageCache.get<LeaderboardEntry[]>(CACHE_KEY_RECENT_RUNS);
+  const cachedStats = pageCache.get<{ totalVerifiedRuns: number; totalTime: string }>(CACHE_KEY_STATS);
+  
+  const [recentRunsData, setRecentRunsData] = useState<LeaderboardEntry[]>(cachedRecentRuns || []);
+  const [loading, setLoading] = useState(!cachedRecentRuns);
+  const [totalVerifiedRuns, setTotalVerifiedRuns] = useState<number>(cachedStats?.totalVerifiedRuns || 0);
+  const [totalTime, setTotalTime] = useState<string>(cachedStats?.totalTime || "00:00:00");
+  const [statsLoading, setStatsLoading] = useState(!cachedStats);
   const [isLive, setIsLive] = useState<boolean | null>(null);
   const lastRefreshTimeRef = useRef<number>(Date.now());
   const channel = 'lsw1live';
@@ -63,6 +71,8 @@ const Index = () => {
         // Fetch more runs to allow dynamic display based on available space
         const recentEntries = await getRecentRuns(20);
         setRecentRunsData(recentEntries);
+        // Cache for instant navigation
+        pageCache.set(CACHE_KEY_RECENT_RUNS, recentEntries, 1000 * 60 * 2); // 2 minutes
       } catch (_error) {
         // Silent fail
       } finally {
@@ -70,7 +80,10 @@ const Index = () => {
       }
     };
 
-    fetchData();
+    // Only fetch if not in cache
+    if (!cachedRecentRuns) {
+      fetchData();
+    }
     
     // Only refresh when page becomes visible AND enough time has passed
     const MIN_REFRESH_INTERVAL = 30000; // Minimum 30 seconds between refreshes
@@ -87,19 +100,27 @@ const Index = () => {
     
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, []);
+  }, [cachedRecentRuns]);
 
   useEffect(() => {
     const fetchStats = async () => {
       setStatsLoading(true);
       try {
         const verifiedRuns = await getAllVerifiedRuns();
-        setTotalVerifiedRuns(verifiedRuns.length);
+        const totalRuns = verifiedRuns.length;
+        setTotalVerifiedRuns(totalRuns);
         
         const totalSeconds = verifiedRuns.reduce((sum, run) => {
           return sum + parseTimeToSeconds(run.time);
         }, 0);
-        setTotalTime(formatTimeWithDays(totalSeconds));
+        const formattedTime = formatTimeWithDays(totalSeconds);
+        setTotalTime(formattedTime);
+        
+        // Cache stats for instant navigation
+        pageCache.set(CACHE_KEY_STATS, {
+          totalVerifiedRuns: totalRuns,
+          totalTime: formattedTime,
+        }, 1000 * 60 * 10); // 10 minutes
       } catch (_error) {
         // Silent fail
       } finally {
@@ -107,8 +128,11 @@ const Index = () => {
       }
     };
 
-    fetchStats();
-  }, []);
+    // Only fetch if not in cache
+    if (!cachedStats) {
+      fetchStats();
+    }
+  }, [cachedStats]);
 
   useEffect(() => {
     // Check if stream is live

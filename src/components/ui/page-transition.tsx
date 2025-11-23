@@ -1,29 +1,15 @@
-import { motion } from "framer-motion";
-import { useLocation } from "react-router-dom";
-import { pageVariants } from "@/lib/animations";
-
 interface PageTransitionProps {
   children: React.ReactNode;
 }
 
 /**
  * Wrapper component for page transitions
- * Provides smooth enter animations for route changes
- * Exit animations removed to prevent reload flash
+ * Optimized for instant navigation - no remounting, no flashing
+ * Removed all animations for instant page switching when data is ready
  */
 export function PageTransition({ children }: PageTransitionProps) {
-  const location = useLocation();
-
-  return (
-    <motion.div
-      key={location.pathname}
-      initial="initial"
-      animate="enter"
-      variants={pageVariants}
-      className="w-full"
-    >
-      {children}
-    </motion.div>
-  );
+  // No transition wrapper needed - React Router handles mounting/unmounting
+  // We just need a simple container without any animation delays
+  return <div className="w-full">{children}</div>;
 }
 

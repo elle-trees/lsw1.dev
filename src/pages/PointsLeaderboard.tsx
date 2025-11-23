@@ -13,18 +13,28 @@ import LegoStudIcon from "@/components/icons/LegoStudIcon";
 import { FadeIn } from "@/components/ui/fade-in";
 import { motion } from "framer-motion";
 import { fadeSlideUpVariants, transitions } from "@/lib/animations";
+import { pageCache } from "@/lib/pageCache";
+
+const CACHE_KEY_PLAYERS = "points-leaderboard-players";
+const CACHE_KEY_CATEGORIES = "points-leaderboard-categories";
+const CACHE_KEY_PLATFORMS = "points-leaderboard-platforms";
 
 const PointsLeaderboard = () => {
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Check cache first for instant display
+  const cachedPlayers = pageCache.get<Player[]>(CACHE_KEY_PLAYERS);
+  const cachedCategories = pageCache.get<{ id: string; name: string }[]>(CACHE_KEY_CATEGORIES);
+  const cachedPlatforms = pageCache.get<{ id: string; name: string }[]>(CACHE_KEY_PLATFORMS);
+  
+  const [players, setPlayers] = useState<Player[]>(cachedPlayers || []);
+  const [loading, setLoading] = useState(!cachedPlayers);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 25;
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [playerRuns, setPlayerRuns] = useState<LeaderboardEntry[]>([]);
   const [loadingRuns, setLoadingRuns] = useState(false);
-  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
-  const [platforms, setPlatforms] = useState<{ id: string; name: string }[]>([]);
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>(cachedCategories || []);
+  const [platforms, setPlatforms] = useState<{ id: string; name: string }[]>(cachedPlatforms || []);
   const [recalculatedPoints, setRecalculatedPoints] = useState<Map<string, number>>(new Map());
 
   useEffect(() => {
@@ -97,6 +107,8 @@ const PointsLeaderboard = () => {
           .sort((a, b) => (b.totalPoints || 0) - (a.totalPoints || 0));
         
         setPlayers(deduplicatedPlayers);
+        // Cache the data for instant navigation
+        pageCache.set(CACHE_KEY_PLAYERS, deduplicatedPlayers, 1000 * 60 * 5); // 5 minutes
       } catch (error) {
         // Silent fail
       } finally {
@@ -104,16 +116,23 @@ const PointsLeaderboard = () => {
       }
     };
 
-    fetchPlayers();
+    // Only fetch if not in cache
+    if (!cachedPlayers) {
+      fetchPlayers();
+    }
     
     // Fetch categories and platforms for breakdown
-    Promise.all([
-      getCategories(),
-      getPlatforms()
-    ]).then(([cats, plats]) => {
-      setCategories(cats);
-      setPlatforms(plats);
-    });
+    if (!cachedCategories || !cachedPlatforms) {
+      Promise.all([
+        getCategories(),
+        getPlatforms()
+      ]).then(([cats, plats]) => {
+        setCategories(cats);
+        setPlatforms(plats);
+        pageCache.set(CACHE_KEY_CATEGORIES, cats, 1000 * 60 * 30); // 30 minutes
+        pageCache.set(CACHE_KEY_PLATFORMS, plats, 1000 * 60 * 30); // 30 minutes
+      });
+    }
   }, []);
 
   // Fetch player runs when dialog opens
