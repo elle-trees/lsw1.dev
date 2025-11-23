@@ -12,7 +12,7 @@ import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { LoginModal } from "@/components/LoginModal";
 import { useToast } from "@/hooks/use-toast";
-import { getErrorMessage, logError } from "@/lib/errorUtils";
+import { getErrorMessage } from "@/lib/errorUtils";
 import { getUnverifiedLeaderboardEntries, getUnclaimedRunsBySRCUsername, getPlayerByUid } from "@/lib/db";
 import { Notifications } from "@/components/Notifications";
 
@@ -67,7 +67,6 @@ export function GameDetails({ className }: GameDetailsProps) {
         description: "You have been logged out successfully.",
       });
     } catch (error) {
-      logError(error, "GameDetails.handleLogout");
       toast({
         title: "Error",
         description: getErrorMessage(error, "Failed to log out."),

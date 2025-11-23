@@ -17,7 +17,6 @@ const ourFileRouter = {
     } 
   })
     .onUploadComplete(async ({ file }) => {
-      console.log("File upload complete:", file.url);
       return {};
     }),
   profilePicture: f({ 
@@ -27,7 +26,6 @@ const ourFileRouter = {
     } 
   })
     .onUploadComplete(async ({ file }) => {
-      console.log("Profile picture upload complete:", file.url);
       return {};
     }),
 } satisfies FileRouter;

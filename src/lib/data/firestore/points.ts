@@ -66,11 +66,13 @@ export const updatePointsConfigFirestore = async (config: PointsConfig): Promise
 };
 
 export const backfillPointsForAllRunsFirestore = async (): Promise<{ runsUpdated: number; playersUpdated: number; errors: string[] }> => {
-    // Implementation omitted for brevity - complex logic involving recalculating all points
+    // Stub implementation - complex logic involving recalculating all points for all runs
+    // TODO: Implement full backfill logic if needed
     return { runsUpdated: 0, playersUpdated: 0, errors: [] };
 };
 
 export const wipeLeaderboardsFirestore = async (): Promise<boolean> => {
-    // Dangerous op
+    // Stub implementation - dangerous operation disabled by default
+    // TODO: Implement if needed with proper safeguards
     return false;
 };

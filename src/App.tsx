@@ -9,7 +9,6 @@ import { GameDetails } from "@/components/GameDetails";
 import { AuthProvider } from "@/components/AuthProvider";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
-// Lazy load pages for code splitting - reduces initial bundle size
 const Index = lazy(() => import("./pages/Index"));
 const Leaderboards = lazy(() => import("./pages/Leaderboards"));
 const PointsLeaderboard = lazy(() => import("./pages/PointsLeaderboard"));

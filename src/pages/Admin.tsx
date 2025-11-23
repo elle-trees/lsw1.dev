@@ -14,9 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { Pagination } from "@/components/Pagination";
 import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
-// No module-level db imports - all db functions will be loaded dynamically at call sites
-// This completely avoids any initialization-time circular dependencies
-// Dynamic import to avoid circular dependency at module initialization
+
 type ImportResult = {
   imported: number;
   skipped: number;
@@ -30,7 +28,6 @@ import { useNavigate } from "react-router-dom";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { formatTime } from "@/lib/utils";
 import { getCategoryName, getPlatformName, getLevelName, normalizeCategoryId, normalizePlatformId, normalizeLevelId } from "@/lib/dataValidation";
-// Dynamic import to avoid circular dependency at module initialization
 
 const Admin = () => {
   const { currentUser, loading: authLoading } = useAuth();

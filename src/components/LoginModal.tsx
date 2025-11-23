@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, updateProfile } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { isDisplayNameAvailable, createPlayer } from "@/lib/db";
-import { getErrorMessage, logError } from "@/lib/errorUtils";
+import { getErrorMessage } from "@/lib/errorUtils";
 
 interface LoginModalProps {
   open: boolean;
@@ -188,8 +188,7 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
             srcUsername: srcUsername.trim() || undefined,
           });
         } catch (error) {
-          // Log error but don't block signup - AuthProvider will handle creation if this fails
-          logError(error, "LoginModal.createPlayer");
+          // Silent fail - AuthProvider will handle creation if this fails
         }
       }
       
@@ -205,7 +204,6 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
       setSrcUsername("");
       onOpenChange(false);
     } catch (error) {
-      logError(error, "LoginModal.handleSubmit");
       const errorMessage = getErrorMessage(error, "An error occurred. Please try again.");
       
       toast({
@@ -248,7 +246,6 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
         description: "If an account exists with this email, you will receive password reset instructions.",
       });
     } catch (error) {
-      logError(error, "LoginModal.handlePasswordReset");
       // Always show success message to prevent user enumeration
       toast({
         title: "Password Reset Email Sent",

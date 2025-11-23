@@ -1,7 +1,3 @@
-// Main db module - lazy-loading exports to avoid initialization-time circular dependencies
-// Each export is a getter that loads the module on first access
-
-// Lazy exports - these are getters that load modules on-demand
 export const getUnverifiedLeaderboardEntries = async (...args: any[]) => {
   const module = await import("./db/runs");
   return module.getUnverifiedLeaderboardEntries(...args);
@@ -373,5 +369,3 @@ export const runTypes = [
   { id: "co-op", name: "Co-op" },
 ];
 
-// Note: syncCategoriesFromSRC is exported directly from ./speedruncom/importService
-// to avoid circular dependency. Import it directly from there if needed.

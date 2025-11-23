@@ -5,7 +5,6 @@ import { auth } from "@/lib/firebase";
 import { getPlayerByUid, createPlayer, runAutoclaimingForAllUsers } from "@/lib/db";
 import { CustomUser } from "@/types/database";
 import type { User } from "firebase/auth";
-import { logError } from "@/lib/errorUtils";
 
 interface AuthContextType {
   currentUser: CustomUser | null;
@@ -42,7 +41,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
       }
     } catch (error) {
-      logError(error, "AuthProvider.refreshPlayerData");
       // Silent fail - continue with existing user data
     }
   };
@@ -112,7 +110,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               createPlayer(newPlayer).catch(() => {});
             }
           } catch (error) {
-            logError(error, "AuthProvider.onAuthStateChanged");
             // Silent fail - user is already logged in
           }
           
@@ -131,15 +128,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (user) {
             // Run once after a short delay on login
             setTimeout(() => {
-              runAutoclaimingForAllUsers().catch(error => {
-                logError(error, "AuthProvider.autoclaiming");
+              runAutoclaimingForAllUsers().catch(() => {
+                // Silent fail
               });
             }, 30000); // Wait 30 seconds after login to avoid blocking initial load
             
             // Then run every 10 minutes
             autoclaimIntervalRef.current = setInterval(() => {
-              runAutoclaimingForAllUsers().catch(error => {
-                logError(error, "AuthProvider.autoclaiming");
+              runAutoclaimingForAllUsers().catch(() => {
+                // Silent fail
               });
             }, 600000); // 10 minutes
           }

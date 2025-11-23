@@ -12,11 +12,6 @@ import {
 import { DownloadEntry } from "@/types/database";
 import { downloadEntryConverter } from "./converters";
 
-// Note: The original file had 'getDownloadCategoriesFirestore' which returned Category[]? 
-// Or maybe a different type. The original file had:
-// match /downloadCategories/{categoryId}
-// So it seems there is a separate collection for download categories.
-
 export const getDownloadEntriesFirestore = async (): Promise<DownloadEntry[]> => {
   if (!db) return [];
   try {
@@ -74,10 +69,6 @@ export const moveDownloadUpFirestore = async (_id: string): Promise<boolean> => 
 export const moveDownloadDownFirestore = async (_id: string): Promise<boolean> => {
     return false;
 };
-
-// Download Categories
-// Assuming they use the same Category interface or similar structure
-// The original file had 'getDownloadCategoriesFirestore'
 
 export const getDownloadCategoriesFirestore = async (): Promise<any[]> => {
     if (!db) return [];

@@ -16,20 +16,6 @@ import {
 import { LeaderboardEntry } from "@/types/database";
 import { leaderboardEntryConverter } from "./converters";
 import { normalizeLeaderboardEntry, validateLeaderboardEntry } from "@/lib/dataValidation";
-// Removed unused imports from src-imports to break circular dependency chain
-// checkSRCRunExistsFirestore and tryAutoAssignRunFirestore are not actually used in this file
-// Make notification import dynamic to avoid circular dependency
-
-// We need to be careful about circular dependencies. 
-// checkSRCRunExistsFirestore is in the main file currently. 
-// I will assume for now I can import from "../firestore" but eventually I should move those here or to a separate file.
-// Actually, let's implement them here or in a new file to avoid circular deps if possible.
-// But `tryAutoAssignRunFirestore` depends on `getPlayersWithSRCUsernamesFirestore` which is in players.ts.
-// So `runs.ts` -> `players.ts` is fine.
-// But `firestore.ts` -> `runs.ts` is fine.
-// The issue is `checkSRCRunExistsFirestore` is currently in `firestore.ts`.
-// I should move `checkSRCRunExistsFirestore` to `runs.ts` or `src-imports.ts`.
-// Let's put basic run CRUD here.
 
 export const addLeaderboardEntryFirestore = async (entry: Omit<LeaderboardEntry, 'id' | 'rank' | 'isObsolete'> & { verified?: boolean }): Promise<string | null> => {
   if (!db) return null;
