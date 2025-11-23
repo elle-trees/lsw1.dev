@@ -84,32 +84,22 @@ const Live = () => {
         // Fetch all players with Twitch usernames
         const players = await getPlayersWithTwitchUsernames();
         
-        console.log('[Live] Fetched players with Twitch usernames:', players.length);
-        
         if (players.length === 0) {
-          console.log('[Live] No players with Twitch usernames found');
           setLiveRunners([]);
           setCheckingRunners(false);
           return;
         }
 
         // Filter out players with empty/invalid Twitch usernames
-        const validPlayers = players.filter(
-          (player) => {
-            if (!player || !player.twitchUsername) return false;
-            const trimmed = player.twitchUsername.trim();
-            const lower = trimmed.toLowerCase();
-            return trimmed !== '' && 
-                   lower !== 'null' && 
-                   lower !== 'undefined' &&
-                   trimmed.length > 0;
-          }
-        );
-
-        console.log('[Live] Valid players to check:', validPlayers.length);
-        if (validPlayers.length > 0) {
-          console.log('[Live] Valid players:', validPlayers.map(p => ({ name: p.displayName, twitch: p.twitchUsername })));
-        }
+        const validPlayers = players.filter((player) => {
+          if (!player || !player.twitchUsername) return false;
+          const trimmed = player.twitchUsername.trim();
+          const lower = trimmed.toLowerCase();
+          return trimmed !== '' && 
+                 lower !== 'null' && 
+                 lower !== 'undefined' &&
+                 trimmed.length > 0;
+        });
 
         if (validPlayers.length === 0) {
           setLiveRunners([]);
@@ -117,208 +107,119 @@ const Live = () => {
           return;
         }
 
-        // Check each player's Twitch stream status and get viewer count
+        // Check each player's Twitch stream status, verify thumbnail exists, and get viewer count
         const liveStatusChecks = await Promise.all(
           validPlayers.map(async (player) => {
             try {
               const originalTwitchUsername = player.twitchUsername.trim();
               const twitchUsernameLower = originalTwitchUsername.toLowerCase();
-              console.log(`[Live] Checking status for: ${twitchUsernameLower} (original: ${originalTwitchUsername})`);
               
-              // Create timeout controller
-              const controller = new AbortController();
-              const timeoutId = setTimeout(() => controller.abort(), 5000);
-              
-              const statusResponse = await fetch(
-                `https://decapi.me/twitch/status/${twitchUsernameLower}`,
-                { 
-                  signal: controller.signal
-                }
-              );
-              
-              clearTimeout(timeoutId);
-              
-              if (statusResponse.ok) {
-                // Try to get response as both text and check if it's JSON
-                const contentType = statusResponse.headers.get('content-type') || '';
-                let statusData: string;
-                let parsedData: any = null;
+              // Check thumbnail first - most reliable indicator
+              let hasValidThumbnail = false;
+              try {
+                const thumbnailController = new AbortController();
+                const thumbnailTimeoutId = setTimeout(() => thumbnailController.abort(), 5000);
                 
-                try {
-                  statusData = await statusResponse.text();
-                  // Try parsing as JSON in case it's JSON
-                  if (contentType.includes('application/json') || statusData.trim().startsWith('{') || statusData.trim().startsWith('[')) {
-                    try {
-                      parsedData = JSON.parse(statusData);
-                      console.log(`[Live] Parsed JSON response for ${twitchUsernameLower}:`, parsedData);
-                    } catch {
-                      // Not JSON, continue with text
-                    }
-                  }
-                } catch {
-                  statusData = '';
-                }
+                const thumbnailUrl = `https://static-cdn.jtvnw.net/previews-ttv/live_user_${twitchUsernameLower}-320x180.jpg`;
+                const thumbnailResponse = await fetch(`${thumbnailUrl}?t=${Date.now()}`, { 
+                  method: 'HEAD',
+                  cache: 'no-cache',
+                  signal: thumbnailController.signal
+                });
                 
-                const trimmedStatus = statusData.trim().toLowerCase();
+                clearTimeout(thumbnailTimeoutId);
                 
-                console.log(`[Live] Raw status response for ${twitchUsernameLower}:`, JSON.stringify(statusData));
-                console.log(`[Live] Content-Type:`, contentType);
-                console.log(`[Live] Trimmed status for ${twitchUsernameLower}:`, JSON.stringify(trimmedStatus));
-                console.log(`[Live] Response length:`, trimmedStatus.length);
-                
-                // Check for explicit offline indicators
-                const isExplicitlyOffline = trimmedStatus === 'offline' || 
-                                           trimmedStatus === 'false' ||
-                                           trimmedStatus === '0' ||
-                                           trimmedStatus === '' ||
-                                           trimmedStatus === 'null' ||
-                                           trimmedStatus.match(/^(offline|false|0|error|not found|channel not found|null|undefined)$/i);
-                
-                // Check for explicit live indicators
-                const hasExplicitLiveIndicator = trimmedStatus === 'live' || 
-                                                trimmedStatus === 'online' || 
-                                                trimmedStatus === 'true' ||
-                                                trimmedStatus === '1' ||
-                                                trimmedStatus.includes('live') ||
-                                                trimmedStatus.includes('online') ||
-                                                trimmedStatus.includes('streaming');
-                
-                // If decapi.me returns anything other than explicitly offline, it might be live
-                // (decapi.me may return stream titles, game names, or "live" when the stream is live)
-                // We'll do a thumbnail check as confirmation if it's ambiguous
-                const isLive = hasExplicitLiveIndicator || (!isExplicitlyOffline && trimmedStatus.length > 0);
-                
-                console.log(`[Live] Is ${twitchUsernameLower} explicitly offline?`, isExplicitlyOffline);
-                console.log(`[Live] Does ${twitchUsernameLower} have explicit live indicator?`, hasExplicitLiveIndicator);
-                console.log(`[Live] Initial isLive check for ${twitchUsernameLower}:`, isLive);
-                
-                // Check parsed JSON data if available
-                let jsonIsLive = false;
-                if (parsedData) {
-                  // Handle various JSON response formats
-                  if (typeof parsedData === 'boolean') {
-                    jsonIsLive = parsedData;
-                  } else if (typeof parsedData === 'object') {
-                    jsonIsLive = parsedData.live === true || 
-                                parsedData.online === true || 
-                                parsedData.status === 'live' ||
-                                parsedData.status === 'online' ||
-                                (parsedData.data && Array.isArray(parsedData.data) && parsedData.data.length > 0);
-                  }
-                  console.log(`[Live] JSON indicates ${twitchUsernameLower} is live?`, jsonIsLive);
-                }
-                
-                // Always verify with thumbnail check if not explicitly offline
-                // The thumbnail check is the most reliable indicator
-                let finalIsLive = isLive || jsonIsLive;
-                
-                if (!isExplicitlyOffline) {
-                  console.log(`[Live] Verifying ${twitchUsernameLower} with thumbnail check (not explicitly offline)...`);
-                  try {
-                    const thumbnailUrl = `https://static-cdn.jtvnw.net/previews-ttv/live_user_${twitchUsernameLower}-320x180.jpg`;
-                    // Add timestamp to avoid cache
-                    const thumbnailCheckUrl = `${thumbnailUrl}?t=${Date.now()}`;
-                    const thumbnailResponse = await fetch(thumbnailCheckUrl, { 
-                      method: 'HEAD',
-                      cache: 'no-cache'
-                    });
-                    
-                    console.log(`[Live] Thumbnail response for ${twitchUsernameLower}:`, thumbnailResponse.status);
-                    
-                    // Twitch returns 200 for live streams with valid thumbnails
-                    // 404 or other errors typically mean the stream is offline
-                    if (thumbnailResponse.ok && thumbnailResponse.status === 200) {
-                      const contentType = thumbnailResponse.headers.get('content-type');
-                      const contentLength = thumbnailResponse.headers.get('content-length');
-                      
-                      // Check if it's actually an image with content
-                      if (contentType && contentType.startsWith('image/')) {
-                        // Check if it has actual content (not a 0-byte placeholder)
-                        if (!contentLength || parseInt(contentLength) > 0) {
-                          console.log(`[Live] Thumbnail check for ${twitchUsernameLower}: Stream is LIVE (thumbnail exists and is valid)`);
-                          finalIsLive = true;
-                        } else {
-                          console.log(`[Live] Thumbnail for ${twitchUsernameLower} exists but appears to be empty/placeholder`);
-                        }
-                      }
-                    } else {
-                      console.log(`[Live] Thumbnail check for ${twitchUsernameLower}: Stream appears offline (thumbnail not available)`);
-                      // If thumbnail check fails and we don't have explicit live indicator, mark as offline
-                      if (!hasExplicitLiveIndicator && !jsonIsLive) {
-                        finalIsLive = false;
-                      }
-                    }
-                  } catch (thumbError: any) {
-                    console.warn(`[Live] Thumbnail check error for ${twitchUsernameLower}:`, thumbError?.message || thumbError);
-                    // On error, rely on decapi.me result
+                if (thumbnailResponse.ok && thumbnailResponse.status === 200) {
+                  const contentType = thumbnailResponse.headers.get('content-type');
+                  const contentLength = thumbnailResponse.headers.get('content-length');
+                  if (contentType?.startsWith('image/') && (!contentLength || parseInt(contentLength) > 0)) {
+                    hasValidThumbnail = true;
                   }
                 }
-                
-                if (finalIsLive) {
-                  // Fetch viewer count
-                  let viewerCount: number | undefined;
-                  try {
-                    // Create timeout controller for viewer count
-                    const viewerController = new AbortController();
-                    const viewerTimeoutId = setTimeout(() => viewerController.abort(), 5000);
-                    
-                    const viewerResponse = await fetch(
-                      `https://decapi.me/twitch/viewercount/${twitchUsernameLower}`,
-                      { 
-                        signal: viewerController.signal
-                      }
-                    );
-                    
-                    clearTimeout(viewerTimeoutId);
-                    if (viewerResponse.ok) {
-                      const viewerText = await viewerResponse.text();
-                      const parsedViewers = parseInt(viewerText.trim(), 10);
-                      if (!isNaN(parsedViewers)) {
-                        viewerCount = parsedViewers;
-                      }
-                    }
-                  } catch (viewerError) {
-                    console.warn(`[Live] Failed to fetch viewer count for ${twitchUsernameLower}:`, viewerError);
-                    // Viewer count is optional, continue without it
-                  }
-                  
-                  const liveRunner: LiveRunner = {
-                    uid: player.uid,
-                    displayName: player.displayName,
-                    twitchUsername: originalTwitchUsername, // Use original casing for display
-                    nameColor: player.nameColor,
-                    profilePicture: player.profilePicture,
-                    viewerCount,
-                  };
-                  
-                  console.log(`[Live] Found live runner: ${player.displayName} (${originalTwitchUsername})`);
-                  return liveRunner;
-                }
-              } else {
-                console.warn(`[Live] Failed to check status for ${twitchUsernameLower}:`, statusResponse.status, statusResponse.statusText);
-                // Try to read the response body for more details
-                try {
-                  const errorText = await statusResponse.text();
-                  console.warn(`[Live] Error response body for ${twitchUsernameLower}:`, errorText);
-                } catch (_e) {
-                  // Ignore errors reading error response
-                }
+              } catch {
+                // Thumbnail check failed, skip this player
+                return null;
               }
+
+              // If no valid thumbnail, skip this player
+              if (!hasValidThumbnail) {
+                return null;
+              }
+
+              // Verify stream is actually live via status check
+              try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                
+                const statusResponse = await fetch(
+                  `https://decapi.me/twitch/status/${twitchUsernameLower}`,
+                  { signal: controller.signal }
+                );
+                
+                clearTimeout(timeoutId);
+                
+                if (statusResponse.ok) {
+                  const statusData = await statusResponse.text().trim().toLowerCase();
+                  const isExplicitlyOffline = statusData === 'offline' || 
+                                             statusData === 'false' ||
+                                             statusData === '0' ||
+                                             statusData === '' ||
+                                             statusData.match(/^(offline|false|0|error|not found|channel not found)$/i);
+                  
+                  // Skip if explicitly offline
+                  if (isExplicitlyOffline) {
+                    return null;
+                  }
+                }
+              } catch {
+                // Status check failed, but thumbnail exists, so continue
+              }
+
+              // Fetch viewer count - required for display
+              let viewerCount: number | undefined;
+              try {
+                const viewerController = new AbortController();
+                const viewerTimeoutId = setTimeout(() => viewerController.abort(), 5000);
+                
+                const viewerResponse = await fetch(
+                  `https://decapi.me/twitch/viewercount/${twitchUsernameLower}`,
+                  { signal: viewerController.signal }
+                );
+                
+                clearTimeout(viewerTimeoutId);
+                
+                if (viewerResponse.ok) {
+                  const viewerText = await viewerResponse.text().trim();
+                  const parsedViewers = parseInt(viewerText, 10);
+                  if (!isNaN(parsedViewers) && parsedViewers >= 0) {
+                    viewerCount = parsedViewers;
+                  }
+                }
+              } catch {
+                // Viewer count fetch failed
+              }
+
+              // Only return runner if we have both thumbnail and viewer count
+              if (hasValidThumbnail && viewerCount !== undefined) {
+                return {
+                  uid: player.uid,
+                  displayName: player.displayName,
+                  twitchUsername: originalTwitchUsername,
+                  nameColor: player.nameColor,
+                  profilePicture: player.profilePicture,
+                  viewerCount,
+                };
+              }
+
               return null;
             } catch (error: any) {
-              console.error(`[Live] Error checking player ${player.twitchUsername}:`, error);
-              if (error.name === 'AbortError') {
-                console.warn(`[Live] Request timeout for ${player.twitchUsername}`);
-              } else if (error.message) {
-                console.error(`[Live] Error message:`, error.message);
-              }
+              // Silently skip on error
               return null;
             }
           })
         );
 
         const live = liveStatusChecks.filter((runner): runner is LiveRunner => runner !== null);
-        console.log(`[Live] Found ${live.length} live runners`);
         setLiveRunners(live);
       } catch (error) {
         console.error('[Live] Error checking live runners:', error);
