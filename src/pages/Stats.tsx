@@ -815,6 +815,7 @@ const Stats = () => {
                   </div>
                 </div>
               </CardContent>
+            </FadeIn>
             </Card>
 
             <Card>

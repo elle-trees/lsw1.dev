@@ -380,7 +380,7 @@ const PlayerDetails = () => {
                 </TableBody>
               </Table>
             </div>
-          </div>
+          </FadeIn>
         </div>
       </div>
     );

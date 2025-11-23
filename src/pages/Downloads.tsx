@@ -84,7 +84,7 @@ const Downloads = () => {
                     </a>
                   </Button>
                 </CardContent>
-              </Card>
+              </AnimatedCard>
             ))}
           </div>
         )}
