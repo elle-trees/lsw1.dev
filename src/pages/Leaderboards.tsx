@@ -24,7 +24,11 @@ const Leaderboards = () => {
   const cachedLevels = pageCache.get<Level[]>(getCacheKey('levels'));
   const cachedPlatforms = pageCache.get<{ id: string; name: string }[]>(getCacheKey('platforms'));
   
-  const [availableCategories, setAvailableCategories] = useState<Category[]>([]);
+  // Check cache for categories based on initial leaderboardType
+  const initialCategoryCacheKey = getCacheKey(`categories-regular`);
+  const initialCachedCategories = pageCache.get<Category[]>(initialCategoryCacheKey);
+  
+  const [availableCategories, setAvailableCategories] = useState<Category[]>(initialCachedCategories || []);
   const [availableLevels, setAvailableLevels] = useState<Level[]>(cachedLevels || []);
   const [availablePlatforms, setAvailablePlatforms] = useState<{ id: string; name: string }[]>(cachedPlatforms || []);
   const [selectedCategory, setSelectedCategory] = useState("");
@@ -35,7 +39,7 @@ const Leaderboards = () => {
   const [showObsoleteRuns, setShowObsoleteRuns] = useState("false");
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [categoriesLoading, setCategoriesLoading] = useState(!cachedCategories);
+  const [categoriesLoading, setCategoriesLoading] = useState(!initialCachedCategories);
   const [levelsLoading, setLevelsLoading] = useState(!cachedLevels);
   const [subcategoriesLoading, setSubcategoriesLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
