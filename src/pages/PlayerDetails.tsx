@@ -15,6 +15,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { getCategoryName, getPlatformName, getLevelName } from "@/lib/dataValidation";
 import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const PlayerDetails = () => {
   const { playerId } = useParams<{ playerId: string }>();
@@ -247,6 +248,140 @@ const PlayerDetails = () => {
     }
   };
 
+
+  if (loading) {
+    return (
+      <div className="min-h-screen text-ctp-text py-8 overflow-x-hidden relative">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 w-full">
+          {/* Back Button Skeleton */}
+          <div className="mb-8 mt-4 animate-fade-in">
+            <Skeleton className="h-10 w-32 rounded-none" />
+          </div>
+
+          {/* Player Profile Skeleton */}
+          <Card className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] rounded-none mb-8 animate-fade-in">
+            <CardHeader>
+              <div className="flex items-start gap-3">
+                <Skeleton className="h-12 w-12 rounded-full flex-shrink-0" />
+                <div className="flex-1 min-w-0 space-y-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Skeleton className="h-8 w-48" />
+                    <Skeleton className="h-5 w-20 rounded-full" />
+                  </div>
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-4 w-full max-w-md" />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Skeleton className="h-5 w-32 rounded-full" />
+                    <Skeleton className="h-5 w-28 rounded-full" />
+                  </div>
+                </div>
+              </div>
+            </CardHeader>
+          </Card>
+
+          {/* Runs Section Skeleton */}
+          <div className="mt-8 animate-fade-in-delay">
+            <Skeleton className="h-7 w-24 mb-4" />
+
+            {/* Leaderboard Type Buttons Skeleton */}
+            <div className="grid grid-cols-3 mb-4 p-0.5 gap-1 bg-ctp-surface0/50 rounded-none border border-ctp-surface1">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-10 w-full rounded-none" />
+              ))}
+            </div>
+
+            {/* Category Buttons Skeleton */}
+            <div className="mb-4">
+              <div className="flex w-full p-1 gap-2 overflow-x-auto overflow-y-hidden pb-3">
+                {[...Array(5)].map((_, index) => (
+                  <Skeleton 
+                    key={index} 
+                    className="h-9 w-28 flex-shrink-0 rounded-none"
+                    style={{ animationDelay: `${index * 50}ms` }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Filter Card Skeleton */}
+            <Card className="bg-gradient-to-br from-ctp-base to-ctp-mantle border-ctp-surface1 shadow-xl mb-6 rounded-none">
+              <CardHeader className="bg-gradient-to-r from-ctp-base to-ctp-mantle border-b border-ctp-surface1 py-3">
+                <Skeleton className="h-6 w-32" />
+              </CardHeader>
+              <CardContent className="p-3 sm:p-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="space-y-2">
+                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="h-9 w-full rounded-none" />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Table Skeleton */}
+            <div className="overflow-x-auto scrollbar-custom rounded-none border border-ctp-surface1/20">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-b border-ctp-surface1/50 hover:bg-transparent bg-ctp-surface0/50">
+                    <TableHead className="py-3 pl-3 pr-1">
+                      <Skeleton className="h-4 w-12" />
+                    </TableHead>
+                    <TableHead className="py-3 px-4">
+                      <Skeleton className="h-4 w-20" />
+                    </TableHead>
+                    <TableHead className="py-3 px-4">
+                      <Skeleton className="h-4 w-16" />
+                    </TableHead>
+                    <TableHead className="py-3 px-4 hidden sm:table-cell">
+                      <Skeleton className="h-4 w-16" />
+                    </TableHead>
+                    <TableHead className="py-3 px-4 hidden md:table-cell">
+                      <Skeleton className="h-4 w-20" />
+                    </TableHead>
+                    <TableHead className="py-3 px-4 hidden lg:table-cell">
+                      <Skeleton className="h-4 w-16" />
+                    </TableHead>
+                    <TableHead className="py-3 px-4">
+                      <Skeleton className="h-4 w-16" />
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {[...Array(5)].map((_, i) => (
+                    <TableRow key={i} className="border-b border-ctp-surface1/20">
+                      <TableCell className="py-2.5 pl-3 pr-1">
+                        <Skeleton className="h-6 w-6 rounded" />
+                      </TableCell>
+                      <TableCell className="py-2.5 px-4">
+                        <Skeleton className="h-4 w-32" />
+                      </TableCell>
+                      <TableCell className="py-2.5 px-4">
+                        <Skeleton className="h-4 w-20" />
+                      </TableCell>
+                      <TableCell className="py-2.5 px-4 hidden sm:table-cell">
+                        <Skeleton className="h-4 w-24" />
+                      </TableCell>
+                      <TableCell className="py-2.5 px-4 hidden md:table-cell">
+                        <Skeleton className="h-5 w-16 rounded-full" />
+                      </TableCell>
+                      <TableCell className="py-2.5 px-4 hidden lg:table-cell">
+                        <Skeleton className="h-5 w-16 rounded-full" />
+                      </TableCell>
+                      <TableCell className="py-2.5 px-4">
+                        <Skeleton className="h-4 w-12" />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!player) {
     return (
