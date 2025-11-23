@@ -12,6 +12,8 @@ import { getLeaderboardEntries, getCategories, getPlatforms, runTypes, getLevels
 import { LeaderboardEntry, Category, Level } from "@/types/database";
 import { Skeleton } from "@/components/ui/skeleton";
 import LegoGoldBrickIcon from "@/components/icons/LegoGoldBrickIcon";
+import { motion } from "framer-motion";
+import { staggerContainerVariants, staggerItemVariants, fadeSlideUpVariants, transitions } from "@/lib/animations";
 
 const Leaderboards = () => {
   const [leaderboardType, setLeaderboardType] = useState<'regular' | 'individual-level' | 'community-golds'>('regular');
@@ -238,7 +240,13 @@ const Leaderboards = () => {
     <FadeIn className="min-h-screen bg-[#1e1e2e] text-ctp-text py-4 sm:py-6 overflow-x-hidden">
       <div className="max-w-[1920px] mx-auto px-2 sm:px-4 lg:px-6 w-full">
         {/* Leaderboard Type Buttons */}
-        <div className="grid grid-cols-3 mb-6 p-0.5 gap-1 bg-ctp-surface0/50 rounded-none border border-ctp-surface1 animate-slide-up" style={{ animationDelay: '0.1s' }}>
+        <motion.div 
+          className="grid grid-cols-3 mb-6 p-0.5 gap-1 bg-ctp-surface0/50 rounded-none border border-ctp-surface1"
+          initial="hidden"
+          animate="visible"
+          variants={fadeSlideUpVariants}
+          transition={{ ...transitions.spring, delay: 0.1 }}
+        >
           <Button
             variant={leaderboardType === 'regular' ? "default" : "ghost"}
             onClick={() => startTransition(() => setLeaderboardType('regular'))}
@@ -284,7 +292,7 @@ const Leaderboards = () => {
               <span className="sm:hidden font-medium">CGs</span>
             </div>
           </Button>
-        </div>
+        </motion.div>
 
         <div className="mt-0">
             {/* Category Buttons */}
@@ -320,28 +328,43 @@ const Leaderboards = () => {
                 </div>
               ) : filteredCategories.length > 0 ? (
                 <>
-                  <div className="mb-4 animate-slide-up-delay">
-                    <div className="flex w-full p-1 gap-2 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-ctp-surface1 scrollbar-track-transparent pb-3" style={{ minWidth: 'max-content' }}>
+                  <motion.div 
+                    className="mb-4"
+                    initial="hidden"
+                    animate="visible"
+                    variants={fadeSlideUpVariants}
+                    transition={{ ...transitions.spring, delay: 0.15 }}
+                  >
+                    <motion.div 
+                      className="flex w-full p-1 gap-2 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-ctp-surface1 scrollbar-track-transparent pb-3" 
+                      style={{ minWidth: 'max-content' }}
+                      variants={staggerContainerVariants}
+                      initial="hidden"
+                      animate="visible"
+                    >
                         {filteredCategories.map((category, index) => {
                           const isSelected = selectedCategory === category.id;
                           return (
-                          <Button 
-                            key={category.id} 
-                            variant={isSelected ? "default" : "outline"}
-                            onClick={() => setSelectedCategory(category.id)}
-                            className={`button-click-animation category-button-animate whitespace-nowrap px-4 py-2 h-9 text-sm font-medium transition-all duration-200 ${
-                              isSelected 
-                                ? "bg-[#94e2d5] text-[#11111b] hover:bg-[#94e2d5]/90 border-transparent shadow-sm" 
-                                : "bg-ctp-surface0 text-ctp-text border-ctp-surface1 hover:bg-ctp-surface1 hover:text-ctp-text hover:border-[#94e2d5]/50"
-                            }`}
-                            style={{ animationDelay: `${index * 50}ms` }}
+                          <motion.div
+                            key={category.id}
+                            variants={staggerItemVariants}
                           >
-                            {category.name}
-                          </Button>
+                            <Button 
+                              variant={isSelected ? "default" : "outline"}
+                              onClick={() => setSelectedCategory(category.id)}
+                              className={`button-click-animation whitespace-nowrap px-4 py-2 h-9 text-sm font-medium transition-all duration-200 ${
+                                isSelected 
+                                  ? "bg-[#94e2d5] text-[#11111b] hover:bg-[#94e2d5]/90 border-transparent shadow-sm" 
+                                  : "bg-ctp-surface0 text-ctp-text border-ctp-surface1 hover:bg-ctp-surface1 hover:text-ctp-text hover:border-[#94e2d5]/50"
+                              }`}
+                            >
+                              {category.name}
+                            </Button>
+                          </motion.div>
                           );
                         })}
-                    </div>
-                  </div>
+                    </motion.div>
+                  </motion.div>
                   
                   {/* Subcategory Buttons (only for regular leaderboard type) */}
                   {leaderboardType === 'regular' && (() => {
@@ -376,27 +399,42 @@ const Leaderboards = () => {
                     // Show subcategories if available
                     if (availableSubcategories.length > 0) {
                       return (
-                        <div className="mb-6 animate-slide-up-delay">
-                          <div className="flex w-full p-1 gap-2 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-ctp-surface1 scrollbar-track-transparent pb-3" style={{ minWidth: 'max-content' }}>
-                              {availableSubcategories.map((subcategory, index) => {
+                        <motion.div 
+                          className="mb-6"
+                          initial="hidden"
+                          animate="visible"
+                          variants={fadeSlideUpVariants}
+                          transition={{ ...transitions.spring, delay: 0.2 }}
+                        >
+                          <motion.div 
+                            className="flex w-full p-1 gap-2 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-ctp-surface1 scrollbar-track-transparent pb-3" 
+                            style={{ minWidth: 'max-content' }}
+                            variants={staggerContainerVariants}
+                            initial="hidden"
+                            animate="visible"
+                          >
+                              {availableSubcategories.map((subcategory) => {
                                 const isSelected = selectedSubcategory === subcategory.id;
                                 return (
-                                <Button 
-                                  key={subcategory.id} 
-                                  variant={isSelected ? "default" : "outline"}
-                                  onClick={() => setSelectedSubcategory(subcategory.id)}
-                                  className={`button-click-animation category-button-animate whitespace-nowrap px-4 py-2 h-8 text-xs sm:text-sm font-medium transition-all duration-200 ${
-                                    isSelected 
-                                      ? "bg-[#cba6f7] text-[#11111b] hover:bg-[#cba6f7]/90 border-transparent shadow-sm" 
-                                      : "bg-ctp-surface0 text-ctp-text border-ctp-surface1 hover:bg-ctp-surface1 hover:text-ctp-text hover:border-[#cba6f7]/50"
-                                  }`}
-                                  style={{ animationDelay: `${index * 50}ms` }}
+                                <motion.div
+                                  key={subcategory.id}
+                                  variants={staggerItemVariants}
                                 >
-                                  {subcategory.name}
-                                </Button>
+                                  <Button 
+                                    variant={isSelected ? "default" : "outline"}
+                                    onClick={() => setSelectedSubcategory(subcategory.id)}
+                                    className={`button-click-animation whitespace-nowrap px-4 py-2 h-8 text-xs sm:text-sm font-medium transition-all duration-200 ${
+                                      isSelected 
+                                        ? "bg-[#cba6f7] text-[#11111b] hover:bg-[#cba6f7]/90 border-transparent shadow-sm" 
+                                        : "bg-ctp-surface0 text-ctp-text border-ctp-surface1 hover:bg-ctp-surface1 hover:text-ctp-text hover:border-[#cba6f7]/50"
+                                    }`}
+                                  >
+                                    {subcategory.name}
+                                  </Button>
+                                </motion.div>
                               )})}
-                          </div>
-                        </div>
+                          </motion.div>
+                        </motion.div>
                       );
                     }
                     
@@ -417,10 +455,8 @@ const Leaderboards = () => {
 
         {/* Filters */}
             <AnimatedCard 
-              className="bg-gradient-to-br from-ctp-base to-ctp-mantle border-ctp-surface1 shadow-xl mb-6 rounded-none overflow-hidden animate-slide-up-delay-2"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
+              className="bg-gradient-to-br from-ctp-base to-ctp-mantle border-ctp-surface1 shadow-xl mb-6 rounded-none overflow-hidden"
+              delay={0.25}
             >
           <CardHeader className="bg-gradient-to-r from-ctp-base to-ctp-mantle border-b border-ctp-surface1 py-4">
             <CardTitle className="flex items-center gap-2 text-lg font-bold">
@@ -514,10 +550,8 @@ const Leaderboards = () => {
 
         {/* Leaderboard Table */}
         <AnimatedCard 
-          className="bg-gradient-to-br from-ctp-base to-ctp-mantle border-ctp-surface1 shadow-xl rounded-none overflow-hidden animate-slide-up-delay-2"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
+          className="bg-gradient-to-br from-ctp-base to-ctp-mantle border-ctp-surface1 shadow-xl rounded-none overflow-hidden"
+          delay={0.3}
         >
           <CardHeader className="bg-gradient-to-r from-ctp-base to-ctp-mantle border-b border-ctp-surface1 py-4">
             <CardTitle className="flex items-center gap-2 text-lg text-[#a6e3a1]">

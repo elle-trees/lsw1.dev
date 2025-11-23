@@ -6,6 +6,10 @@ import { LeaderboardEntry } from "@/types/database";
 import LegoStudIcon from "@/components/icons/LegoStudIcon";
 import { formatTime } from "@/lib/utils";
 import { getPlatformName, getLevelName } from "@/lib/dataValidation";
+import { motion } from "framer-motion";
+import { tableRowVariants } from "@/lib/animations";
+
+const MotionTableRow = motion(TableRow);
 
 interface LeaderboardTableProps {
   data: LeaderboardEntry[];
@@ -59,10 +63,17 @@ export function LeaderboardTable({ data, platforms = [], categories = [], levels
               : undefined;
             
             return (
-            <TableRow 
-              key={entry.id} 
-              className={`table-row-animate border-b border-ctp-surface1/20 hover:bg-ctp-surface0 hover:brightness-125 transition-all duration-150 cursor-pointer ${entry.isObsolete ? 'opacity-60 italic' : ''}`}
-              style={{ animationDelay: `${index * 50}ms` }}
+            <MotionTableRow
+              key={entry.id}
+              variants={tableRowVariants}
+              initial="hidden"
+              animate="visible"
+              custom={index}
+              whileHover={{ 
+                backgroundColor: "rgba(30, 30, 46, 0.5)",
+                transition: { duration: 0.15 }
+              }}
+              className={`border-b border-ctp-surface1/20 cursor-pointer ${entry.isObsolete ? 'opacity-60 italic' : ''}`}
             >
               <TableCell className="py-2.5 pl-3 pr-1">
                 <Link to={`/run/${entry.id}`} className="block">
@@ -220,7 +231,7 @@ export function LeaderboardTable({ data, platforms = [], categories = [], levels
                   </a>
                 )}
               </TableCell>
-            </TableRow>
+            </MotionTableRow>
             );
           })}
         </TableBody>

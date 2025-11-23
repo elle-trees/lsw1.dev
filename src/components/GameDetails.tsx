@@ -15,6 +15,8 @@ import { useToast } from "@/hooks/use-toast";
 import { getErrorMessage } from "@/lib/errorUtils";
 import { getUnverifiedLeaderboardEntries, getUnclaimedRunsBySRCUsername, getPlayerByUid } from "@/lib/db";
 import { Notifications } from "@/components/Notifications";
+import { motion } from "framer-motion";
+import { fadeSlideDownVariants, iconVariants, transitions } from "@/lib/animations";
 
 interface GameDetailsProps {
   className?: string;

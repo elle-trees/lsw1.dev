@@ -158,9 +158,7 @@ const Index = () => {
             <div className="lg:col-span-3 lg:order-1 min-w-0">
               <AnimatedCard 
                 className="glass shadow-colored-green card-hover border-ctp-surface1/50 w-full group overflow-hidden relative rounded-none"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5 }}
+                delay={0.1}
               >
                 <div className="absolute inset-0 bg-gradient-to-br from-ctp-green/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                 <CardHeader className="pb-2 pt-4 px-4 relative z-10">
@@ -200,16 +198,36 @@ const Index = () => {
             </div>
 
             {/* Center Content - Title, Subtext, Buttons */}
-            <div className="lg:col-span-6 text-center lg:order-2 min-w-0">
-              <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-6 whitespace-nowrap truncate animate-fade-in-scale">
+            <motion.div 
+              className="lg:col-span-6 text-center lg:order-2 min-w-0"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+            >
+              <motion.h1 
+                className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-6 whitespace-nowrap truncate"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+              >
                 <span className="text-[#74c7ec]">
                   lsw1.dev
                 </span>
-              </h1>
-              <p className="text-lg sm:text-xl md:text-2xl lg:text-3xl mb-10 text-ctp-subtext1 max-w-3xl mx-auto animate-fade-in-delay px-2 leading-relaxed">
+              </motion.h1>
+              <motion.p 
+                className="text-lg sm:text-xl md:text-2xl lg:text-3xl mb-10 text-ctp-subtext1 max-w-3xl mx-auto px-2 leading-relaxed"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.4 }}
+              >
                 The official site for the LEGO Star Wars: The Video Game speedrunning community. Track your progress and try to earn a stud on the leaderboards!
-              </p>
-              <div className="flex flex-col sm:flex-row justify-center gap-4 lg:gap-6 animate-fade-in-delay-2 px-2">
+              </motion.p>
+              <motion.div 
+                className="flex flex-col sm:flex-row justify-center gap-4 lg:gap-6 px-2"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.5 }}
+              >
                 <MotionLink 
                   to="/submit"
                   className={cn(
@@ -232,16 +250,14 @@ const Index = () => {
                 >
                   View All Leaderboards
                 </MotionLink>
-              </div>
-            </div>
+              </motion.div>
+            </motion.div>
 
             {/* Right Side - Total Time Card */}
             <div className="lg:col-span-3 lg:order-3 min-w-0">
               <AnimatedCard 
                 className="glass shadow-colored card-hover border-ctp-surface1/50 w-full group overflow-hidden relative rounded-none"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5 }}
+                delay={0.1}
               >
                 <div className="absolute inset-0 bg-gradient-to-br from-ctp-mauve/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                 <CardHeader className="pb-2 pt-4 px-4 relative z-10">

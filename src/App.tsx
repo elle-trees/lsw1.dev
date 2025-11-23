@@ -8,6 +8,7 @@ import { Analytics } from "@vercel/analytics/react";
 import { GameDetails } from "@/components/GameDetails";
 import { AuthProvider } from "@/components/AuthProvider";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { PageTransition } from "@/components/ui/page-transition";
 
 const Index = lazy(() => import("./pages/Index"));
 const Leaderboards = lazy(() => import("./pages/Leaderboards"));
@@ -50,18 +51,18 @@ const App = () => (
               <main className="flex-grow">
                 <Suspense fallback={null}>
                   <Routes>
-                    <Route path="/" element={<Index />} />
-                    <Route path="/leaderboards" element={<Leaderboards />} />
-                    <Route path="/points" element={<PointsLeaderboard />} />
-                    <Route path="/submit" element={<SubmitRun />} />
-                    <Route path="/player/:playerId" element={<PlayerDetails />} />
-                    <Route path="/run/:runId" element={<RunDetails />} />
-                    <Route path="/settings" element={<UserSettings />} />
-                    <Route path="/admin" element={<Admin />} />
-                    <Route path="/live" element={<Live />} />
-                    <Route path="/downloads" element={<Downloads />} />
-                    <Route path="/stats" element={<Stats />} />
-                    <Route path="*" element={<NotFound />} />
+                    <Route path="/" element={<PageTransition><Index /></PageTransition>} />
+                    <Route path="/leaderboards" element={<PageTransition><Leaderboards /></PageTransition>} />
+                    <Route path="/points" element={<PageTransition><PointsLeaderboard /></PageTransition>} />
+                    <Route path="/submit" element={<PageTransition><SubmitRun /></PageTransition>} />
+                    <Route path="/player/:playerId" element={<PageTransition><PlayerDetails /></PageTransition>} />
+                    <Route path="/run/:runId" element={<PageTransition><RunDetails /></PageTransition>} />
+                    <Route path="/settings" element={<PageTransition><UserSettings /></PageTransition>} />
+                    <Route path="/admin" element={<PageTransition><Admin /></PageTransition>} />
+                    <Route path="/live" element={<PageTransition><Live /></PageTransition>} />
+                    <Route path="/downloads" element={<PageTransition><Downloads /></PageTransition>} />
+                    <Route path="/stats" element={<PageTransition><Stats /></PageTransition>} />
+                    <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
                   </Routes>
                 </Suspense>
               </main>
