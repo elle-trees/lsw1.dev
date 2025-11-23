@@ -1,8 +1,8 @@
-import * as React from"react";
-import { OTPInput, OTPInputContext } from"input-otp";
-import { Dot } from"lucide-react";
+import * as React from "react";
+import { OTPInput, OTPInputContext } from "input-otp";
+import { Dot } from "lucide-react";
 
-import { cn } from"@/lib/utils";
+import { cn } from "@/lib/utils";
 
 const InputOTP = React.forwardRef<
  React.ElementRef<typeof OTPInput>,
@@ -18,7 +18,7 @@ const InputOTP = React.forwardRef<
  {...props}
  />
 ));
-InputOTP.displayName ="InputOTP";
+InputOTP.displayName = "InputOTP";
 
 const InputOTPGroup = React.forwardRef<
  React.ElementRef<"div">,
@@ -26,7 +26,7 @@ const InputOTPGroup = React.forwardRef<
 >(({ className, ...props }, ref) => (
  <div ref={ref} className={cn("flex items-center", className)} {...props} />
 ));
-InputOTPGroup.displayName ="InputOTPGroup";
+InputOTPGroup.displayName = "InputOTPGroup";
 
 const InputOTPSlot = React.forwardRef<
  React.ElementRef<"div">,
@@ -39,7 +39,7 @@ const InputOTPSlot = React.forwardRef<
  <div
  ref={ref}
  className={cn(
-"relative flex h-10 w-10 items-center justify-center border-y border-r border-input text-sm transition-all first: first:border-l last:",
+"relative flex h-10 w-10 items-center justify-center border-y border-r border-input text-sm transition-all first: first:border-l last: ",
  isActive &&"z-10 ring-2 ring-ring ring-offset-background",
  className,
  )}
@@ -54,7 +54,7 @@ const InputOTPSlot = React.forwardRef<
  </div>
  );
 });
-InputOTPSlot.displayName ="InputOTPSlot";
+InputOTPSlot.displayName = "InputOTPSlot";
 
 const InputOTPSeparator = React.forwardRef<
  React.ElementRef<"div">,
@@ -64,6 +64,6 @@ const InputOTPSeparator = React.forwardRef<
  <Dot />
  </div>
 ));
-InputOTPSeparator.displayName ="InputOTPSeparator";
+InputOTPSeparator.displayName = "InputOTPSeparator";
 
 export { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator };

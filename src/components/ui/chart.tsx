@@ -1,10 +1,10 @@
-import * as React from"react";
-import * as RechartsPrimitive from"recharts";
+import * as React from "react";
+import * as RechartsPrimitive from "recharts";
 
-import { cn } from"@/lib/utils";
+import { cn } from "@/lib/utils";
 
 // Format: { THEME_NAME: CSS_SELECTOR }
-const THEMES = { light:"", dark:".dark" } as const;
+const THEMES = { light:"", dark: ".dark" } as const;
 
 export type ChartConfig = {
  [k in string]: {
@@ -63,7 +63,7 @@ const ChartContainer = React.forwardRef<
  </ChartContext.Provider>
  );
 });
-ChartContainer.displayName ="Chart";
+ChartContainer.displayName = "Chart";
 
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
  const colorConfig = Object.entries(config).filter(
@@ -252,7 +252,7 @@ const ChartTooltipContent = React.forwardRef<
  );
  },
 );
-ChartTooltipContent.displayName ="ChartTooltip";
+ChartTooltipContent.displayName = "ChartTooltip";
 
 const ChartLegend = RechartsPrimitive.Legend;
 
@@ -312,7 +312,7 @@ const ChartLegendContent = React.forwardRef<
  );
  },
 );
-ChartLegendContent.displayName ="ChartLegend";
+ChartLegendContent.displayName = "ChartLegend";
 
 // Helper to extract item config from a payload.
 function getPayloadConfigFromPayload(

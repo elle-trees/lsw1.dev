@@ -1,11 +1,11 @@
-import * as React from"react";
+import * as React from "react";
 import useEmblaCarousel, {
  type UseEmblaCarouselType,
-} from"embla-carousel-react";
-import { ArrowLeft, ArrowRight } from"lucide-react";
+} from "embla-carousel-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 
-import { cn } from"@/lib/utils";
-import { Button } from"@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 type CarouselApi = UseEmblaCarouselType[1];
 type UseCarouselParameters = Parameters<typeof useEmblaCarousel>;
@@ -146,7 +146,7 @@ const Carousel = React.forwardRef<
  );
  },
 );
-Carousel.displayName ="Carousel";
+Carousel.displayName = "Carousel";
 
 const CarouselContent = React.forwardRef<
  HTMLDivElement,
@@ -168,7 +168,7 @@ const CarouselContent = React.forwardRef<
  </div>
  );
 });
-CarouselContent.displayName ="CarouselContent";
+CarouselContent.displayName = "CarouselContent";
 
 const CarouselItem = React.forwardRef<
  HTMLDivElement,
@@ -190,7 +190,7 @@ const CarouselItem = React.forwardRef<
  />
  );
 });
-CarouselItem.displayName ="CarouselItem";
+CarouselItem.displayName = "CarouselItem";
 
 const CarouselPrevious = React.forwardRef<
  HTMLButtonElement,
@@ -219,7 +219,7 @@ const CarouselPrevious = React.forwardRef<
  </Button>
  );
 });
-CarouselPrevious.displayName ="CarouselPrevious";
+CarouselPrevious.displayName = "CarouselPrevious";
 
 const CarouselNext = React.forwardRef<
  HTMLButtonElement,
@@ -248,7 +248,7 @@ const CarouselNext = React.forwardRef<
  </Button>
  );
 });
-CarouselNext.displayName ="CarouselNext";
+CarouselNext.displayName = "CarouselNext";
 
 export {
  type CarouselApi,
