@@ -77,20 +77,41 @@ const Live = () => {
   }, [channel]);
 
   useEffect(() => {
-    // Check for live runners when official stream is offline
+    // Check for live runners - always check regardless of official stream status
     const checkLiveRunners = async () => {
-      if (isLive === true) {
-        // Official stream is live, don't check runners
-        setLiveRunners([]);
-        return;
-      }
-
       setCheckingRunners(true);
       try {
         // Fetch all players with Twitch usernames
         const players = await getPlayersWithTwitchUsernames();
         
+        console.log('[Live] Fetched players with Twitch usernames:', players.length);
+        
         if (players.length === 0) {
+          console.log('[Live] No players with Twitch usernames found');
+          setLiveRunners([]);
+          setCheckingRunners(false);
+          return;
+        }
+
+        // Filter out players with empty/invalid Twitch usernames
+        const validPlayers = players.filter(
+          (player) => {
+            if (!player || !player.twitchUsername) return false;
+            const trimmed = player.twitchUsername.trim();
+            const lower = trimmed.toLowerCase();
+            return trimmed !== '' && 
+                   lower !== 'null' && 
+                   lower !== 'undefined' &&
+                   trimmed.length > 0;
+          }
+        );
+
+        console.log('[Live] Valid players to check:', validPlayers.length);
+        if (validPlayers.length > 0) {
+          console.log('[Live] Valid players:', validPlayers.map(p => ({ name: p.displayName, twitch: p.twitchUsername })));
+        }
+
+        if (validPlayers.length === 0) {
           setLiveRunners([]);
           setCheckingRunners(false);
           return;
@@ -98,18 +119,46 @@ const Live = () => {
 
         // Check each player's Twitch stream status and get viewer count
         const liveStatusChecks = await Promise.all(
-          players.map(async (player) => {
+          validPlayers.map(async (player) => {
             try {
-              const statusResponse = await fetch(`https://decapi.me/twitch/status/${player.twitchUsername}`);
+              const twitchUsername = player.twitchUsername.trim().toLowerCase();
+              console.log(`[Live] Checking status for: ${twitchUsername}`);
+              
+              // Create timeout controller
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 5000);
+              
+              const statusResponse = await fetch(
+                `https://decapi.me/twitch/status/${twitchUsername}`,
+                { 
+                  signal: controller.signal
+                }
+              );
+              
+              clearTimeout(timeoutId);
+              
               if (statusResponse.ok) {
                 const statusData = await statusResponse.text();
                 const trimmedStatus = statusData.trim().toLowerCase();
+                
+                console.log(`[Live] Status for ${twitchUsername}: ${trimmedStatus}`);
                 
                 if (trimmedStatus === 'live') {
                   // Fetch viewer count
                   let viewerCount: number | undefined;
                   try {
-                    const viewerResponse = await fetch(`https://decapi.me/twitch/viewercount/${player.twitchUsername}`);
+                    // Create timeout controller for viewer count
+                    const viewerController = new AbortController();
+                    const viewerTimeoutId = setTimeout(() => viewerController.abort(), 5000);
+                    
+                    const viewerResponse = await fetch(
+                      `https://decapi.me/twitch/viewercount/${twitchUsername}`,
+                      { 
+                        signal: viewerController.signal
+                      }
+                    );
+                    
+                    clearTimeout(viewerTimeoutId);
                     if (viewerResponse.ok) {
                       const viewerText = await viewerResponse.text();
                       const parsedViewers = parseInt(viewerText.trim(), 10);
@@ -117,45 +166,50 @@ const Live = () => {
                         viewerCount = parsedViewers;
                       }
                     }
-                  } catch (_viewerError) {
+                  } catch (viewerError) {
+                    console.warn(`[Live] Failed to fetch viewer count for ${twitchUsername}:`, viewerError);
                     // Viewer count is optional, continue without it
                   }
                   
                   const liveRunner: LiveRunner = {
                     uid: player.uid,
                     displayName: player.displayName,
-                    twitchUsername: player.twitchUsername,
+                    twitchUsername: twitchUsername,
                     nameColor: player.nameColor,
                     profilePicture: player.profilePicture,
                     viewerCount,
                   };
+                  
+                  console.log(`[Live] Found live runner: ${player.displayName} (${twitchUsername})`);
                   return liveRunner;
                 }
+              } else {
+                console.warn(`[Live] Failed to check status for ${twitchUsername}:`, statusResponse.status);
               }
               return null;
-            } catch (_error) {
+            } catch (error) {
+              console.error(`[Live] Error checking player ${player.twitchUsername}:`, error);
               return null;
             }
           })
         );
 
         const live = liveStatusChecks.filter((runner): runner is LiveRunner => runner !== null);
+        console.log(`[Live] Found ${live.length} live runners`);
         setLiveRunners(live);
-      } catch (_error) {
+      } catch (error) {
+        console.error('[Live] Error checking live runners:', error);
         setLiveRunners([]);
       } finally {
         setCheckingRunners(false);
       }
     };
 
-    // Only check when we know the official stream status
-    if (isLive !== null) {
-      checkLiveRunners();
-      // Check every 60 seconds
-      const interval = setInterval(checkLiveRunners, 60000);
-      return () => clearInterval(interval);
-    }
-  }, [isLive]);
+    // Check immediately and then every 60 seconds
+    checkLiveRunners();
+    const interval = setInterval(checkLiveRunners, 60000);
+    return () => clearInterval(interval);
+  }, []); // Run once on mount, then check periodically
 
   // Show skeleton while initializing or checking stream status
   const isLoading = !isLoaded || isLive === null;
@@ -260,8 +314,8 @@ const Live = () => {
           </div>
         )}
 
-        {/* Live Runners Section - Only show when official stream is offline */}
-        {isLive === false && (
+        {/* Live Runners Section - Always show when there are live runners */}
+        {liveRunners.length > 0 && (
           <FadeIn className="mt-8" delay={0.2}>
             <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
               <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
