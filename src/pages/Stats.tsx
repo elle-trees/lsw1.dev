@@ -838,6 +838,7 @@ const Stats = () => {
                   ))}
                 </div>
               </CardContent>
+            </FadeIn>
             </Card>
           </div>
 
@@ -862,6 +863,7 @@ const Stats = () => {
                 ))}
               </div>
             </CardContent>
+            </FadeIn>
           </Card>
           </>
         )}
@@ -1173,6 +1175,7 @@ const Stats = () => {
                 </div>
               )}
             </CardContent>
+            </FadeIn>
           </Card>
         )}
 
@@ -1235,6 +1238,7 @@ const Stats = () => {
                     ))}
                 </div>
               </CardContent>
+            </FadeIn>
             </Card>
           </div>
         )}
@@ -1306,6 +1310,7 @@ const Stats = () => {
                 </p>
               )}
             </CardContent>
+            </FadeIn>
           </Card>
         )}
 
@@ -1459,6 +1464,7 @@ const Stats = () => {
                 </p>
               )}
             </CardContent>
+            </FadeIn>
           </Card>
         )}
 
