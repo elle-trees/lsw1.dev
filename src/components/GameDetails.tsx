@@ -142,7 +142,7 @@ export function GameDetails({ className }: GameDetailsProps) {
     // Still render header controls even if game details are disabled
     return (
       <header className="bg-[#1e1e2e] shadow-lg sticky top-0 z-40 w-full overflow-x-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 w-full">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
           <div className="flex items-center justify-between h-16 min-w-0 w-full">
           <div className="flex items-center gap-2 sm:gap-4 lg:gap-10 min-w-0 flex-shrink">
             {/* Empty space where game details would be */}
@@ -404,7 +404,7 @@ export function GameDetails({ className }: GameDetailsProps) {
   return (
     <>
       <header className="bg-[#1e1e2e] shadow-lg sticky top-0 z-40 w-full overflow-x-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 w-full">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
           <div className="flex items-start justify-between min-w-0 w-full py-3">
           {/* Game Details Section - Left Side */}
           <div className="flex items-start gap-2 sm:gap-4 lg:gap-5 min-w-0 flex-shrink flex-1">
