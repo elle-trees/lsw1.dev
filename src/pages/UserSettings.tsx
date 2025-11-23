@@ -73,19 +73,7 @@ const UserSettings = () => {
       const fetchPlayerData = async () => {
         setPageLoading(true);
         try {
-          // Fetch categories, platforms, and levels for displaying unclaimed runs
-          const [_fetchedCategories, fetchedPlatforms, _fetchedLevels, regularCategories, ilCategories, cgCategories] = await Promise.all([
-            getCategories(),
-            getPlatforms(),
-            getLevels(),
-            getCategoriesFromFirestore('regular'),
-            getCategoriesFromFirestore('individual-level'),
-            getCategoriesFromFirestore('community-golds'),
-          ]);
-          setCategories([...regularCategories, ...ilCategories, ...cgCategories]);
-          setPlatforms(fetchedPlatforms);
-          setLevels(fetchedLevels);
-
+          // Fetch user data first - this is the critical part
           const player = await getPlayerByUid(currentUser.uid);
           if (player) {
             setDisplayName(player.displayName || currentUser.displayName || "");
@@ -109,7 +97,29 @@ const UserSettings = () => {
             setPronouns("");
             setTwitchUsername("");
           }
-        } catch (_error) {
+
+          // Fetch categories, platforms, and levels for displaying unclaimed runs
+          // This is done separately so failures here don't prevent user data from loading
+          try {
+            const [_fetchedCategories, fetchedPlatforms, fetchedLevels, regularCategories, ilCategories, cgCategories] = await Promise.all([
+              getCategories(),
+              getPlatforms(),
+              getLevels(),
+              getCategoriesFromFirestore('regular'),
+              getCategoriesFromFirestore('individual-level'),
+              getCategoriesFromFirestore('community-golds'),
+            ]);
+            setCategories([...regularCategories, ...ilCategories, ...cgCategories]);
+            setPlatforms(fetchedPlatforms);
+            setLevels(fetchedLevels);
+          } catch (_error) {
+            // Silent fail for categories/platforms/levels - they're not critical for basic functionality
+            // User can still edit their profile even if these fail to load
+            console.warn("Failed to load categories/platforms/levels:", _error);
+          }
+        } catch (error) {
+          // Only show error toast if the actual user data fetch fails
+          console.error("Failed to load user data:", error);
           toast({
             title: "Error",
             description: "Failed to load user data.",
