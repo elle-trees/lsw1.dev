@@ -1,4 +1,4 @@
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useLocation } from "react-router-dom";
 import { pageVariants } from "@/lib/animations";
 
@@ -8,24 +8,22 @@ interface PageTransitionProps {
 
 /**
  * Wrapper component for page transitions
- * Provides smooth enter/exit animations for route changes
+ * Provides smooth enter animations for route changes
+ * Exit animations removed to prevent reload flash
  */
 export function PageTransition({ children }: PageTransitionProps) {
   const location = useLocation();
 
   return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key={location.pathname}
-        initial="initial"
-        animate="enter"
-        exit="exit"
-        variants={pageVariants}
-        className="w-full"
-      >
-        {children}
-      </motion.div>
-    </AnimatePresence>
+    <motion.div
+      key={location.pathname}
+      initial="initial"
+      animate="enter"
+      variants={pageVariants}
+      className="w-full"
+    >
+      {children}
+    </motion.div>
   );
 }
 
