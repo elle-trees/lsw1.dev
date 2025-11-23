@@ -726,7 +726,6 @@ export function GameDetails({ className }: GameDetailsProps) {
             </div>
           </div>
         </div>
-        </div>
       </header>
       <LoginModal open={isLoginOpen} onOpenChange={setIsLoginOpen} />
     </>
