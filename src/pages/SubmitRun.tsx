@@ -344,8 +344,7 @@ const SubmitRun = () => {
         {!currentUser ? (
           <AnimatedCard 
             className="bg-gradient-to-br from-ctp-base to-ctp-mantle border-ctp-surface1 shadow-xl max-w-2xl mx-auto"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+            hover={false}
           >
             <CardContent className="p-12 text-center">
               <div className="mb-6">
@@ -388,12 +387,10 @@ const SubmitRun = () => {
             </AnimatedCard>
           </div>
         ) : (
-          <div className="space-y-6 max-w-6xl mx-auto animate-fade-in">
+          <FadeIn className="space-y-6 max-w-6xl mx-auto">
             {/* Main Form */}
             <AnimatedCard 
               className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
               hover={false}
             >
                 <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)] py-4">
@@ -469,7 +466,7 @@ const SubmitRun = () => {
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="animate-fade-in">
+                  <FadeIn delay={0}>
                     <Label htmlFor="playerName" className="text-sm font-semibold mb-1.5">Player 1 Name *</Label>
                     <Input
                       id="playerName"
@@ -480,8 +477,8 @@ const SubmitRun = () => {
                       required
                       className="bg-gradient-to-br from-[hsl(240,21%,18%)] to-[hsl(240,21%,16%)] border-[hsl(235,13%,30%)] h-10 text-sm hover:border-[#cba6f7] hover:bg-gradient-to-br hover:from-[hsl(240,21%,20%)] hover:to-[hsl(240,21%,18%)] transition-all duration-300"
                     />
-                  </div>
-                  <div className="animate-fade-in" style={{ animationDelay: '50ms' }}>
+                  </FadeIn>
+                  <FadeIn delay={0.05}>
                     <Label htmlFor="time" className="text-sm font-semibold mb-1.5">Completion Time *</Label>
                     <div className="relative">
                       <Timer className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-[hsl(222,15%,60%)]" />
@@ -495,10 +492,10 @@ const SubmitRun = () => {
                         className="bg-gradient-to-br from-[hsl(240,21%,18%)] to-[hsl(240,21%,16%)] border-[hsl(235,13%,30%)] h-10 text-sm pl-10 hover:border-[#cba6f7] hover:bg-gradient-to-br hover:from-[hsl(240,21%,20%)] hover:to-[hsl(240,21%,18%)] transition-all duration-300"
                       />
                     </div>
-                  </div>
+                  </FadeIn>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="animate-fade-in" style={{ animationDelay: '100ms' }}>
+                  <FadeIn delay={0.1}>
                     <Label htmlFor="date" className="text-sm font-semibold mb-1.5">Run Date *</Label>
                     <div className="relative">
                       <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-[hsl(222,15%,60%)]" />
@@ -513,8 +510,8 @@ const SubmitRun = () => {
                         className="bg-gradient-to-br from-[hsl(240,21%,18%)] to-[hsl(240,21%,16%)] border-[hsl(235,13%,30%)] h-10 text-sm pl-10 hover:border-[#cba6f7] hover:bg-gradient-to-br hover:from-[hsl(240,21%,20%)] hover:to-[hsl(240,21%,18%)] transition-all duration-300"
                       />
                     </div>
-                  </div>
-                  <div className="animate-fade-in">
+                  </FadeIn>
+                  <FadeIn delay={0.1}>
                     <Label htmlFor="runType" className="text-sm font-semibold mb-1.5">Run Type *</Label>
                     <Select value={formData.runType} onValueChange={(value) => handleSelectChange("runType", value)}>
                       <SelectTrigger className="bg-[hsl(240,21%,18%)] border-[hsl(235,13%,30%)] h-10 text-sm hover:border-[hsl(var(--mocha-mauve))] transition-colors">
@@ -531,10 +528,10 @@ const SubmitRun = () => {
                         ))}
                       </SelectContent>
                     </Select>
-                  </div>
+                  </FadeIn>
                 </div>
                 {formData.runType === 'co-op' && (
-                  <div className="animate-fade-in">
+                  <FadeIn delay={0.15}>
                     <Label htmlFor="player2Name" className="text-sm font-semibold mb-1.5">Player 2 Name *</Label>
                     <Input
                       id="player2Name"
@@ -545,12 +542,12 @@ const SubmitRun = () => {
                       required
                       className="bg-gradient-to-br from-[hsl(240,21%,18%)] to-[hsl(240,21%,16%)] border-[hsl(235,13%,30%)] h-10 text-sm hover:border-[#cba6f7] hover:bg-gradient-to-br hover:from-[hsl(240,21%,20%)] hover:to-[hsl(240,21%,18%)] transition-all duration-300"
                     />
-                  </div>
+                  </FadeIn>
                 )}
 
                 {/* Category Selection - Buttons for all types */}
                 {availableCategories.length > 0 ? (
-                  <div className="animate-fade-in">
+                  <FadeIn delay={0.15}>
                     <Label className="text-sm font-semibold mb-2 block flex items-center gap-2">
                       {leaderboardType === 'individual-level' ? (
                         <>
@@ -600,7 +597,7 @@ const SubmitRun = () => {
                         Select the full game category this Community Gold applies to
                       </p>
                     )}
-                  </div>
+                  </FadeIn>
                 ) : null}
 
                 {/* Subcategory Selection (only for regular leaderboard type) */}
@@ -616,14 +613,14 @@ const SubmitRun = () => {
                     // or if category data isn't loaded yet (we don't know if it has subcategories)
                     if (!selectedCategoryData || hasSubcategories) {
                       return (
-                        <div className="animate-fade-in">
+                        <FadeIn delay={0.2}>
                           <Skeleton className="h-5 w-32 mb-2" />
                           <div className="flex gap-2 overflow-x-auto">
                             <Skeleton className="h-9 w-28 flex-shrink-0" />
                             <Skeleton className="h-9 w-28 flex-shrink-0" />
                             <Skeleton className="h-9 w-28 flex-shrink-0" />
                           </div>
-                        </div>
+                        </FadeIn>
                       );
                     }
                     // Category has no subcategories, don't show loading
@@ -633,7 +630,7 @@ const SubmitRun = () => {
                   // Show subcategories if available
                   if (availableSubcategories.length > 0) {
                     return (
-                      <div className="animate-fade-in">
+                      <FadeIn delay={0.2}>
                         <Label className="text-sm font-semibold mb-2 block flex items-center gap-2">
                           <Trophy className="h-3.5 w-3.5 text-[#cba6f7]" />
                           Subcategory *
@@ -662,7 +659,7 @@ const SubmitRun = () => {
                         <p className="text-xs text-[hsl(222,15%,60%)] mt-1">
                           Select a subcategory for this run (e.g., Glitchless, No Major Glitches)
                         </p>
-                      </div>
+                      </FadeIn>
                     );
                   }
                   
@@ -672,7 +669,7 @@ const SubmitRun = () => {
 
                 {/* Level Selection for ILs and Community Golds */}
                 {(leaderboardType === 'individual-level' || leaderboardType === 'community-golds') && (
-                  <div className="animate-fade-in">
+                  <FadeIn delay={0.2}>
                     <Label htmlFor="level" className="text-sm font-semibold mb-1.5 flex items-center gap-2">
                       <Sparkles className="h-3.5 w-3.5 text-[#cba6f7]" />
                       Level *
@@ -694,11 +691,11 @@ const SubmitRun = () => {
                         ? "Select the level for this Individual Level run"
                         : "Select the level for this Community Gold run"}
                     </p>
-                  </div>
+                  </FadeIn>
                 )}
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="animate-fade-in">
+                  <FadeIn delay={0.25}>
                     <Label htmlFor="platform" className="text-sm font-semibold mb-1.5">Platform *</Label>
                     <Select value={formData.platform} onValueChange={(value) => handleSelectChange("platform", value)}>
                       <SelectTrigger className="bg-[hsl(240,21%,18%)] border-[hsl(235,13%,30%)] h-10 text-sm hover:border-[hsl(var(--mocha-mauve))] transition-colors">
@@ -715,10 +712,10 @@ const SubmitRun = () => {
                         ))}
                       </SelectContent>
                     </Select>
-                  </div>
+                  </FadeIn>
                 </div>
 
-                <div className="animate-fade-in" style={{ animationDelay: '150ms' }}>
+                <FadeIn delay={0.15}>
                   {(() => {
                     const selectedCategory = availableCategories.find(c => c.id === formData.category);
                     const categoryName = selectedCategory?.name || "";
@@ -751,9 +748,9 @@ const SubmitRun = () => {
                       </>
                     );
                   })()}
-                </div>
+                </FadeIn>
 
-                <div className="animate-fade-in" style={{ animationDelay: '200ms' }}>
+                <FadeIn delay={0.2}>
                   <Label htmlFor="comment" className="text-sm font-semibold mb-1.5">Run Comment</Label>
                   <Textarea
                     id="comment"
@@ -767,9 +764,9 @@ const SubmitRun = () => {
                   <p className="text-xs text-[hsl(222,15%,70%)] mt-1">
                     Share any details about your run, strategies, or highlights
                   </p>
-                </div>
+                </FadeIn>
 
-                <div className="animate-fade-in" style={{ animationDelay: '250ms' }}>
+                <FadeIn delay={0.25}>
                   <Label htmlFor="srcLink" className="text-sm font-semibold mb-1.5">Speedrun.com Link (Optional)</Label>
                   <Input
                     id="srcLink"
@@ -782,9 +779,10 @@ const SubmitRun = () => {
                   <p className="text-xs text-[hsl(222,15%,70%)] mt-1">
                     If this run is also on Speedrun.com, paste the link here to link it to your submission
                   </p>
-                </div>
+                </FadeIn>
 
-                <div className="pt-2 animate-fade-in" style={{ animationDelay: '300ms' }}>
+                <div className="pt-2">
+                  <FadeIn delay={0.3}>
                   <Button 
                     type="submit" 
                     disabled={loading}
@@ -792,13 +790,14 @@ const SubmitRun = () => {
                   >
                     {loading ? "Submitting..." : "Submit Run for Review"}
                   </Button>
+                  </FadeIn>
                 </div>
               </form>
             </CardContent>
           </AnimatedCard>
 
             {/* Guidelines Section */}
-            <div className="mt-8 animate-fade-in">
+            <FadeIn className="mt-8" delay={0.35}>
               <Accordion type="single" collapsible className="w-full">
                 <AccordionItem value="guidelines" className="border-[hsl(235,13%,30%)]">
                   <AccordionTrigger className="text-[#eba0ac] hover:text-[#eba0ac]/80 px-4 py-6">
@@ -873,26 +872,10 @@ const SubmitRun = () => {
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
-            </div>
-          </div>
+            </FadeIn>
+          </FadeIn>
         )}
       </div>
-      
-      <style>{`
-        @keyframes fade-in {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        .animate-fade-in {
-          animation: fade-in 0.4s ease-out forwards;
-        }
-      `}</style>
     </FadeIn>
   );
 };

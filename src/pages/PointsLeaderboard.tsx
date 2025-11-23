@@ -10,6 +10,9 @@ import { getPlayersByPoints, getPlayerRuns, getCategories, getPlatforms } from "
 import { getCategoryName, getPlatformName } from "@/lib/dataValidation";
 import { calculatePoints } from "@/lib/utils";
 import LegoStudIcon from "@/components/icons/LegoStudIcon";
+import { FadeIn } from "@/components/ui/fade-in";
+import { motion } from "framer-motion";
+import { fadeSlideUpVariants, transitions } from "@/lib/animations";
 
 const PointsLeaderboard = () => {
   const [players, setPlayers] = useState<Player[]>([]);
@@ -271,8 +274,12 @@ const PointsLeaderboard = () => {
                       onClick={() => handlePlayerClick(player)}
                       className="block group cursor-pointer"
                     >
-                      <div
-                        className={`relative overflow-hidden transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl animate-fade-in ${
+                      <motion.div
+                        variants={fadeSlideUpVariants}
+                        initial="hidden"
+                        animate="visible"
+                        transition={{ ...transitions.spring, delay: index * 0.05 }}
+                        className={`relative overflow-hidden transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl ${
                           rank === 1
                             ? "bg-gradient-to-br from-[#89b4fa]/20 via-[#89b4fa]/15 to-[#89b4fa]/10 border-2 border-[#89b4fa]/50 hover:border-[#89b4fa] hover:shadow-[#89b4fa]/40"
                             : rank === 2
@@ -605,20 +612,6 @@ const PointsLeaderboard = () => {
       </div>
       
       <style>{`
-        @keyframes fade-in {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        .animate-fade-in {
-          animation: fade-in 0.6s ease-out forwards;
-          opacity: 0;
-        }
         @keyframes spin-slow {
           from {
             transform: rotate(0deg);

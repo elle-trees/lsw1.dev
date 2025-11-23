@@ -16,6 +16,7 @@ import { getCategoryName, getPlatformName, getLevelName } from "@/lib/dataValida
 import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { FadeIn } from "@/components/ui/fade-in";
 
 const PlayerDetails = () => {
   const { playerId } = useParams<{ playerId: string }>();
@@ -254,12 +255,13 @@ const PlayerDetails = () => {
       <div className="min-h-screen text-ctp-text py-8 overflow-x-hidden relative">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 w-full">
           {/* Back Button Skeleton */}
-          <div className="mb-8 mt-4 animate-fade-in">
+          <FadeIn className="mb-8 mt-4">
             <Skeleton className="h-10 w-32 rounded-none" />
-          </div>
+          </FadeIn>
 
           {/* Player Profile Skeleton */}
-          <Card className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] rounded-none mb-8 animate-fade-in">
+          <Card className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] rounded-none mb-8">
+            <FadeIn delay={0.1}>
             <CardHeader>
               <div className="flex items-start gap-3">
                 <Skeleton className="h-12 w-12 rounded-full flex-shrink-0" />
@@ -280,7 +282,7 @@ const PlayerDetails = () => {
           </Card>
 
           {/* Runs Section Skeleton */}
-          <div className="mt-8 animate-fade-in-delay">
+          <FadeIn className="mt-8" delay={0.2}>
             <Skeleton className="h-7 w-24 mb-4" />
 
             {/* Leaderboard Type Buttons Skeleton */}
@@ -431,7 +433,7 @@ const PlayerDetails = () => {
 
         {/* Pending Submissions Panel - Only show for own profile */}
         {isOwnProfile && pendingRuns.length > 0 && (
-          <div className="mt-8 animate-fade-in">
+          <FadeIn className="mt-8" delay={0.15}>
             <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-ctp-text">
               <Clock className="h-5 w-5 text-ctp-yellow" />
               Pending Submissions
@@ -479,10 +481,10 @@ const PlayerDetails = () => {
                 </TableBody>
               </Table>
             </div>
-          </div>
+          </FadeIn>
         )}
 
-        <div className="mt-8 animate-fade-in-delay">
+        <FadeIn className="mt-8" delay={0.2}>
             <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-ctp-text">
               <Trophy className="h-5 w-5 text-ctp-yellow" />
               Runs
@@ -874,7 +876,7 @@ const PlayerDetails = () => {
                   );
                 })()}
             </div>
-        </div>
+        </FadeIn>
       </div>
     </div>
   );

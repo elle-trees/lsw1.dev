@@ -28,6 +28,7 @@ import { getCategoryName, getPlatformName, getLevelName } from "@/lib/dataValida
 import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
 import { Line, LineChart, XAxis, YAxis, CartesianGrid, Brush } from "recharts";
 import { Link } from "react-router-dom";
+import { FadeIn } from "@/components/ui/fade-in";
 
 // Category name overrides for stats page
 const CATEGORY_NAME_OVERRIDES: Record<string, string> = {
@@ -540,16 +541,17 @@ const Stats = () => {
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8 animate-fade-in">
-        <div className="mb-8 animate-slide-up">
+      <FadeIn className="container mx-auto px-4 py-8">
+        <FadeIn className="mb-8" delay={0.1}>
           <Skeleton className="h-10 w-64 mb-2" />
           <Skeleton className="h-5 w-96" />
-        </div>
+        </FadeIn>
 
         {/* Overview Cards Skeletons */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
           {[1, 2, 3, 4].map((i) => (
-            <Card key={i} className="animate-slide-up" style={{ animationDelay: `${i * 0.1}s` }}>
+            <Card key={i}>
+              <FadeIn delay={i * 0.1}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <Skeleton className="h-4 w-32" />
                 <Skeleton className="h-4 w-4 rounded" />
@@ -558,6 +560,7 @@ const Stats = () => {
                 <Skeleton className="h-8 w-24 mb-2" />
                 <Skeleton className="h-4 w-40" />
               </CardContent>
+              </FadeIn>
             </Card>
           ))}
         </div>
@@ -571,7 +574,8 @@ const Stats = () => {
 
         {/* Content Skeleton */}
         <div className="grid gap-4 md:grid-cols-2">
-          <Card className="animate-slide-up-delay">
+          <Card>
+            <FadeIn delay={0.2}>
             <CardHeader>
               <Skeleton className="h-6 w-48 mb-2" />
               <Skeleton className="h-4 w-64" />
@@ -589,9 +593,11 @@ const Stats = () => {
                 ))}
               </div>
             </CardContent>
+            </FadeIn>
           </Card>
 
-          <Card className="animate-slide-up-delay-2">
+          <Card>
+            <FadeIn delay={0.3}>
             <CardHeader>
               <Skeleton className="h-6 w-48 mb-2" />
               <Skeleton className="h-4 w-64" />
@@ -609,9 +615,10 @@ const Stats = () => {
                 ))}
               </div>
             </CardContent>
+            </FadeIn>
           </Card>
         </div>
-      </div>
+      </FadeIn>
     );
   }
 
@@ -635,11 +642,12 @@ const Stats = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 animate-fade-in">
+    <FadeIn className="container mx-auto px-4 py-8">
 
       {/* Overview Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
-        <Card className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
+        <Card>
+          <FadeIn delay={0.1}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Verified Runs</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
@@ -650,9 +658,11 @@ const Stats = () => {
               {stats.totalRuns.toLocaleString()} total runs
             </p>
           </CardContent>
+          </FadeIn>
         </Card>
 
-        <Card className="animate-slide-up" style={{ animationDelay: '0.2s' }}>
+        <Card>
+          <FadeIn delay={0.2}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">World Records</CardTitle>
             <Trophy className="h-4 w-4 text-muted-foreground" />
@@ -663,9 +673,11 @@ const Stats = () => {
               {((stats.worldRecords / stats.verifiedRuns) * 100).toFixed(1)}% of verified runs
             </p>
           </CardContent>
+          </FadeIn>
         </Card>
 
-        <Card className="animate-slide-up" style={{ animationDelay: '0.3s' }}>
+        <Card>
+          <FadeIn delay={0.3}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Solo Runs</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
@@ -676,9 +688,11 @@ const Stats = () => {
               {((stats.runsByRunType.solo / stats.verifiedRuns) * 100).toFixed(1)}% of runs
             </p>
           </CardContent>
+          </FadeIn>
         </Card>
 
-        <Card className="animate-slide-up" style={{ animationDelay: '0.4s' }}>
+        <Card>
+          <FadeIn delay={0.4}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Co-op Runs</CardTitle>
             <Gamepad2 className="h-4 w-4 text-muted-foreground" />
@@ -754,7 +768,8 @@ const Stats = () => {
         {activeTab === 'overview' && (
           <>
           <div className="grid gap-4 md:grid-cols-2">
-            <Card className="animate-slide-up-delay">
+            <Card>
+            <FadeIn delay={0.2}>
               <CardHeader>
                 <CardTitle>Leaderboard Types</CardTitle>
                 <CardDescription>Distribution of runs by leaderboard type</CardDescription>
@@ -801,7 +816,8 @@ const Stats = () => {
               </CardContent>
             </Card>
 
-            <Card className="animate-slide-up-delay-2">
+            <Card>
+            <FadeIn delay={0.3}>
               <CardHeader>
                 <CardTitle>Top Categories</CardTitle>
                 <CardDescription>Categories with the most runs</CardDescription>
@@ -824,7 +840,8 @@ const Stats = () => {
             </Card>
           </div>
 
-          <Card className="animate-slide-up-delay-2">
+          <Card>
+            <FadeIn delay={0.3}>
             <CardHeader>
               <CardTitle>Top Platforms</CardTitle>
               <CardDescription>Platforms with the most runs</CardDescription>
@@ -849,7 +866,8 @@ const Stats = () => {
         )}
 
         {activeTab === 'progression' && (
-          <Card className="animate-slide-up-delay-2">
+          <Card>
+            <FadeIn delay={0.3}>
             <CardHeader>
               <CardTitle>World Record Time Progression</CardTitle>
               <CardDescription>World record times improving over time (lower is better)</CardDescription>
@@ -1188,7 +1206,8 @@ const Stats = () => {
               </CardContent>
             </Card>
 
-            <Card className="animate-slide-up-delay-2">
+            <Card>
+            <FadeIn delay={0.3}>
               <CardHeader>
                 <CardTitle>Runs by Platform</CardTitle>
                 <CardDescription>Complete breakdown</CardDescription>
@@ -1220,7 +1239,8 @@ const Stats = () => {
         )}
 
         {activeTab === 'recent' && (
-          <Card className="animate-slide-up-delay">
+          <Card>
+            <FadeIn delay={0.2}>
             <CardHeader>
               <CardTitle>Recent World Records</CardTitle>
               <CardDescription>Most recently achieved world records</CardDescription>
@@ -1289,7 +1309,8 @@ const Stats = () => {
         )}
 
         {activeTab === 'longest' && (
-          <Card className="animate-slide-up-delay">
+          <Card>
+            <FadeIn delay={0.2}>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <CalendarDays className="h-5 w-5" />
@@ -1441,7 +1462,7 @@ const Stats = () => {
         )}
 
       </div>
-    </div>
+    </FadeIn>
   );
 };
 

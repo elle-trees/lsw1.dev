@@ -13,6 +13,7 @@ import { parseTimeToSeconds, cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { buttonVariants } from "@/components/ui/button";
 import { AnimatedCard } from "@/components/ui/animated-card";
+import { fadeSlideUpVariants, scaleVariants, buttonVariants as motionButtonVariants, transitions } from "@/lib/animations";
 
 const MotionLink = motion(Link);
 
@@ -199,15 +200,17 @@ const Index = () => {
             {/* Center Content - Title, Subtext, Buttons */}
             <motion.div 
               className="lg:col-span-6 text-center lg:order-2 min-w-0"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
+              variants={fadeSlideUpVariants}
+              initial="hidden"
+              animate="visible"
+              transition={{ ...transitions.spring, delay: 0.2 }}
             >
               <motion.h1 
                 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-6 whitespace-nowrap truncate"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.5, delay: 0.3 }}
+                variants={scaleVariants}
+                initial="hidden"
+                animate="visible"
+                transition={{ ...transitions.spring, delay: 0.3 }}
               >
                 <span className="text-[#74c7ec]">
                   lsw1.dev
@@ -215,17 +218,19 @@ const Index = () => {
               </motion.h1>
               <motion.p 
                 className="text-lg sm:text-xl md:text-2xl lg:text-3xl mb-10 text-ctp-subtext1 max-w-3xl mx-auto px-2 leading-relaxed"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.4 }}
+                variants={fadeSlideUpVariants}
+                initial="hidden"
+                animate="visible"
+                transition={{ ...transitions.spring, delay: 0.4 }}
               >
                 The official site for the LEGO Star Wars: The Video Game speedrunning community. Track your progress and try to earn a stud on the leaderboards!
               </motion.p>
               <motion.div 
                 className="flex flex-col sm:flex-row justify-center gap-4 lg:gap-6 px-2"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.5 }}
+                variants={fadeSlideUpVariants}
+                initial="hidden"
+                animate="visible"
+                transition={{ ...transitions.spring, delay: 0.5 }}
               >
                 <MotionLink 
                   to="/submit"
@@ -233,7 +238,10 @@ const Index = () => {
                     buttonVariants({ size: "lg" }),
                     "bg-gradient-to-r from-ctp-mauve via-ctp-pink to-ctp-mauve text-ctp-crust font-bold animate-gradient bg-[length:200%_auto] whitespace-nowrap text-base sm:text-lg lg:text-xl px-6 sm:px-8 lg:px-10 py-6 sm:py-7 lg:py-8 rounded-none border-0 shadow-colored"
                   )}
-                  whileTap={{ scale: 0.95 }}
+                  variants={motionButtonVariants}
+                  initial="rest"
+                  whileHover="hover"
+                  whileTap="tap"
                 >
                   Submit Run
                 </MotionLink>
@@ -243,7 +251,10 @@ const Index = () => {
                     buttonVariants({ size: "lg", variant: "outline" }),
                     "text-ctp-text border-ctp-surface1/50 bg-glass whitespace-nowrap text-base sm:text-lg lg:text-xl px-6 sm:px-8 lg:px-10 py-6 sm:py-7 lg:py-8 rounded-none backdrop-blur-sm"
                   )}
-                  whileTap={{ scale: 0.95 }}
+                  variants={motionButtonVariants}
+                  initial="rest"
+                  whileHover="hover"
+                  whileTap="tap"
                 >
                   View All Leaderboards
                 </MotionLink>
@@ -332,7 +343,10 @@ const Index = () => {
                     buttonVariants({ variant: "outline", size: "sm" }),
                     "text-sm lg:text-base text-ctp-text border-ctp-surface1/50 bg-glass whitespace-nowrap px-4 lg:px-6 py-2 lg:py-3 rounded-none backdrop-blur-sm"
                   )}
-                  whileTap={{ scale: 0.95 }}
+                  variants={motionButtonVariants}
+                  initial="rest"
+                  whileHover="hover"
+                  whileTap="tap"
                 >
                   View Full Leaderboards
                 </MotionLink>

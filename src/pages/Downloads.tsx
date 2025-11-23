@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Download, ExternalLink } from "lucide-react";
 import { getDownloadEntries } from "@/lib/db";
 import { DownloadEntry } from "@/types/database";
+import { FadeIn } from "@/components/ui/fade-in";
+import { AnimatedCard } from "@/components/ui/animated-card";
 
 const Downloads = () => {
   const [downloadEntries, setDownloadEntries] = useState<DownloadEntry[]>([]);
@@ -34,22 +36,19 @@ const Downloads = () => {
         {loading ? (
           <div className="flex justify-center items-center py-16" />
         ) : downloadEntries.length === 0 ? (
-          <Card className="bg-gradient-to-br from-[hsl(240,21%,15%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] animate-fade-in">
+          <AnimatedCard className="bg-gradient-to-br from-[hsl(240,21%,15%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)]">
             <CardContent className="p-12 text-center">
               <Download className="h-16 w-16 text-[#cba6f7]/30 mx-auto mb-4" />
               <p className="text-[hsl(222,15%,60%)] text-lg">No download entries available yet.</p>
             </CardContent>
-          </Card>
+          </AnimatedCard>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {downloadEntries.map((entry, index) => (
-              <Card
+              <AnimatedCard
                 key={entry.id}
-                className="group relative overflow-hidden bg-gradient-to-br from-[hsl(240,21%,15%)] to-[hsl(235,19%,14%)] border-[hsl(235,13%,30%)] hover:border-[#cba6f7]/50 transition-all duration-500 hover:scale-[1.03] hover:shadow-2xl hover:shadow-[#cba6f7]/20 animate-fade-in"
-                style={{ 
-                  animationDelay: `${index * 0.1}s`,
-                  opacity: 0 
-                }}
+                delay={index * 0.1}
+                className="group relative overflow-hidden bg-gradient-to-br from-[hsl(240,21%,15%)] to-[hsl(235,19%,14%)] border-[hsl(235,13%,30%)] hover:border-[#cba6f7]/50 transition-all duration-500 hover:scale-[1.03] hover:shadow-2xl hover:shadow-[#cba6f7]/20"
               >
                 {/* Animated background gradient on hover */}
                 <div className="absolute inset-0 bg-gradient-to-r from-[#cba6f7]/0 via-[#cba6f7]/5 to-[#cba6f7]/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
@@ -90,46 +89,6 @@ const Downloads = () => {
           </div>
         )}
       </div>
-      
-      <style>{`
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        
-        @keyframes bounce-slow {
-          0%, 100% {
-            transform: translateY(0);
-          }
-          50% {
-            transform: translateY(-10px);
-          }
-        }
-        
-        .animate-fade-in {
-          animation: fadeIn 0.8s ease-out forwards;
-        }
-        
-        .animate-fade-in-delay {
-          animation: fadeIn 1s ease-out 0.3s forwards;
-          opacity: 0;
-        }
-        
-        .animate-bounce-slow {
-          animation: bounce-slow 3s ease-in-out infinite;
-        }
-        
-        .animate-gradient {
-          background-size: 200% auto;
-          animation: gradient 3s linear infinite;
-        }
-      `}</style>
     </div>
   );
 };

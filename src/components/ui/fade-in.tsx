@@ -1,6 +1,14 @@
 import { motion, MotionProps } from "framer-motion"
 import { cn } from "@/lib/utils"
-import { fadeSlideUpVariants, transitions } from "@/lib/animations"
+import { 
+  fadeSlideUpVariants, 
+  fadeSlideDownVariants,
+  slideLeftVariants,
+  slideRightVariants,
+  fadeVariants,
+  scaleVariants,
+  transitions 
+} from "@/lib/animations"
 
 interface FadeInProps extends MotionProps {
   children: React.ReactNode
@@ -19,30 +27,15 @@ export function FadeIn({
   const getVariants = () => {
     switch (direction) {
       case "down":
-        return {
-          hidden: { opacity: 0, y: -20 },
-          visible: { opacity: 1, y: 0 },
-        };
+        return fadeSlideDownVariants;
       case "left":
-        return {
-          hidden: { opacity: 0, x: 20 },
-          visible: { opacity: 1, x: 0 },
-        };
+        return slideLeftVariants;
       case "right":
-        return {
-          hidden: { opacity: 0, x: -20 },
-          visible: { opacity: 1, x: 0 },
-        };
+        return slideRightVariants;
       case "fade":
-        return {
-          hidden: { opacity: 0 },
-          visible: { opacity: 1 },
-        };
+        return fadeVariants;
       case "scale":
-        return {
-          hidden: { opacity: 0, scale: 0.9 },
-          visible: { opacity: 1, scale: 1 },
-        };
+        return scaleVariants;
       default:
         return fadeSlideUpVariants;
     }
