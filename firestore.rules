@@ -12,10 +12,21 @@ service cloud.firestore {
     }
     
     // Helper function to check if user is admin
+    // More robust check that handles edge cases and potential get() failures
     function isAdmin() {
-      return isAuthenticated() && 
-             exists(/databases/$(database)/documents/players/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/players/$(request.auth.uid)).data.isAdmin == true;
+      if (!isAuthenticated()) {
+        return false;
+      }
+      let playerDocPath = /databases/$(database)/documents/players/$(request.auth.uid);
+      // Check if document exists first to avoid get() on non-existent document
+      if (!exists(playerDocPath)) {
+        return false;
+      }
+      // Use get() to read the document and check isAdmin field
+      let playerDoc = get(playerDocPath);
+      return playerDoc != null && 
+             playerDoc.data != null &&
+             playerDoc.data.isAdmin == true;
     }
     
     // Players collection
@@ -50,10 +61,17 @@ service cloud.firestore {
       allow read: if resource.data.verified == true || resource.data.importedFromSRC == true;
       // Users can read their own unverified entries (for pending submissions)
       allow read: if resource.data.verified != true && isOwner(resource.data.playerId);
+      // Admins can create imported runs (with empty/null/undefined playerId)
+      // This rule must come before the general admin rule to explicitly handle imported runs
+      allow create: if isAdmin() && 
+                       request.resource.data.importedFromSRC == true &&
+                       (!('playerId' in request.resource.data) || 
+                        request.resource.data.playerId == "" || 
+                        request.resource.data.playerId == null);
       // Authenticated users can create entries (for submissions)
       allow create: if isAuthenticated() && 
                        request.resource.data.playerId == request.auth.uid;
-      // Admins can create entries for any player
+      // Admins can create entries for any player (including imported runs with any playerId)
       allow create: if isAdmin();
       // Admins can read unverified entries
       allow read: if resource.data.verified != true && isAdmin();

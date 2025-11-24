@@ -77,7 +77,15 @@ export const addLeaderboardEntryFirestore = async (entry: Omit<LeaderboardEntry,
     // For now, I'll leave a comment to hook it up later or import it if I move it to a shared module.
     
     return newDocRef.id;
-  } catch (error) {
+  } catch (error: any) {
+    // Provide more detailed error information for debugging permission issues
+    if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
+      const isImported = entry.importedFromSRC === true;
+      const errorMsg = isImported 
+        ? `Permission denied: Admin access required to import runs. Ensure your player document exists in Firestore with isAdmin: true.`
+        : `Permission denied: ${error.message || 'Unable to create entry'}`;
+      throw new Error(errorMsg);
+    }
     throw error;
   }
 };
