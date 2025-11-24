@@ -467,10 +467,75 @@ const PointsLeaderboard = () => {
               </DialogDescription>
             </DialogHeader>
             
-            {loadingRuns || (playerRuns.length > 0 && recalculatedPoints.size === 0) ? (
-              <div className="py-12" />
-            ) : studsBreakdown ? (
-              <div className="space-y-6 mt-4">
+            <FadeIn className="mt-4" delay={0.1}>
+              {loadingRuns || (playerRuns.length > 0 && recalculatedPoints.size === 0) ? (
+                <div className="space-y-6">
+                  {/* Loading skeleton for By Leaderboard Type */}
+                  <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)]">
+                    <CardHeader>
+                      <CardTitle className="text-lg text-[#fab387]">
+                        <Skeleton className="h-6 w-48 rounded-none" />
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <Skeleton className="h-10 w-full rounded-none" />
+                        <Skeleton className="h-10 w-full rounded-none" />
+                        <Skeleton className="h-10 w-full rounded-none" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Loading skeleton for By Category */}
+                  <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)]">
+                    <CardHeader>
+                      <CardTitle className="text-lg text-[#fab387]">
+                        <Skeleton className="h-6 w-32 rounded-none" />
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <Skeleton className="h-10 w-full rounded-none" />
+                        <Skeleton className="h-10 w-full rounded-none" />
+                        <Skeleton className="h-10 w-full rounded-none" />
+                        <Skeleton className="h-10 w-[90%] rounded-none" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Loading skeleton for By Platform */}
+                  <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)]">
+                    <CardHeader>
+                      <CardTitle className="text-lg text-[#fab387]">
+                        <Skeleton className="h-6 w-36 rounded-none" />
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <Skeleton className="h-10 w-full rounded-none" />
+                        <Skeleton className="h-10 w-full rounded-none" />
+                        <Skeleton className="h-10 w-full rounded-none" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Loading skeleton for By Run Type */}
+                  <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)]">
+                    <CardHeader>
+                      <CardTitle className="text-lg text-[#fab387]">
+                        <Skeleton className="h-6 w-40 rounded-none" />
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <Skeleton className="h-10 w-full rounded-none" />
+                        <Skeleton className="h-10 w-full rounded-none" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              ) : studsBreakdown ? (
+                <div className="space-y-6">
                 {/* By Leaderboard Type */}
                 <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)]">
                   <CardHeader>
@@ -611,12 +676,13 @@ const PointsLeaderboard = () => {
                     </Table>
                   </CardContent>
                 </Card>
-              </div>
-            ) : (
-              <div className="text-center py-12 text-ctp-subtext1">
-                No runs found for this player.
-              </div>
-            )}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-ctp-subtext1">
+                  No runs found for this player.
+                </div>
+              )}
+            </FadeIn>
           </DialogContent>
         </Dialog>
       </div>
