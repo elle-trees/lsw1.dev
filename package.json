@@ -93,7 +93,8 @@
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.0.1",
     "vite": "npm:rolldown-vite@latest",
-    "vite-plugin-compression": "^0.5.1"
+    "vite-plugin-compression": "^0.5.1",
+    "vite-plugin-pwa": "^1.1.0"
   },
   "overrides": {
     "vite": "npm:rolldown-vite@latest"

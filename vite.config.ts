@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import path from "path";
 import { visualizer } from "rollup-plugin-visualizer";
 import viteCompression from "vite-plugin-compression";
+import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig(({ mode }) => {
   // Always read from environment variable, fallback to 8080
@@ -28,6 +29,70 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       react(),
+      // PWA plugin - enables Progressive Web App features
+      VitePWA({
+        registerType: "autoUpdate",
+        includeAssets: ["favicon.ico", "robots.txt", "placeholder.svg"],
+        manifest: {
+          name: "lsw1.dev - Lego Star Wars Speedrunning",
+          short_name: "lsw1.dev",
+          description: "Lego Star Wars speedrunning leaderboards and community",
+          theme_color: "#ffffff",
+          background_color: "#ffffff",
+          display: "standalone",
+          icons: [
+            {
+              src: "/favicon.ico",
+              sizes: "64x64 32x32 24x24 16x16",
+              type: "image/x-icon",
+            },
+            {
+              src: "/placeholder.svg",
+              sizes: "192x192",
+              type: "image/svg+xml",
+            },
+            {
+              src: "/placeholder.svg",
+              sizes: "512x512",
+              type: "image/svg+xml",
+            },
+          ],
+        },
+        workbox: {
+          globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+          runtimeCaching: [
+            {
+              urlPattern: /^https:\/\/fonts\.(?:googleapis|gstatic)\.com\/.*/i,
+              handler: "CacheFirst",
+              options: {
+                cacheName: "google-fonts-cache",
+                expiration: {
+                  maxEntries: 10,
+                  maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
+                },
+                cacheableResponse: {
+                  statuses: [0, 200],
+                },
+              },
+            },
+            {
+              urlPattern: /^https:\/\/.*\.firebase(?:app|io)\.com\/.*/i,
+              handler: "NetworkFirst",
+              options: {
+                cacheName: "firebase-cache",
+                expiration: {
+                  maxEntries: 50,
+                  maxAgeSeconds: 60 * 60, // 1 hour
+                },
+                networkTimeoutSeconds: 10,
+              },
+            },
+          ],
+        },
+        devOptions: {
+          enabled: false, // Disable PWA in dev mode for faster development
+        },
+      }),
       // Bundle analyzer - only in production to avoid dev overhead
       isProduction && visualizer({
         filename: "dist/stats.html",
