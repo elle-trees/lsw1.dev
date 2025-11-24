@@ -39,11 +39,12 @@ service cloud.firestore {
       allow read: if resource.data.verified == true || resource.data.importedFromSRC == true;
       // Users can read their own unverified entries (for pending submissions)
       allow read: if resource.data.verified != true && isOwner(resource.data.playerId);
+      // Allow ANY authenticated user to create imported runs - no other checks needed
+      allow create: if isAuthenticated() && request.resource.data.importedFromSRC == true;
       // Authenticated users can create entries (for submissions)
       allow create: if isAuthenticated() && 
                        request.resource.data.playerId == request.auth.uid;
-      // Admins can create any entry (including imported runs)
-      // Assumes users accessing admin page are already verified as admins
+      // Admins can create any entry
       allow create: if isAdmin();
       // Admins can read unverified entries
       allow read: if resource.data.verified != true && isAdmin();
