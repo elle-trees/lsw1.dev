@@ -10,7 +10,10 @@ import {
   where,
   orderBy,
   limit,
-  writeBatch
+  writeBatch,
+  onSnapshot,
+  Unsubscribe,
+  QuerySnapshot
 } from "firebase/firestore";
 import { Notification } from "@/types/notifications";
 
@@ -125,6 +128,83 @@ export const deleteNotificationFirestore = async (notificationId: string): Promi
   } catch (error) {
     console.error("Error deleting notification:", error);
     return false;
+  }
+};
+
+/**
+ * Subscribe to real-time updates for user notifications
+ * @param userId - The user ID to get notifications for
+ * @param callback - Callback function that receives the notifications array
+ * @param limitCount - Maximum number of notifications to return (default: 20)
+ * @returns Unsubscribe function to stop listening
+ */
+export const subscribeToUserNotificationsFirestore = (
+  userId: string,
+  callback: (notifications: Notification[]) => void,
+  limitCount: number = 20
+): Unsubscribe | null => {
+  if (!db) return null;
+  try {
+    const q = query(
+      collection(db, NOTIFICATIONS_COLLECTION),
+      where("userId", "==", userId),
+      orderBy("createdAt", "desc"),
+      limit(limitCount)
+    );
+    
+    return onSnapshot(q, (snapshot: QuerySnapshot) => {
+      const notifications = snapshot.docs.map((doc) => doc.data() as Notification);
+      callback(notifications);
+    }, (error) => {
+      console.error("Error in notifications subscription:", error);
+      callback([]);
+    });
+  } catch (error) {
+    console.error("Error setting up notifications subscription:", error);
+    return null;
+  }
+};
+
+/**
+ * Subscribe to real-time updates for unread user notifications
+ * @param userId - The user ID to get unread notifications for
+ * @param callback - Callback function that receives the notifications array
+ * @returns Unsubscribe function to stop listening
+ */
+export const subscribeToUnreadUserNotificationsFirestore = (
+  userId: string,
+  callback: (notifications: Notification[]) => void
+): Unsubscribe | null => {
+  if (!db) return null;
+  try {
+    const q = query(
+      collection(db, NOTIFICATIONS_COLLECTION),
+      where("userId", "==", userId),
+      where("read", "==", false)
+    );
+    
+    return onSnapshot(q, (snapshot: QuerySnapshot) => {
+      const notifications = snapshot.docs.map((doc) => doc.data() as Notification);
+      // Sort by createdAt descending client-side
+      const sorted = notifications.sort((a, b) => {
+        const aTime = a.createdAt?.toMillis?.() || a.createdAt || 0;
+        const bTime = b.createdAt?.toMillis?.() || b.createdAt || 0;
+        return bTime - aTime;
+      });
+      callback(sorted);
+    }, (error: any) => {
+      // Only log if it's not an index error to avoid spam
+      if (error?.code !== 'failed-precondition' && !error?.message?.includes('index')) {
+        console.error("Error in unread notifications subscription:", error);
+      }
+      callback([]);
+    });
+  } catch (error: any) {
+    // Only log if it's not an index error
+    if (error?.code !== 'failed-precondition' && !error?.message?.includes('index')) {
+      console.error("Error setting up unread notifications subscription:", error);
+    }
+    return null;
   }
 };
 

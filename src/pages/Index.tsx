@@ -4,8 +4,9 @@ import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, Clock, ExternalLink } from "lucide-react";
-import { getRecentRuns, getAllVerifiedRuns } from "@/lib/db";
+import { getAllVerifiedRuns, subscribeToRecentRuns } from "@/lib/db";
 import { LeaderboardEntry } from "@/types/database";
+import type { Unsubscribe } from "firebase/firestore";
 import { RecentRuns } from "@/components/RecentRuns";
 import TwitchEmbed from "@/components/TwitchEmbed";
 import { parseTimeToSeconds, cn } from "@/lib/utils";
@@ -64,43 +65,26 @@ const Index = () => {
   const lastRefreshTimeRef = useRef<number>(Date.now());
   const channel = 'lsw1live';
 
+  // Set up real-time listener for recent runs
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        // Fetch more runs to allow dynamic display based on available space
-        const recentEntries = await getRecentRuns(20);
-        setRecentRunsData(recentEntries);
-        // Cache for instant navigation
-        pageCache.set(CACHE_KEY_RECENT_RUNS, recentEntries, 1000 * 60 * 2); // 2 minutes
-      } catch (_error) {
-        // Silent fail
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    // Only fetch if not in cache
-    if (!cachedRecentRuns) {
-      fetchData();
+    // Use cached data immediately if available
+    if (cachedRecentRuns && cachedRecentRuns.length > 0) {
+      setRecentRunsData(cachedRecentRuns);
+      setLoading(false);
     }
-    
-    // Only refresh when page becomes visible AND enough time has passed
-    const MIN_REFRESH_INTERVAL = 30000; // Minimum 30 seconds between refreshes
-    
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        const timeSinceLastRefresh = Date.now() - lastRefreshTimeRef.current;
-        if (timeSinceLastRefresh >= MIN_REFRESH_INTERVAL) {
-          fetchData();
-          lastRefreshTimeRef.current = Date.now();
-        }
-      }
+
+    // Subscribe to real-time updates
+    const unsubscribe = subscribeToRecentRuns((runs) => {
+      setRecentRunsData(runs);
+      setLoading(false);
+      // Update cache for instant navigation
+      pageCache.set(CACHE_KEY_RECENT_RUNS, runs, 1000 * 60 * 2); // 2 minutes
+    }, 20);
+
+    return () => {
+      if (unsubscribe) unsubscribe();
     };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [cachedRecentRuns]);
+  }, []);
 
   useEffect(() => {
     const fetchStats = async () => {

@@ -11,7 +11,10 @@ import {
   where, 
   orderBy, 
   limit as firestoreLimit,
-  DocumentData
+  DocumentData,
+  onSnapshot,
+  Unsubscribe,
+  QuerySnapshot
 } from "firebase/firestore";
 import { LeaderboardEntry } from "@/types/database";
 import { leaderboardEntryConverter } from "./converters";
@@ -220,4 +223,95 @@ export const deleteAllLeaderboardEntriesFirestore = async (): Promise<boolean> =
         console.error("Error deleting all runs:", error);
         return false;
     }
+};
+
+/**
+ * Subscribe to real-time updates for recent verified runs
+ * @param callback - Callback function that receives the runs array
+ * @param limitCount - Maximum number of runs to return (default: 20)
+ * @returns Unsubscribe function to stop listening
+ */
+export const subscribeToRecentRunsFirestore = (
+  callback: (runs: LeaderboardEntry[]) => void,
+  limitCount: number = 20
+): Unsubscribe | null => {
+  if (!db) return null;
+  try {
+    const q = query(
+      collection(db, "leaderboardEntries").withConverter(leaderboardEntryConverter),
+      where("verified", "==", true),
+      orderBy("date", "desc"),
+      firestoreLimit(limitCount)
+    );
+    
+    return onSnapshot(q, (snapshot: QuerySnapshot) => {
+      const runs = snapshot.docs.map(d => d.data());
+      callback(runs);
+    }, (error) => {
+      console.error("Error in recent runs subscription:", error);
+      callback([]);
+    });
+  } catch (error) {
+    console.error("Error setting up recent runs subscription:", error);
+    return null;
+  }
+};
+
+/**
+ * Subscribe to real-time updates for unverified leaderboard entries
+ * @param callback - Callback function that receives the runs array
+ * @returns Unsubscribe function to stop listening
+ */
+export const subscribeToUnverifiedRunsFirestore = (
+  callback: (runs: LeaderboardEntry[]) => void
+): Unsubscribe | null => {
+  if (!db) return null;
+  try {
+    const q = query(
+      collection(db, "leaderboardEntries").withConverter(leaderboardEntryConverter),
+      where("verified", "==", false),
+      orderBy("date", "desc")
+    );
+    
+    return onSnapshot(q, (snapshot: QuerySnapshot) => {
+      const runs = snapshot.docs.map(d => d.data());
+      callback(runs);
+    }, (error) => {
+      console.error("Error in unverified runs subscription:", error);
+      callback([]);
+    });
+  } catch (error) {
+    console.error("Error setting up unverified runs subscription:", error);
+    return null;
+  }
+};
+
+/**
+ * Subscribe to real-time updates for a specific leaderboard entry
+ * @param runId - The ID of the run to subscribe to
+ * @param callback - Callback function that receives the run or null if not found
+ * @returns Unsubscribe function to stop listening
+ */
+export const subscribeToLeaderboardEntryFirestore = (
+  runId: string,
+  callback: (run: LeaderboardEntry | null) => void
+): Unsubscribe | null => {
+  if (!db) return null;
+  try {
+    const docRef = doc(db, "leaderboardEntries", runId).withConverter(leaderboardEntryConverter);
+    
+    return onSnapshot(docRef, (snapshot) => {
+      if (snapshot.exists()) {
+        callback(snapshot.data());
+      } else {
+        callback(null);
+      }
+    }, (error) => {
+      console.error("Error in run subscription:", error);
+      callback(null);
+    });
+  } catch (error) {
+    console.error("Error setting up run subscription:", error);
+    return null;
+  }
 };

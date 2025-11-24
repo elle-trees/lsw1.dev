@@ -177,64 +177,50 @@ const RunDetails = () => {
     fetchSubcategories();
   }, [editFormData.category, run]);
   
-  // Refresh run data only when page becomes visible (not on every interval)
+  // Set up real-time listener for run data
   useEffect(() => {
     if (!runId) return;
+
+    let unsubscribe: (() => void) | null = null;
+    let isMounted = true;
     
-    const MIN_REFRESH_INTERVAL = 60000; // Minimum 1 minute between refreshes
-    
-    const handleVisibilityChange = async () => {
-      // Only refresh if page is visible and enough time has passed
-      if (document.visibilityState === 'visible') {
-        const timeSinceLastRefresh = Date.now() - lastRefreshTimeRef.current;
-        if (timeSinceLastRefresh < MIN_REFRESH_INTERVAL) {
-          return; // Skip if refreshed recently
-        }
-        
-        try {
-          const runData = await getLeaderboardEntryById(runId);
-          if (runData) {
-            // Only update if something actually changed
-            setRun(prevRun => {
-              if (prevRun && 
-                  prevRun.playerId === runData.playerId && 
-                  prevRun.player2Id === runData.player2Id &&
-                  prevRun.verified === runData.verified) {
-                return prevRun; // No changes, return previous
-              }
-              return runData;
-            });
-            
-            // Re-fetch player data if playerId changed (run was claimed)
-            if (runData.playerId && runData.playerId !== run?.playerId) {
-              const playerData = await getPlayerByUid(runData.playerId);
-              setPlayer(playerData);
+    (async () => {
+      const { subscribeToLeaderboardEntry } = await import("@/lib/db/runs");
+      if (!isMounted) return;
+      unsubscribe = subscribeToLeaderboardEntry(runId, (runData) => {
+        if (!isMounted) return;
+        if (runData) {
+          // Only update if something actually changed
+          setRun(prevRun => {
+            if (prevRun && 
+                prevRun.playerId === runData.playerId && 
+                prevRun.player2Id === runData.player2Id &&
+                prevRun.verified === runData.verified) {
+              return prevRun; // No changes, return previous
             }
-            
-            // Re-fetch player2 data for co-op runs
-            if (runData.player2Id && runData.player2Id !== run?.player2Id && runData.runType === 'co-op') {
-              try {
-                const player2Data = await getPlayerByUid(runData.player2Id);
-                if (player2Data) {
-                  setPlayer2(player2Data);
-                }
-              } catch {
-                // Silent fail
-              }
-            }
-            
-            lastRefreshTimeRef.current = Date.now();
+            return runData;
+          });
+          
+          // Re-fetch player data if playerId changed (run was claimed)
+          if (runData.playerId && runData.playerId !== run?.playerId) {
+            getPlayerByUid(runData.playerId).then(setPlayer).catch(() => {});
           }
-        } catch (error) {
-          // Silent fail - don't spam errors
+          
+          // Re-fetch player2 data for co-op runs
+          if (runData.player2Id && runData.player2Id !== run?.player2Id && runData.runType === 'co-op') {
+            getPlayerByUid(runData.player2Id).then((player2Data) => {
+              if (player2Data) {
+                setPlayer2(player2Data);
+              }
+            }).catch(() => {});
+          }
         }
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
+      });
+    })();
+
     return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      isMounted = false;
+      if (unsubscribe) unsubscribe();
     };
   }, [runId, run?.playerId, run?.player2Id]);
 

@@ -9,7 +9,10 @@ import {
   getUnverifiedLeaderboardEntriesFirestore,
   updateRunVerificationStatusFirestore,
   updateRunObsoleteStatusFirestore,
-  deleteAllLeaderboardEntriesFirestore
+  deleteAllLeaderboardEntriesFirestore,
+  subscribeToRecentRunsFirestore,
+  subscribeToUnverifiedRunsFirestore,
+  subscribeToLeaderboardEntryFirestore
 } from "../data/firestore/runs";
 
 import {
@@ -18,6 +21,7 @@ import {
 } from "../data/firestore/leaderboards";
 
 import { LeaderboardEntry } from "@/types/database";
+import type { Unsubscribe } from "firebase/firestore";
 
 export const getLeaderboardEntries = async (
   categoryId?: string,
@@ -56,4 +60,25 @@ export const runTypes = [
   { id: "solo", name: "Solo" },
   { id: "co-op", name: "Co-op" },
 ];
+
+// Real-time subscriptions
+export const subscribeToRecentRuns = (
+  callback: (runs: LeaderboardEntry[]) => void,
+  limitCount: number = 20
+): Unsubscribe | null => {
+  return subscribeToRecentRunsFirestore(callback, limitCount);
+};
+
+export const subscribeToUnverifiedRuns = (
+  callback: (runs: LeaderboardEntry[]) => void
+): Unsubscribe | null => {
+  return subscribeToUnverifiedRunsFirestore(callback);
+};
+
+export const subscribeToLeaderboardEntry = (
+  runId: string,
+  callback: (run: LeaderboardEntry | null) => void
+): Unsubscribe | null => {
+  return subscribeToLeaderboardEntryFirestore(runId, callback);
+};
 

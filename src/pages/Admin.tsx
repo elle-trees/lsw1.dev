@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -890,19 +890,16 @@ const Admin = () => {
     if (hasFetchedData) return;
     setLoading(true);
     try {
-      const [runsModule, srcImportsModule, downloadsModule, categoriesModule] = await Promise.all([
-        import("@/lib/db/runs"),
+      const [srcImportsModule, downloadsModule, categoriesModule] = await Promise.all([
         import("@/lib/db/src-imports"),
         import("@/lib/db/downloads"),
         import("@/lib/db/categories")
       ]);
-      const [unverifiedData, importedData, downloadData, categoriesData] = await Promise.all([
-        runsModule.getUnverifiedLeaderboardEntries(),
+      const [importedData, downloadData, categoriesData] = await Promise.all([
         srcImportsModule.getImportedSRCRuns(),
         downloadsModule.getDownloadEntries(),
         categoriesModule.getCategoriesFromFirestore('regular')
       ]);
-      setUnverifiedRuns(unverifiedData.filter(run => !run.importedFromSRC));
       setImportedSRCRuns(importedData);
       setDownloadEntries(downloadData);
       setFirestoreCategories(categoriesData);
@@ -918,27 +915,43 @@ const Admin = () => {
     }
   }, [hasFetchedData, toast]);
   
-  // Helper function to refresh all run data
+  // Helper function to refresh imported runs (unverified runs are now real-time)
   const refreshAllRunData = async () => {
     try {
-      const [runsModule, srcImportsModule] = await Promise.all([
-        import("@/lib/db/runs"),
-        import("@/lib/db/src-imports")
-      ]);
-      const [unverifiedData, importedData] = await Promise.all([
-        runsModule.getUnverifiedLeaderboardEntries(),
-        srcImportsModule.getImportedSRCRuns()
-      ]);
-      // Only include manually submitted runs in unverified runs tab
-      // Imported runs stay in their own tab unless they're edited and ready for verification
-      setUnverifiedRuns(unverifiedData.filter(run => !run.importedFromSRC));
+      const srcImportsModule = await import("@/lib/db/src-imports");
+      const importedData = await srcImportsModule.getImportedSRCRuns();
       setImportedSRCRuns(importedData);
     } catch (error) {
       // Error handled silently
     }
   };
 
-  // Fetch data on mount
+  // Set up real-time listener for unverified runs
+  useEffect(() => {
+    if (!currentUser || authLoading) return;
+
+    let unsubscribe: (() => void) | null = null;
+    let isMounted = true;
+    
+    (async () => {
+      const { subscribeToUnverifiedRuns } = await import("@/lib/db/runs");
+      if (!isMounted) return;
+      unsubscribe = subscribeToUnverifiedRuns((runs) => {
+        if (!isMounted) return;
+        // Filter out imported runs that are automatically handled/verified differently
+        const manualUnverified = runs.filter(run => !run.importedFromSRC);
+        setUnverifiedRuns(manualUnverified);
+        setUnverifiedPage(1); // Reset to first page when data changes
+      });
+    })();
+
+    return () => {
+      isMounted = false;
+      if (unsubscribe) unsubscribe();
+    };
+  }, [currentUser, authLoading]);
+
+  // Fetch other data on mount
   useEffect(() => {
     if (!authLoading && currentUser) {
       fetchAllData();

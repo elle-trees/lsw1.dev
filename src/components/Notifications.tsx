@@ -23,16 +23,17 @@ import { Separator } from "@/components/ui/separator";
 
 import { useAuth } from "@/components/AuthProvider";
 import {
-  getUnreadUserNotifications,
   markNotificationAsRead,
   markAllNotificationsAsRead,
-  getUnverifiedLeaderboardEntries,
   deleteNotification,
   getUnclaimedRunsBySRCUsername,
-  getPlayerByUid
+  getPlayerByUid,
+  subscribeToUnreadUserNotifications,
+  subscribeToUnverifiedRuns
 } from "@/lib/db";
 import { Notification } from "@/types/notifications";
 import { LeaderboardEntry } from "@/types/database";
+import type { Unsubscribe } from "firebase/firestore";
 
 export function Notifications() {
   const { currentUser } = useAuth();
@@ -43,26 +44,10 @@ export function Notifications() {
   const [activeTab, setActiveTab] = useState<string>("notifications");
   const [loading, setLoading] = useState(false);
 
-  const fetchData = async () => {
+  // Fetch unclaimed runs count (this still needs polling as it's a complex query)
+  const fetchUnclaimedCount = async () => {
     if (!currentUser) return;
-    setLoading(true);
     try {
-      // Fetch user notifications
-      const notifs = await getUnreadUserNotifications(currentUser.uid);
-      setNotifications(notifs);
-
-      // Fetch admin pending runs
-      if (currentUser.isAdmin) {
-        const runs = await getUnverifiedLeaderboardEntries();
-        // Filter out imported runs that are automatically handled/verified differently usually, 
-        // but here we want to show manual pending runs mostly.
-        // The original Header logic was: !run.importedFromSRC
-        const manualUnverified = runs.filter(run => !run.importedFromSRC);
-        setPendingRuns(manualUnverified);
-      }
-
-      // Fetch unclaimed runs count (for non-admins or everyone?)
-      // Original Header logic: check unclaimed runs if srcUsername exists
       const player = await getPlayerByUid(currentUser.uid);
       if (player?.srcUsername) {
         try {
@@ -74,36 +59,61 @@ export function Notifications() {
       } else {
         setUnclaimedRunsCount(0);
       }
-
     } catch (error) {
-      console.error("Error fetching notifications:", error);
-    } finally {
-      setLoading(false);
+      setUnclaimedRunsCount(0);
     }
   };
 
+  // Set up real-time listeners for notifications and pending runs
   useEffect(() => {
-    if (open) {
-      fetchData();
+    if (!currentUser) {
+      setNotifications([]);
+      setPendingRuns([]);
+      return;
     }
-    
-    // Poll for counts even when closed to update badge
-    const interval = setInterval(() => {
-        if (!open && currentUser) {
-            fetchData(); // This might be too heavy for just a badge. 
-            // Optimally we'd have a lightweight "count" endpoint, but for now reusing fetchData is fine for small scale.
-        }
-    }, 30000);
 
-    return () => clearInterval(interval);
-  }, [open, currentUser, fetchData]);
+    const unsubscribes: (Unsubscribe | null)[] = [];
 
-  // Initial fetch for badge
-  useEffect(() => {
-      if (currentUser) {
-          fetchData();
+    // Subscribe to unread notifications
+    const unsubNotifications = subscribeToUnreadUserNotifications(
+      currentUser.uid,
+      (notifs) => {
+        setNotifications(notifs);
+        setLoading(false);
       }
-  }, [currentUser, fetchData]);
+    );
+    if (unsubNotifications) unsubscribes.push(unsubNotifications);
+
+    // Subscribe to unverified runs (admin only)
+    if (currentUser.isAdmin) {
+      const unsubUnverified = subscribeToUnverifiedRuns((runs) => {
+        // Filter out imported runs that are automatically handled/verified differently
+        const manualUnverified = runs.filter(run => !run.importedFromSRC);
+        setPendingRuns(manualUnverified);
+      });
+      if (unsubUnverified) unsubscribes.push(unsubUnverified);
+    }
+
+    // Initial fetch for unclaimed count
+    fetchUnclaimedCount();
+
+    // Poll for unclaimed count (complex query, still needs polling)
+    const unclaimedInterval = setInterval(fetchUnclaimedCount, 30000);
+
+    return () => {
+      unsubscribes.forEach(unsub => {
+        if (unsub) unsub();
+      });
+      clearInterval(unclaimedInterval);
+    };
+  }, [currentUser]);
+
+  // Fetch unclaimed count when popover opens
+  useEffect(() => {
+    if (open && currentUser) {
+      fetchUnclaimedCount();
+    }
+  }, [open, currentUser]);
 
   const handleMarkAsRead = async (id: string) => {
     await markNotificationAsRead(id);
