@@ -69,13 +69,11 @@ export const addLeaderboardEntryFirestore = async (entry: Omit<LeaderboardEntry,
         runType: normalized.runType || 'solo',
         time: normalized.time || "",
         date: normalized.date || "",
-        // Explicitly ensure importedFromSRC is set for imported runs
-        importedFromSRC: normalized.importedFromSRC || entry.importedFromSRC || false,
     };
 
-    // Debug log for imported runs
-    if (newEntry.importedFromSRC) {
-      console.log('Creating imported run with importedFromSRC:', newEntry.importedFromSRC, 'Entry:', newEntry);
+    // Explicitly set importedFromSRC as boolean true (not just truthy) for Firestore rules
+    if (isImportedRun) {
+      (newEntry as any).importedFromSRC = true;
     }
 
     await setDoc(newDocRef, newEntry);
