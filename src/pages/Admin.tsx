@@ -81,6 +81,10 @@ const Admin = () => {
   const [reorderingDownload, setReorderingDownload] = useState<string | null>(null);
   const [downloadCategories, setDownloadCategories] = useState<{ id: string; name: string }[]>([]);
   const { startUpload, isUploading } = useUploadThing("downloadFile");
+  const { startUpload: startImageUpload, isUploading: isUploadingImage } = useUploadThing("profilePicture");
+  const [editingDownload, setEditingDownload] = useState<DownloadEntry | null>(null);
+  const [editingDownloadForm, setEditingDownloadForm] = useState<{ description: string; imageUrl?: string }>({ description: "" });
+  const [savingDownload, setSavingDownload] = useState(false);
   
   const [firestoreCategories, setFirestoreCategories] = useState<Category[]>([]);
   const [categoryLeaderboardType, setCategoryLeaderboardType] = useState<'regular' | 'individual-level' | 'community-golds'>('regular');
@@ -1842,6 +1846,61 @@ const Admin = () => {
       });
     } finally {
       setAddingDownload(false);
+    }
+  };
+
+  const handleEditDownload = (download: DownloadEntry) => {
+    setEditingDownload(download);
+    setEditingDownloadForm({
+      description: download.description,
+      imageUrl: download.imageUrl || "",
+    });
+  };
+
+  const handleSaveDownload = async () => {
+    if (!editingDownload) return;
+    if (!editingDownloadForm.description.trim()) {
+      toast({
+        title: "Missing Description",
+        description: "Please provide a description.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSavingDownload(true);
+    try {
+      const { updateDownloadEntry } = await import("@/lib/db/downloads");
+      const updates: Partial<DownloadEntry> & { imageUrl?: string | undefined } = {
+        description: editingDownloadForm.description,
+      };
+      // Handle imageUrl: include it if it's set, or explicitly set to undefined to remove it
+      if (editingDownloadForm.imageUrl && editingDownloadForm.imageUrl.trim()) {
+        updates.imageUrl = editingDownloadForm.imageUrl;
+      } else if (editingDownload.imageUrl) {
+        // If there was an image before and now it's empty/removed, set to undefined to delete it
+        updates.imageUrl = undefined;
+      }
+      const success = await updateDownloadEntry(editingDownload.id, updates);
+      if (success) {
+        toast({
+          title: "Download Updated",
+          description: "The download entry has been updated.",
+        });
+        setEditingDownload(null);
+        setEditingDownloadForm({ description: "" });
+        fetchDownloadEntries();
+      } else {
+        throw new Error("Failed to update download entry.");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update download.",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingDownload(false);
     }
   };
 
@@ -7228,14 +7287,24 @@ const Admin = () => {
                         </TableCell>
                         <TableCell className="py-3 px-4 text-[hsl(222,15%,60%)]">{entry.addedBy}</TableCell>
                         <TableCell className="py-3 px-4 text-center">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={() => handleDeleteDownload(entry.id)}
-                            className="text-red-500 hover:bg-red-900/20 transition-all duration-200 hover:scale-110"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center justify-center gap-2">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => handleEditDownload(entry)}
+                              className="text-[#cba6f7] hover:bg-purple-900/20 transition-all duration-200 hover:scale-110"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => handleDeleteDownload(entry.id)}
+                              className="text-red-500 hover:bg-red-900/20 transition-all duration-200 hover:scale-110"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -7247,6 +7316,125 @@ const Admin = () => {
         </Card>
         </TabsContent>
         </Tabs>
+
+        {/* Edit Download Dialog */}
+        <Dialog open={!!editingDownload} onOpenChange={(open) => {
+          if (!open) {
+            if (!savingDownload) {
+              setEditingDownload(null);
+              setEditingDownloadForm({ description: "" });
+            }
+          }
+        }}>
+          <DialogContent className="bg-[hsl(240,21%,16%)] border-[hsl(235,13%,30%)] max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="text-[#f2cdcd]">
+                Edit Download: {editingDownload?.name}
+              </DialogTitle>
+            </DialogHeader>
+            {editingDownload && (
+              <div className="space-y-4 py-4">
+                <div>
+                  <Label htmlFor="edit-downloadDescription">Description</Label>
+                  <Textarea
+                    id="edit-downloadDescription"
+                    value={editingDownloadForm.description}
+                    onChange={(e) => setEditingDownloadForm({ ...editingDownloadForm, description: e.target.value })}
+                    required
+                    className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
+                    rows={4}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-downloadImage">Image</Label>
+                  <div className="space-y-2">
+                    {editingDownloadForm.imageUrl && (
+                      <div className="relative w-full h-48 rounded-lg overflow-hidden border border-[hsl(235,13%,30%)]">
+                        <img 
+                          src={editingDownloadForm.imageUrl} 
+                          alt={editingDownload.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={async () => {
+                          const input = document.createElement('input');
+                          input.type = 'file';
+                          input.accept = 'image/*';
+                          input.onchange = async (e) => {
+                            const file = (e.target as HTMLInputElement).files?.[0];
+                            if (!file) return;
+                            
+                            try {
+                              const uploadedFiles = await startImageUpload([file]);
+                              if (uploadedFiles && uploadedFiles.length > 0) {
+                                const fileUrl = uploadedFiles[0]?.url;
+                                if (fileUrl) {
+                                  setEditingDownloadForm({ ...editingDownloadForm, imageUrl: fileUrl });
+                                  toast({
+                                    title: "Image Uploaded",
+                                    description: "Image uploaded successfully.",
+                                  });
+                                }
+                              }
+                            } catch (error: any) {
+                              toast({
+                                title: "Upload Failed",
+                                description: error.message || "Failed to upload image.",
+                                variant: "destructive",
+                              });
+                            }
+                          };
+                          input.click();
+                        }}
+                        disabled={isUploadingImage}
+                        className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] hover:bg-[hsl(234,14%,29%)]"
+                      >
+                        <Upload className="h-4 w-4 mr-2" />
+                        {isUploadingImage ? "Uploading..." : editingDownloadForm.imageUrl ? "Change Image" : "Upload Image"}
+                      </Button>
+                      {editingDownloadForm.imageUrl && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setEditingDownloadForm({ ...editingDownloadForm, imageUrl: "" })}
+                          className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] hover:bg-[hsl(234,14%,29%)] text-red-500"
+                        >
+                          <X className="h-4 w-4 mr-2" />
+                          Remove Image
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setEditingDownload(null);
+                  setEditingDownloadForm({ description: "" });
+                }}
+                disabled={savingDownload}
+                className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] hover:bg-[hsl(234,14%,29%)]"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSaveDownload}
+                disabled={savingDownload}
+                className="bg-gradient-to-r from-[#cba6f7] to-[#b4a0e2] hover:from-[#b4a0e2] hover:to-[#cba6f7] text-[hsl(240,21%,15%)] font-bold"
+              >
+                {savingDownload ? "Saving..." : "Save Changes"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Edit Imported Run Dialog */}
         <Dialog open={!!editingImportedRun} onOpenChange={(open) => {

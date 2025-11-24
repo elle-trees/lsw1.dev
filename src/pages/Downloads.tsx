@@ -57,6 +57,15 @@ const Downloads = () => {
                 <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/5 to-transparent" />
                 
                 <CardContent className="relative pt-6 pb-6">
+                  {entry.imageUrl && (
+                    <div className="relative w-full h-48 rounded-lg overflow-hidden mb-4 border border-[hsl(235,13%,30%)]">
+                      <img 
+                        src={entry.imageUrl} 
+                        alt={entry.name}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                      />
+                    </div>
+                  )}
                   <CardTitle className="text-xl font-semibold flex items-center gap-3 mb-3 text-[#cba6f7] transition-colors duration-300">
                     <span>
                     {entry.name}

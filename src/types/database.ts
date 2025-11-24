@@ -96,6 +96,7 @@ export interface DownloadEntry { // New interface for download entries
   description: string;
   url?: string; // Optional URL for external links
   fileUrl?: string; // Optional file URL for uploaded files
+  imageUrl?: string; // Optional image URL for download card display
   category: string; // e.g., "Tools", "Guides", "Save Files"
   addedBy: string; // Player ID or Admin ID
   dateAdded: string; // YYYY-MM-DD

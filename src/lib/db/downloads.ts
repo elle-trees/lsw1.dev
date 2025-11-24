@@ -2,6 +2,7 @@
 import {
   getDownloadEntriesFirestore,
   addDownloadEntryFirestore,
+  updateDownloadEntryFirestore,
   deleteDownloadEntryFirestore,
   updateDownloadOrderFirestore,
   moveDownloadUpFirestore,
@@ -14,6 +15,7 @@ import {
 
 export const getDownloadEntries = getDownloadEntriesFirestore;
 export const addDownloadEntry = addDownloadEntryFirestore;
+export const updateDownloadEntry = updateDownloadEntryFirestore;
 export const deleteDownloadEntry = deleteDownloadEntryFirestore;
 export const updateDownloadOrder = updateDownloadOrderFirestore;
 export const moveDownloadUp = moveDownloadUpFirestore;

@@ -7,7 +7,8 @@ import {
   getDocs, 
   query, 
   orderBy,
-  updateDoc
+  updateDoc,
+  deleteField
 } from "firebase/firestore";
 import { DownloadEntry } from "@/types/database";
 import { downloadEntryConverter } from "./converters";
@@ -43,6 +44,22 @@ export const addDownloadEntryFirestore = async (entry: Omit<DownloadEntry, 'id' 
   } catch (error) {
     console.error("Error adding download entry:", error);
     return null;
+  }
+};
+
+export const updateDownloadEntryFirestore = async (id: string, updates: Partial<Omit<DownloadEntry, 'id' | 'dateAdded' | 'order'>> & { imageUrl?: string | undefined }): Promise<boolean> => {
+  if (!db) return false;
+  try {
+    // Handle imageUrl deletion - if it's explicitly undefined, use deleteField
+    const firestoreUpdates: any = { ...updates };
+    if ('imageUrl' in updates && updates.imageUrl === undefined) {
+      firestoreUpdates.imageUrl = deleteField();
+    }
+    await updateDoc(doc(db, "downloads", id).withConverter(downloadEntryConverter), firestoreUpdates);
+    return true;
+  } catch (error) {
+    console.error("Error updating download entry:", error);
+    return false;
   }
 };
 
