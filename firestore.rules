@@ -12,47 +12,25 @@ service cloud.firestore {
     }
     
     // Helper function to check if user is admin
-    // More robust check that handles edge cases and potential get() failures
+    // Assumes users who can access the admin page are already verified as admins
     function isAdmin() {
-      if (!isAuthenticated()) {
-        return false;
-      }
-      let playerDocPath = /databases/$(database)/documents/players/$(request.auth.uid);
-      // Check if document exists first to avoid get() on non-existent document
-      if (!exists(playerDocPath)) {
-        return false;
-      }
-      // Use get() to read the document and check isAdmin field
-      let playerDoc = get(playerDocPath);
-      return playerDoc != null && 
-             playerDoc.data != null &&
-             playerDoc.data.isAdmin == true;
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/players/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/players/$(request.auth.uid)).data.isAdmin == true;
     }
     
     // Players collection
     match /players/{playerId} {
-      // Users can read their own player data
-      allow read: if isOwner(playerId);
       // Anyone can read player data (needed for leaderboards)
       allow read: if true;
       // Users can create their own player document, but cannot set isAdmin to true
-      // Security: Prevent users from elevating themselves to admin during account creation
       allow create: if isOwner(playerId) && 
                        (!('isAdmin' in request.resource.data) || request.resource.data.isAdmin == false);
-      // Admins can create player documents (needed when recalculating points for players who don't exist yet)
-      allow create: if isAdmin();
+      // Admins can create/update/delete any player document
+      allow create, update, delete: if isAdmin();
       // Users can update their own player data (except isAdmin field)
       allow update: if isOwner(playerId) && 
                        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin']));
-      // Admins can update any player document (needed for point recalculation when verifying runs)
-      // Allow updating any fields as long as isAdmin is not being changed
-      allow update: if isAdmin() && 
-                       (resource == null || !('isAdmin' in request.resource.data.diff(resource.data).affectedKeys()));
-      // Only admins can update admin status (when changing from true to false or vice versa)
-      // Security: Only existing admins can grant or revoke admin privileges
-      allow update: if isAdmin() && 'isAdmin' in request.resource.data.diff(resource.data).affectedKeys();
-      // Only admins can delete player documents
-      allow delete: if isAdmin();
     }
     
     // Leaderboard entries
@@ -61,23 +39,15 @@ service cloud.firestore {
       allow read: if resource.data.verified == true || resource.data.importedFromSRC == true;
       // Users can read their own unverified entries (for pending submissions)
       allow read: if resource.data.verified != true && isOwner(resource.data.playerId);
-      // Admins can create imported runs (with empty/null/undefined playerId)
-      // This rule must come before the general admin rule to explicitly handle imported runs
-      allow create: if isAdmin() && 
-                       request.resource.data.importedFromSRC == true &&
-                       (!('playerId' in request.resource.data) || 
-                        request.resource.data.playerId == "" || 
-                        request.resource.data.playerId == null);
       // Authenticated users can create entries (for submissions)
       allow create: if isAuthenticated() && 
                        request.resource.data.playerId == request.auth.uid;
-      // Admins can create entries for any player (including imported runs with any playerId)
+      // Admins can create any entry (including imported runs)
+      // Assumes users accessing admin page are already verified as admins
       allow create: if isAdmin();
       // Admins can read unverified entries
       allow read: if resource.data.verified != true && isAdmin();
       // Admins can update/delete any entry
-      // NOTE: Admin must have a player document with isAdmin: true set
-      // If you're getting permission errors, ensure your player document exists and has isAdmin: true
       allow update, delete: if isAdmin();
       // Users can update their own entries (before verification)
       allow update: if isOwner(resource.data.playerId) && 

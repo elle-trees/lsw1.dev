@@ -1333,6 +1333,16 @@ const Admin = () => {
   const handleImportFromSRC = async () => {
     if (importingRuns) return;
     
+    // Verify admin status before importing
+    if (!currentUser?.isAdmin) {
+      toast({
+        title: "Access Denied",
+        description: "Admin access required to import runs.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setImportingRuns(true);
     setImportProgress({ total: 0, imported: 0, skipped: 0 });
     
@@ -1351,13 +1361,27 @@ const Admin = () => {
       // Show summary with unmatched player warnings
       const unmatchedCount = result.unmatchedPlayers.size;
       if (result.errors.length > 0) {
+        // Log all errors to console for debugging
+        console.error('Import errors:', result.errors);
+        
         // Show first 3 errors in toast, log all errors to console
         const errorPreview = result.errors.slice(0, 3).join('; ');
         const remainingErrors = result.errors.length - 3;
         
+        // Check if errors are permission-related
+        const hasPermissionErrors = result.errors.some(err => 
+          err.toLowerCase().includes('permission') || 
+          err.toLowerCase().includes('missing') ||
+          err.toLowerCase().includes('insufficient')
+        );
+        
+        const errorMessage = hasPermissionErrors
+          ? `Permission errors detected. Ensure: 1) Your player document has isAdmin: true in Firestore, 2) Firestore rules are deployed (run: firebase deploy --only firestore:rules). First error: ${errorPreview}`
+          : `Imported ${result.imported} runs, skipped ${result.skipped} runs. ${result.errors.length} error(s) occurred.${remainingErrors > 0 ? ` (Showing first 3)` : ''} ${errorPreview}`;
+        
         toast({
           title: "Import Complete with Errors",
-          description: `Imported ${result.imported} runs, skipped ${result.skipped} runs. ${result.errors.length} error(s) occurred.${remainingErrors > 0 ? ` (Showing first 3)` : ''} ${errorPreview}`,
+          description: errorMessage,
           variant: "destructive",
         });
       } else if (unmatchedCount > 0) {
