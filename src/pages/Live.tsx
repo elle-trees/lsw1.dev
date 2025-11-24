@@ -121,6 +121,7 @@ const Live = () => {
               clearTimeout(timeoutId);
               
               if (!statusResponse.ok) {
+                // If status check fails, stream is not live
                 return null;
               }
               
@@ -128,34 +129,59 @@ const Live = () => {
               const status = statusText.trim().toLowerCase();
               
               // Only proceed if stream is confirmed live
+              // Strictly check for "live" - reject anything else (offline, empty, error messages, etc.)
               if (status !== 'live') {
                 return null;
               }
               
-              // Stream is live - get viewer count
-              const viewerController = new AbortController();
-              const viewerTimeoutId = setTimeout(() => viewerController.abort(), 5000);
-              
-              const viewerResponse = await fetch(
-                `https://decapi.me/twitch/viewercount/${twitchUsernameLower}`,
-                { 
-                  signal: viewerController.signal,
-                  cache: 'no-cache'
-                }
-              );
-              
-              clearTimeout(viewerTimeoutId);
-              
+              // Stream is confirmed live - get viewer count
               let viewerCount: number | undefined;
-              if (viewerResponse.ok) {
-                const viewerText = await viewerResponse.text().trim();
-                const parsedViewers = parseInt(viewerText, 10);
-                if (!isNaN(parsedViewers) && parsedViewers >= 0) {
-                  viewerCount = parsedViewers;
+              
+              // Try to get viewer count from decapi.me
+              try {
+                const viewerController = new AbortController();
+                const viewerTimeoutId = setTimeout(() => viewerController.abort(), 8000);
+                
+                const viewerResponse = await fetch(
+                  `https://decapi.me/twitch/viewercount/${twitchUsernameLower}`,
+                  { 
+                    signal: viewerController.signal,
+                    cache: 'no-cache',
+                    headers: {
+                      'Cache-Control': 'no-cache'
+                    }
+                  }
+                );
+                
+                clearTimeout(viewerTimeoutId);
+                
+                if (viewerResponse.ok) {
+                  const viewerText = await viewerResponse.text().trim();
+                  // Handle empty responses or error messages
+                  if (viewerText && 
+                      viewerText !== '' && 
+                      !viewerText.toLowerCase().includes('error') && 
+                      !viewerText.toLowerCase().includes('not found') &&
+                      !viewerText.toLowerCase().includes('offline') &&
+                      !viewerText.toLowerCase().includes('null')) {
+                    // Try to extract number from response (handle cases like "1,234" or "1234" or "1.234")
+                    const cleanedText = viewerText.replace(/[^\d]/g, '');
+                    if (cleanedText) {
+                      const parsedViewers = parseInt(cleanedText, 10);
+                      if (!isNaN(parsedViewers) && parsedViewers >= 0) {
+                        viewerCount = parsedViewers;
+                      }
+                    }
+                  }
+                } else {
+                  console.warn(`[Live] Viewercount API returned status ${viewerResponse.status} for ${twitchUsername}`);
                 }
+              } catch (viewerError) {
+                // If viewercount fetch fails, log but continue without count
+                console.warn(`[Live] Failed to fetch viewercount for ${twitchUsername}:`, viewerError);
               }
 
-              // Return live runner with viewer count
+              // Return live runner with viewer count (even if count fetch failed)
               return {
                 uid: player.uid,
                 displayName: player.displayName,
@@ -164,8 +190,9 @@ const Live = () => {
                 profilePicture: player.profilePicture,
                 viewerCount,
               };
-            } catch {
+            } catch (error) {
               // Skip on error
+              console.warn(`[Live] Error checking stream status for ${player.twitchUsername}:`, error);
               return null;
             }
           })
