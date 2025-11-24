@@ -78,11 +78,9 @@ const Live = () => {
   }, [channel]);
 
   useEffect(() => {
-    // Check for live runners - simplified logic
     const checkLiveRunners = async () => {
       setCheckingRunners(true);
       try {
-        // Fetch all players with Twitch usernames
         const players = await getPlayersWithTwitchUsernames();
         
         // Filter out players with empty/invalid Twitch usernames
@@ -96,29 +94,24 @@ const Live = () => {
         });
 
         if (validPlayers.length === 0) {
-          console.log('[Live] No players with valid Twitch usernames found');
           setLiveRunners([]);
           setHasCheckedOnce(true);
           setCheckingRunners(false);
           return;
         }
 
-        console.log(`[Live] Checking ${validPlayers.length} players for live streams:`, validPlayers.map(p => p.twitchUsername));
-
-        // Check each player's stream status - only include if live
         const liveStatusChecks = await Promise.all(
           validPlayers.map(async (player) => {
             try {
               const twitchUsername = player.twitchUsername!.trim();
               const twitchUsernameLower = twitchUsername.toLowerCase();
               
-              // Check if stream is live using multiple methods for reliability
               const controller = new AbortController();
               const timeoutId = setTimeout(() => controller.abort(), 10000);
               
               let isLive = false;
               
-              // Method 1: Try status endpoint (via proxy to avoid CORS)
+              // Check status endpoint
               try {
                 const statusResponse = await fetch(
                   `/api/twitch/status?username=${encodeURIComponent(twitchUsernameLower)}`,
@@ -135,24 +128,16 @@ const Live = () => {
                   const statusTextRaw = await statusResponse.text();
                   const statusText = statusTextRaw.trim();
                   const status = statusText.toLowerCase();
-                  console.log(`[Live] Status check for ${twitchUsername}: "${statusText}" -> "${status}"`);
                   
-                  // Only accept exactly "live" - be strict
                   if (status === 'live') {
                     isLive = true;
-                    console.log(`[Live] Stream confirmed live via status for ${twitchUsername}`);
-                  } else {
-                    console.log(`[Live] Status check returned "${statusText}" (not "live") for ${twitchUsername}`);
                   }
-                } else {
-                  console.warn(`[Live] Status API returned ${statusResponse.status} for ${twitchUsername}`);
                 }
-              } catch (fetchError) {
-                console.warn(`[Live] Failed to fetch status for ${twitchUsername}:`, fetchError);
+              } catch {
+                // Silently fail and try uptime check
               }
               
-              // Method 2: If status didn't confirm live, try uptime endpoint as fallback
-              // Uptime returns "offline" when not live, or a time string when live
+              // If status didn't confirm live, try uptime endpoint as fallback
               if (!isLive) {
                 try {
                   const uptimeResponse = await fetch(
@@ -170,33 +155,23 @@ const Live = () => {
                     const uptimeTextRaw = await uptimeResponse.text();
                     const uptimeText = uptimeTextRaw.trim();
                     const uptime = uptimeText.toLowerCase();
-                    console.log(`[Live] Uptime check for ${twitchUsername}: "${uptimeText}"`);
                     
-                    // Reject if response contains "offline" anywhere (case-insensitive)
-                    // This catches: "offline", "is offline", "username is offline", etc.
-                    if (uptime.includes('offline')) {
-                      // Explicitly offline, don't mark as live
-                      console.log(`[Live] Uptime confirms offline for ${twitchUsername}: "${uptimeText}"`);
-                    } else if (uptime === '' || uptime.includes('error') || uptime.includes('not found')) {
-                      // Empty or error response, don't mark as live
-                      console.log(`[Live] Uptime response is empty/error for ${twitchUsername}: "${uptimeText}"`);
-                    } else {
-                      // Check if it looks like a valid time string (contains numbers and time units)
-                      // Must have digits AND time indicators (h, m, s, or :)
+                    // Reject if response contains "offline" anywhere
+                    if (!uptime.includes('offline') && 
+                        uptime !== '' && 
+                        !uptime.includes('error') && 
+                        !uptime.includes('not found')) {
+                      // Check if it looks like a valid time string
                       const hasDigits = /\d/.test(uptime);
                       const hasTimeUnits = uptime.includes('h') || uptime.includes('m') || uptime.includes('s') || uptime.includes(':');
                       
                       if (hasDigits && hasTimeUnits) {
                         isLive = true;
-                        console.log(`[Live] Stream confirmed live via uptime for ${twitchUsername}`);
-                      } else {
-                        // Doesn't look like a valid time string, probably offline
-                        console.log(`[Live] Uptime response doesn't look valid for ${twitchUsername}: "${uptimeText}"`);
                       }
                     }
                   }
-                } catch (uptimeError) {
-                  console.warn(`[Live] Failed to fetch uptime for ${twitchUsername}:`, uptimeError);
+                } catch {
+                  // Silently fail
                 }
               }
               
@@ -206,12 +181,8 @@ const Live = () => {
                 return null;
               }
               
-              console.log(`[Live] Stream confirmed live for ${twitchUsername}`);
-              
-              // Stream is confirmed live - get viewer count
               let viewerCount: number | undefined;
               
-              // Try to get viewer count (via proxy to avoid CORS)
               try {
                 const viewerController = new AbortController();
                 const viewerTimeoutId = setTimeout(() => viewerController.abort(), 8000);
@@ -232,14 +203,13 @@ const Live = () => {
                 if (viewerResponse.ok) {
                   const viewerTextRaw = await viewerResponse.text();
                   const viewerText = viewerTextRaw.trim();
-                  // Handle empty responses or error messages
+                  
                   if (viewerText && 
                       viewerText !== '' && 
                       !viewerText.toLowerCase().includes('error') && 
                       !viewerText.toLowerCase().includes('not found') &&
                       !viewerText.toLowerCase().includes('offline') &&
                       !viewerText.toLowerCase().includes('null')) {
-                    // Try to extract number from response (handle cases like "1,234" or "1234" or "1.234")
                     const cleanedText = viewerText.replace(/[^\d]/g, '');
                     if (cleanedText) {
                       const parsedViewers = parseInt(cleanedText, 10);
@@ -248,15 +218,11 @@ const Live = () => {
                       }
                     }
                   }
-                } else {
-                  console.warn(`[Live] Viewercount API returned status ${viewerResponse.status} for ${twitchUsername}`);
                 }
-              } catch (viewerError) {
-                // If viewercount fetch fails, log but continue without count
-                console.warn(`[Live] Failed to fetch viewercount for ${twitchUsername}:`, viewerError);
+              } catch {
+                // Continue without count if fetch fails
               }
 
-              // Return live runner with viewer count (even if count fetch failed)
               return {
                 uid: player.uid,
                 displayName: player.displayName,
@@ -265,20 +231,16 @@ const Live = () => {
                 profilePicture: player.profilePicture,
                 viewerCount,
               };
-            } catch (error) {
-              // Skip on error
-              console.warn(`[Live] Error checking stream status for ${player.twitchUsername}:`, error);
+            } catch {
               return null;
             }
           })
         );
 
-        const live = liveStatusChecks.filter((runner): runner is LiveRunner => runner !== null);
-        console.log(`[Live] Found ${live.length} live streams:`, live.map(r => r.twitchUsername));
+        const live = liveStatusChecks.filter((runner) => runner !== null) as LiveRunner[];
         setLiveRunners(live);
         setHasCheckedOnce(true);
-      } catch (error) {
-        console.error('[Live] Error checking live runners:', error);
+      } catch {
         setLiveRunners([]);
         setHasCheckedOnce(true);
       } finally {
@@ -286,57 +248,22 @@ const Live = () => {
       }
     };
 
-    // Check immediately and then every 60 seconds
     checkLiveRunners();
     const interval = setInterval(checkLiveRunners, 60000);
     return () => clearInterval(interval);
   }, []);
 
-  // Show skeleton while initializing or checking stream status
   const isLoading = !isLoaded || isLive === null;
 
   return (
     <div className="min-h-screen bg-[#1e1e2e] text-ctp-text py-8 overflow-x-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 w-full">
-        {/* Stream and Chat Container */}
-        {isLoading ? (
-          <FadeIn className="grid grid-cols-1 lg:grid-cols-[1fr_280px] xl:grid-cols-[1fr_320px] gap-6 items-stretch">
-            {/* Stream Player Skeleton */}
-            <div className="w-full">
-              <AnimatedCard className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-2xl" hover={false}>
-                <div className="relative" style={{ paddingBottom: '56.25%' /* 16:9 Aspect Ratio */ }}>
-                  <Skeleton className="absolute top-0 left-0 w-full h-full rounded-none" />
-                </div>
-              </AnimatedCard>
-              
-              {/* Title below player skeleton */}
-              <FadeIn delay={0.1} className="text-center mt-4">
-                <Skeleton className="h-10 w-32 mx-auto rounded-none" />
-                <Skeleton className="h-4 w-64 mx-auto mt-3 rounded-none" />
-              </FadeIn>
-            </div>
-
-            {/* Chat Skeleton */}
-            <div className="w-full hidden lg:block" style={{ height: '100%' }}>
-              <AnimatedCard className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-2xl h-full" hover={false}>
-                <Skeleton className="w-full h-full rounded-none" />
-              </AnimatedCard>
-            </div>
-
-            {/* Mobile Chat Indicator Skeleton */}
-            <div className="lg:hidden w-full">
-              <AnimatedCard className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl" hover={false}>
-                <CardContent className="p-6">
-                  <Skeleton className="h-4 w-full rounded-none" />
-                </CardContent>
-              </AnimatedCard>
-            </div>
-          </FadeIn>
-        ) : (
+        {/* Stream and Chat Container - Only show when stream is live */}
+        {isLive && !isLoading && (
           <div className={`grid grid-cols-1 lg:grid-cols-[1fr_280px] xl:grid-cols-[1fr_320px] gap-6 items-stretch transition-all duration-1000 delay-500 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
             {/* Stream Player */}
             <div className="w-full">
-              <div className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border border-[hsl(235,13%,30%)] rounded-none overflow-hidden shadow-2xl relative" style={{ paddingBottom: '56.25%' /* 16:9 Aspect Ratio */ }}>
+              <div className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border border-[hsl(235,13%,30%)] rounded-none overflow-hidden shadow-2xl relative" style={{ paddingBottom: '56.25%' }}>
                 {parentDomain && (
                   <iframe
                     src={`https://player.twitch.tv/?channel=${channel}&parent=${parentDomain}&autoplay=false&muted=false`}
@@ -352,17 +279,11 @@ const Live = () => {
               {/* Title below player */}
               <div className={`text-center mt-4 transition-all duration-1000 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
                 <Badge 
-                  variant={isLive ? "default" : "secondary"}
-                  className={`text-base font-medium px-4 py-2 transition-all duration-300 ${
-                    isLive === null 
-                      ? 'bg-[hsl(235,13%,25%)] text-[hsl(222,15%,70%)] border-[hsl(235,13%,30%)]' 
-                      : isLive 
-                      ? 'bg-gradient-to-r from-[#89b4fa] to-[#74c7ec] text-white border-0 hover:from-[#74c7ec] hover:to-[#89b4fa] shadow-lg shadow-[#89b4fa]/30 animate-pulse' 
-                      : 'bg-[hsl(235,13%,25%)] text-[hsl(222,15%,60%)] border-[hsl(235,13%,30%)]'
-                  }`}
+                  variant="default"
+                  className="text-base font-medium px-4 py-2 bg-gradient-to-r from-[#89b4fa] to-[#74c7ec] text-white border-0 hover:from-[#74c7ec] hover:to-[#89b4fa] shadow-lg shadow-[#89b4fa]/30 animate-pulse"
                 >
-                  <Radio className={`h-4 w-4 mr-2 ${isLive ? 'animate-pulse' : ''}`} />
-                  {isLive === null ? 'Checking...' : isLive ? 'Live' : 'Offline'}
+                  <Radio className="h-4 w-4 mr-2 animate-pulse" />
+                  Live
                 </Badge>
               </div>
             </div>
@@ -395,8 +316,8 @@ const Live = () => {
           </div>
         )}
 
-        {/* Live Runners Section - Always show */}
-        <FadeIn className="mt-8" delay={0.2}>
+        {/* Community Streams Section */}
+        <FadeIn className={isLive && !isLoading ? "mt-8" : "mt-0"} delay={0.2}>
           <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
             <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
               <div className="flex items-center gap-2 text-xl text-[#f38ba8]">
