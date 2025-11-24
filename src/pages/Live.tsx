@@ -132,12 +132,17 @@ const Live = () => {
                 );
                 
                 if (statusResponse.ok) {
-                  const statusText = await statusResponse.text();
-                  const status = statusText.trim().toLowerCase();
+                  const statusTextRaw = await statusResponse.text();
+                  const statusText = statusTextRaw.trim();
+                  const status = statusText.toLowerCase();
                   console.log(`[Live] Status check for ${twitchUsername}: "${statusText}" -> "${status}"`);
                   
+                  // Only accept exactly "live" - be strict
                   if (status === 'live') {
                     isLive = true;
+                    console.log(`[Live] Stream confirmed live via status for ${twitchUsername}`);
+                  } else {
+                    console.log(`[Live] Status check returned "${statusText}" (not "live") for ${twitchUsername}`);
                   }
                 } else {
                   console.warn(`[Live] Status API returned ${statusResponse.status} for ${twitchUsername}`);
@@ -162,16 +167,28 @@ const Live = () => {
                   );
                   
                   if (uptimeResponse.ok) {
-                    const uptimeText = await uptimeResponse.text();
-                    const uptime = uptimeText.trim().toLowerCase();
+                    const uptimeTextRaw = await uptimeResponse.text();
+                    const uptimeText = uptimeTextRaw.trim();
+                    const uptime = uptimeText.toLowerCase();
                     console.log(`[Live] Uptime check for ${twitchUsername}: "${uptimeText}"`);
                     
-                    // If uptime is not "offline" and contains time info, stream is likely live
-                    if (uptime !== 'offline' && uptime !== '' && !uptime.includes('error') && !uptime.includes('not found')) {
-                      // Check if it looks like a time string (contains numbers and time units)
-                      if (/\d/.test(uptime) && (uptime.includes('h') || uptime.includes('m') || uptime.includes('s') || uptime.includes(':'))) {
+                    // Only mark as live if uptime is explicitly NOT "offline" and contains valid time info
+                    // Be strict: reject if it says "offline" or is empty/error
+                    if (uptime === 'offline' || uptime === '' || uptime.includes('error') || uptime.includes('not found')) {
+                      // Explicitly offline, don't mark as live
+                      console.log(`[Live] Uptime confirms offline for ${twitchUsername}`);
+                    } else {
+                      // Check if it looks like a valid time string (contains numbers and time units)
+                      // Must have digits AND time indicators (h, m, s, or :)
+                      const hasDigits = /\d/.test(uptime);
+                      const hasTimeUnits = uptime.includes('h') || uptime.includes('m') || uptime.includes('s') || uptime.includes(':');
+                      
+                      if (hasDigits && hasTimeUnits) {
                         isLive = true;
                         console.log(`[Live] Stream confirmed live via uptime for ${twitchUsername}`);
+                      } else {
+                        // Doesn't look like a valid time string, probably offline
+                        console.log(`[Live] Uptime response doesn't look valid for ${twitchUsername}: "${uptimeText}"`);
                       }
                     }
                   }
@@ -210,7 +227,8 @@ const Live = () => {
                 clearTimeout(viewerTimeoutId);
                 
                 if (viewerResponse.ok) {
-                  const viewerText = await viewerResponse.text().trim();
+                  const viewerTextRaw = await viewerResponse.text();
+                  const viewerText = viewerTextRaw.trim();
                   // Handle empty responses or error messages
                   if (viewerText && 
                       viewerText !== '' && 
