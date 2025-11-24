@@ -55,6 +55,7 @@ export const addLeaderboardEntryFirestore = async (entry: Omit<LeaderboardEntry,
     const newDocRef = doc(collection(db, "leaderboardEntries")).withConverter(leaderboardEntryConverter);
     const finalLeaderboardType = normalized.leaderboardType || 'regular';
     
+    // Build entry with explicit importedFromSRC field set BEFORE spreading normalized
     const newEntry: LeaderboardEntry = {
         id: newDocRef.id,
         ...normalized,
@@ -69,12 +70,11 @@ export const addLeaderboardEntryFirestore = async (entry: Omit<LeaderboardEntry,
         runType: normalized.runType || 'solo',
         time: normalized.time || "",
         date: normalized.date || "",
+        // CRITICAL: Explicitly set importedFromSRC as boolean true for Firestore rules
+        importedFromSRC: isImportedRun ? true : (normalized.importedFromSRC || false),
     };
 
-    // Explicitly set importedFromSRC as boolean true (not just truthy) for Firestore rules
-    if (isImportedRun) {
-      (newEntry as any).importedFromSRC = true;
-    }
+    console.log('Creating entry with importedFromSRC:', newEntry.importedFromSRC, 'Type:', typeof newEntry.importedFromSRC);
 
     await setDoc(newDocRef, newEntry);
     
