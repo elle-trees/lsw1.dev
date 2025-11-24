@@ -98,5 +98,10 @@
   },
   "overrides": {
     "vite": "npm:rolldown-vite@latest"
-  }
+  },
+  "sideEffects": [
+    "**/*.css",
+    "**/globals.css",
+    "**/main.tsx"
+  ]
 }

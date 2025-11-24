@@ -1,5 +1,5 @@
 import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
+import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { visualizer } from "rollup-plugin-visualizer";
 import viteCompression from "vite-plugin-compression";
@@ -15,6 +15,22 @@ export default defineConfig(({ mode }) => {
     // Enable Rolldown's native plugins for better performance
     experimental: {
       enableNativePlugin: 'v1',
+    },
+    // Optimize dependency pre-bundling
+    optimizeDeps: {
+      // Include dependencies that should be pre-bundled
+      include: [
+        'react',
+        'react-dom',
+        'react-router-dom',
+        '@tanstack/react-query',
+        'firebase/app',
+        'firebase/auth',
+        'firebase/firestore',
+        'lucide-react',
+      ],
+      // Exclude dependencies from pre-bundling (let them be handled by the bundler)
+      exclude: ['recharts'], // Large library, better to code-split
     },
     server: {
       host: host,
@@ -59,7 +75,25 @@ export default defineConfig(({ mode }) => {
           ],
         },
         workbox: {
-          globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+          // Optimize glob patterns - exclude dev files, source maps, and stats
+          globPatterns: [
+            "**/*.{js,css,html,ico,png,svg,woff2}",
+            "!**/*.map",
+            "!**/stats.html",
+            "!**/stats.html.gz",
+            "!**/stats.html.br",
+          ],
+          // Exclude source maps and dev files from cache
+          globIgnores: [
+            "**/*.map",
+            "**/stats.html*",
+            "**/node_modules/**/*",
+          ],
+          // Optimize build: use injection point strategy for smaller service worker
+          injectionPoint: undefined,
+          // Skip waiting and claim clients immediately for faster updates
+          skipWaiting: true,
+          clientsClaim: true,
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/fonts\.(?:googleapis|gstatic)\.com\/.*/i,
@@ -125,8 +159,22 @@ export default defineConfig(({ mode }) => {
       // Rolldown has built-in minification, no need to specify
       sourcemap: false, // Disable sourcemaps in production for faster builds (enable if needed for debugging)
       cssCodeSplit: true, // Split CSS into separate files for better caching
+      // Reduce chunk size warnings threshold
+      chunkSizeWarningLimit: 600,
+      // Minify CSS
+      cssMinify: true,
+      // Optimize chunking strategy
       rollupOptions: {
         output: {
+          // Optimize chunk file names for better caching
+          chunkFileNames: 'assets/js/[name]-[hash].js',
+          entryFileNames: 'assets/js/[name]-[hash].js',
+          assetFileNames: (assetInfo) => {
+            if (assetInfo.name?.endsWith('.css')) {
+              return 'assets/css/[name]-[hash][extname]';
+            }
+            return 'assets/[name]-[hash][extname]';
+          },
           manualChunks: (id) => {
             // Separate vendor chunks for better caching
             if (id.includes('node_modules')) {
@@ -158,6 +206,10 @@ export default defineConfig(({ mode }) => {
               if (id.includes('framer-motion')) {
                 return 'vendor-animations';
               }
+              // Uploadthing - file upload library
+              if (id.includes('uploadthing') || id.includes('@uploadthing')) {
+                return 'vendor-upload';
+              }
               // Other large dependencies
               if (id.includes('lucide-react') || id.includes('date-fns')) {
                 return 'vendor-utils';
@@ -170,8 +222,8 @@ export default defineConfig(({ mode }) => {
       },
       // Target modern browsers for smaller bundles
       target: "esnext",
-      // Increase chunk size warning limit since we're splitting better
-      chunkSizeWarningLimit: 600,
+      // Reduce build output verbosity for faster builds
+      reportCompressedSize: false, // Disable compressed size reporting to speed up build
     },
   };
 });

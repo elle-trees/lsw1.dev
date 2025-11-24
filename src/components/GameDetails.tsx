@@ -17,6 +17,7 @@ import { getUnverifiedLeaderboardEntries, getUnclaimedRunsBySRCUsername, getPlay
 import { Notifications } from "@/components/Notifications";
 import { motion } from "framer-motion";
 import { fadeSlideDownVariants, iconVariants, transitions } from "@/lib/animations";
+import { cn } from "@/lib/utils";
 
 interface GameDetailsProps {
   className?: string;
@@ -142,41 +143,138 @@ export function GameDetails({ className }: GameDetailsProps) {
     // Still render header controls even if game details are disabled
     return (
       <header className="bg-[#1e1e2e] shadow-lg sticky top-0 z-40 w-full overflow-x-hidden">
-        <div className="px-4 sm:px-6 lg:px-8">
+        <div className="px-3 sm:px-4 md:px-6 lg:px-8">
           <div className="max-w-[1920px] mx-auto w-full">
-            <div className="flex items-center justify-between h-16 min-w-0 w-full">
+            <div className="flex items-center justify-between h-14 sm:h-16 min-w-0 w-full">
           <div className="flex items-center gap-2 sm:gap-4 lg:gap-10 min-w-0 flex-shrink">
             {/* Empty space where game details would be */}
           </div>
           
           {/* Mobile Menu Button - Shown on all screens except xl and above */}
-          <div className="flex items-center gap-2 xl:gap-3 flex-shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 xl:gap-3 flex-shrink-0">
             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
               <SheetTrigger asChild>
                 <Button 
                   variant="ghost" 
                   size="icon"
-                  className="xl:hidden text-[hsl(220,17%,92%)] hover:bg-[#89b4fa]/20 hover:text-[#89b4fa] z-[100] flex-shrink-0"
+                  className="xl:hidden text-[hsl(220,17%,92%)] hover:bg-[#89b4fa]/20 hover:text-[#89b4fa] z-[100] flex-shrink-0 h-9 w-9 sm:h-10 sm:w-10"
                   aria-label="Open navigation menu"
                 >
-                  <Menu className="h-6 w-6" />
+                  <Menu className="h-5 w-5 sm:h-6 sm:w-6" />
                   <span className="sr-only">Open menu</span>
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-[280px] bg-[#1e1e2e] border-ctp-surface1 z-[100]">
-                <div className="flex flex-col gap-6 mt-8">
-                  <div className="flex items-center space-x-2 mb-4">
+              <SheetContent side="left" className="w-[280px] sm:w-[320px] bg-[#1e1e2e] border-ctp-surface1 z-[100] overflow-y-auto">
+                <div className="flex flex-col gap-4 sm:gap-6 mt-4 sm:mt-8 pb-4">
+                  <div className="flex items-center space-x-2 mb-2 sm:mb-4 px-2">
                     <LegoStudIcon size={28} color="#60a5fa" />
                     <span className="text-lg font-bold text-[#74c7ec]">lsw1.dev</span>
                   </div>
-                  <div className="pt-4 border-t border-ctp-surface1">
+                  
+                  {/* Navigation Links Section - Show basic routes even when config is loading */}
+                  <div className="px-2">
+                    <div className="text-xs font-semibold text-ctp-subtext1 uppercase tracking-wider mb-2 px-2">
+                      Navigation
+                    </div>
+                    <nav className="flex flex-col gap-1">
+                      <Link
+                        to="/"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className={cn(
+                          "flex items-center gap-3 px-3 py-3 sm:py-2.5 rounded-md transition-all duration-200 text-sm font-medium min-h-[44px] sm:min-h-0",
+                          location.pathname === "/"
+                            ? "bg-ctp-surface1 text-ctp-text" 
+                            : "text-ctp-subtext1 hover:bg-ctp-surface0 hover:text-ctp-text"
+                        )}
+                        style={location.pathname === "/" ? { borderLeft: "3px solid #89b4fa" } : {}}
+                      >
+                        <span className="flex-1">Home</span>
+                      </Link>
+                      <Link
+                        to="/leaderboards"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className={cn(
+                          "flex items-center gap-3 px-3 py-3 sm:py-2.5 rounded-md transition-all duration-200 text-sm font-medium min-h-[44px] sm:min-h-0",
+                          location.pathname.startsWith("/leaderboards")
+                            ? "bg-ctp-surface1 text-ctp-text" 
+                            : "text-ctp-subtext1 hover:bg-ctp-surface0 hover:text-ctp-text"
+                        )}
+                        style={location.pathname.startsWith("/leaderboards") ? { borderLeft: "3px solid #f9e2af" } : {}}
+                      >
+                        <Trophy className="h-4 w-4 flex-shrink-0" style={{ color: location.pathname.startsWith("/leaderboards") ? "#f9e2af" : "#cdd6f4" }} />
+                        <span className="flex-1">Leaderboards</span>
+                      </Link>
+                      <Link
+                        to="/submit"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className={cn(
+                          "flex items-center gap-3 px-3 py-3 sm:py-2.5 rounded-md transition-all duration-200 text-sm font-medium min-h-[44px] sm:min-h-0",
+                          location.pathname.startsWith("/submit")
+                            ? "bg-ctp-surface1 text-ctp-text" 
+                            : "text-ctp-subtext1 hover:bg-ctp-surface0 hover:text-ctp-text"
+                        )}
+                        style={location.pathname.startsWith("/submit") ? { borderLeft: "3px solid #a6e3a1" } : {}}
+                      >
+                        <Upload className="h-4 w-4 flex-shrink-0" style={{ color: location.pathname.startsWith("/submit") ? "#a6e3a1" : "#cdd6f4" }} />
+                        <span className="flex-1">Submit Run</span>
+                      </Link>
+                      {config && sortedHeaderLinks.length > 0 && sortedHeaderLinks.map((link) => {
+                        const IconComponent = link.icon === "LegoStud" 
+                          ? LegoStudIcon 
+                          : (link.icon ? iconMap[link.icon] : null);
+                        const linkColor = link.color || "#cdd6f4";
+                        const isActive = location.pathname === link.route || 
+                          (link.route !== "/" && location.pathname.startsWith(link.route));
+
+                        // Skip if already shown above
+                        if (link.route === "/" || link.route === "/leaderboards" || link.route === "/submit") {
+                          return null;
+                        }
+
+                        return (
+                          <Link
+                            key={link.id}
+                            to={link.route}
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            className={cn(
+                              "flex items-center gap-3 px-3 py-3 sm:py-2.5 rounded-md transition-all duration-200 text-sm font-medium min-h-[44px] sm:min-h-0",
+                              isActive 
+                                ? "bg-ctp-surface1 text-ctp-text" 
+                                : "text-ctp-subtext1 hover:bg-ctp-surface0 hover:text-ctp-text"
+                            )}
+                            style={isActive ? { borderLeft: `3px solid ${linkColor}` } : {}}
+                          >
+                            {IconComponent && (
+                              link.icon === "LegoStud" ? (
+                                <LegoStudIcon 
+                                  size={18} 
+                                  color={isActive ? linkColor : "#cdd6f4"}
+                                />
+                              ) : (
+                                <IconComponent 
+                                  className="h-4 w-4 flex-shrink-0"
+                                  style={{ color: isActive ? linkColor : "#cdd6f4" }}
+                                />
+                              )
+                            )}
+                            <span className="flex-1">{link.label}</span>
+                          </Link>
+                        );
+                      })}
+                    </nav>
+                  </div>
+                  
+                  <div className="px-2 pt-2 border-t border-ctp-surface1">
+                    <div className="text-xs font-semibold text-ctp-subtext1 uppercase tracking-wider mb-2 px-2">
+                      Account
+                    </div>
                     {authLoading ? (
-                      <div className="text-sm text-muted-foreground">Loading...</div>
+                      <div className="text-sm text-muted-foreground px-2">Loading...</div>
                     ) : currentUser ? (
-                      <div className="flex flex-col gap-3">
+                      <div className="flex flex-col gap-2">
                         <Link 
                           to={`/player/${currentUser.uid}`}
-                          className="text-sm text-ctp-text transition-colors"
+                          className="text-sm text-ctp-text transition-colors px-2 py-1.5 rounded-md hover:bg-ctp-surface0"
                           onClick={() => setIsMobileMenuOpen(false)}
                         >
                           Hi, {currentUser.displayName || currentUser.email?.split('@')[0]}
@@ -188,7 +286,7 @@ export function GameDetails({ className }: GameDetailsProps) {
                               handleNotificationClick();
                               setIsMobileMenuOpen(false);
                             }}
-                            className="relative w-full text-ctp-text hover:text-ctp-text border-yellow-600/50 hover:bg-yellow-600/20 hover:border-yellow-600"
+                            className="relative w-full text-ctp-text hover:text-ctp-text border-yellow-600/50 hover:bg-yellow-600/20 hover:border-yellow-600 justify-start"
                             title={currentUser.isAdmin ? `${unverifiedRunsCount} run(s) waiting for verification` : `${unclaimedRunsCount} unclaimed run(s)`}
                           >
                             <Bell className="h-4 w-4 mr-2" />
@@ -206,7 +304,7 @@ export function GameDetails({ className }: GameDetailsProps) {
                         <Button 
                           variant="outline" 
                           asChild
-                          className="w-full text-ctp-text hover:text-ctp-text border-ctp-surface1 hover:bg-ctp-blue hover:border-ctp-blue"
+                          className="w-full text-ctp-text hover:text-ctp-text border-ctp-surface1 hover:bg-ctp-blue hover:border-ctp-blue justify-start"
                           onClick={() => setIsMobileMenuOpen(false)}
                         >
                           <Link to="/settings">
@@ -220,7 +318,7 @@ export function GameDetails({ className }: GameDetailsProps) {
                             handleLogout();
                             setIsMobileMenuOpen(false);
                           }}
-                          className="w-full text-ctp-text hover:text-ctp-text border-ctp-surface1 hover:bg-ctp-blue hover:border-ctp-blue"
+                          className="w-full text-ctp-text hover:text-ctp-text border-ctp-surface1 hover:bg-ctp-blue hover:border-ctp-blue justify-start"
                         >
                           Logout
                         </Button>
@@ -232,19 +330,19 @@ export function GameDetails({ className }: GameDetailsProps) {
                           setIsLoginOpen(true);
                           setIsMobileMenuOpen(false);
                         }}
-                        className="w-full text-ctp-text hover:text-ctp-text border-ctp-surface1 hover:bg-ctp-blue hover:border-ctp-blue flex items-center gap-2"
+                        className="w-full text-ctp-text hover:text-ctp-text border-ctp-surface1 hover:bg-ctp-blue hover:border-ctp-blue flex items-center gap-2 justify-start"
                       >
                         <User className="h-4 w-4" />
                         Sign In
                       </Button>
                     )}
                   </div>
-                  <div className="flex gap-4 pt-4 border-t border-ctp-surface1">
+                  <div className="flex gap-4 pt-2 border-t border-ctp-surface1 px-2">
                     <a
                       href="https://discord.gg/6A5MNqaK49"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[#5865F2] hover:text-[#5865F2] transition-all duration-300 hover:scale-110"
+                      className="text-[#5865F2] hover:text-[#5865F2] transition-all duration-300 hover:scale-110 p-2 -m-2"
                       aria-label="Discord Server"
                     >
                       <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -256,7 +354,7 @@ export function GameDetails({ className }: GameDetailsProps) {
                         href={config.speedrunComUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-[#F59E0B] hover:text-[#F59E0B] transition-all duration-300 hover:scale-110"
+                        className="text-[#F59E0B] hover:text-[#F59E0B] transition-all duration-300 hover:scale-110 p-2 -m-2"
                         aria-label="Speedrun.com"
                       >
                         <Trophy className="h-5 w-5" />
@@ -266,7 +364,7 @@ export function GameDetails({ className }: GameDetailsProps) {
                       href="https://github.com/elle-trees/lsw1.dev"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-ctp-text hover:text-ctp-text transition-colors"
+                      className="text-ctp-text hover:text-ctp-text transition-colors p-2 -m-2"
                       aria-label="GitHub Repository"
                     >
                       <Github className="h-5 w-5" />
@@ -406,16 +504,16 @@ export function GameDetails({ className }: GameDetailsProps) {
   return (
     <>
       <header className="bg-[#1e1e2e] shadow-lg sticky top-0 z-40 w-full overflow-x-hidden">
-        <div className="px-4 sm:px-6 lg:px-8">
+        <div className="px-3 sm:px-4 md:px-6 lg:px-8">
           <div className="max-w-[1920px] mx-auto w-full">
-            <div className="flex items-start justify-between min-w-0 w-full py-3">
+            <div className="flex items-start justify-between min-w-0 w-full py-2 sm:py-3">
               {/* Game Details Section - Left Side */}
-              <div className="flex items-start gap-2 sm:gap-4 lg:gap-5 min-w-0 flex-shrink flex-1">
+              <div className="flex items-start gap-2 sm:gap-3 md:gap-4 lg:gap-5 min-w-0 flex-shrink flex-1">
                 {isVisible ? (
                   <div className="flex items-end gap-2 sm:gap-4 lg:gap-5 min-w-0 flex-shrink flex-1">
                 {/* Game Cover Image */}
                 {config.coverImageUrl && (
-                  <div className="flex-shrink-0">
+                  <div className="flex-shrink-0 hidden sm:block">
                     <img
                       src={config.coverImageUrl}
                       alt={config.title}
@@ -425,23 +523,23 @@ export function GameDetails({ className }: GameDetailsProps) {
                 )}
 
                 {/* Main Content */}
-                <div className="flex-1 min-w-0 flex flex-col h-28 sm:h-32">
+                <div className="flex-1 min-w-0 flex flex-col h-24 sm:h-28 md:h-32">
                   <div className="flex-1">
                     {/* Title and Categories */}
-                    <div className="mb-1.5">
-                      <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-ctp-text mb-1.5">
+                    <div className="mb-1 sm:mb-1.5">
+                      <h1 className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-ctp-text mb-0.5 sm:mb-1.5 leading-tight">
                         {config.title}
                         {config.subtitle && (
-                          <span className="text-ctp-subtext1 font-normal text-sm sm:text-base"> ({config.subtitle})</span>
+                          <span className="text-ctp-subtext1 font-normal text-xs sm:text-sm md:text-base"> ({config.subtitle})</span>
                         )}
                       </h1>
                       {config.categories.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mb-1.5">
+                        <div className="flex flex-wrap gap-1 sm:gap-1.5 mb-1 sm:mb-1.5">
                           {config.categories.map((category, index) => (
                             <Badge
                               key={index}
                               variant="outline"
-                              className="bg-ctp-surface0 text-ctp-text border-ctp-surface1 text-xs sm:text-sm px-2 py-1"
+                              className="bg-ctp-surface0 text-ctp-text border-ctp-surface1 text-[10px] sm:text-xs md:text-sm px-1.5 sm:px-2 py-0.5 sm:py-1"
                             >
                               {category}
                             </Badge>
@@ -451,12 +549,12 @@ export function GameDetails({ className }: GameDetailsProps) {
                     </div>
 
                     {/* Platform Buttons */}
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="flex flex-wrap gap-1 sm:gap-1.5">
                       {sortedPlatforms.map((platform) => (
                         <Button
                           key={platform.id}
                           variant="outline"
-                          className="bg-ctp-surface0 text-ctp-text border-ctp-surface1 hover:bg-ctp-surface1 hover:border-ctp-mauve/50 rounded-none text-xs sm:text-sm px-2.5 py-1 h-auto"
+                          className="bg-ctp-surface0 text-ctp-text border-ctp-surface1 hover:bg-ctp-surface1 hover:border-ctp-mauve/50 rounded-none text-[10px] sm:text-xs md:text-sm px-1.5 sm:px-2.5 py-0.5 sm:py-1 h-auto"
                         >
                           {platform.label}
                         </Button>
@@ -464,9 +562,9 @@ export function GameDetails({ className }: GameDetailsProps) {
                     </div>
                   </div>
 
-                  {/* Header Navigation Links */}
+                  {/* Header Navigation Links - Hidden on mobile, shown in sidebar */}
                   {sortedHeaderLinks.length > 0 && (
-                    <nav className="flex flex-wrap gap-2 sm:gap-3 lg:gap-4">
+                    <nav className="hidden xl:flex flex-wrap gap-2 sm:gap-3 lg:gap-4">
                       {sortedHeaderLinks.map((link) => {
                         const IconComponent = link.icon === "LegoStud" 
                           ? LegoStudIcon 
@@ -520,34 +618,87 @@ export function GameDetails({ className }: GameDetailsProps) {
               </div>
               
               {/* Mobile Menu Button - Shown on all screens except xl and above */}
-              <div className="flex items-center gap-2 xl:gap-3 flex-shrink-0">
+              <div className="flex items-center gap-1.5 sm:gap-2 xl:gap-3 flex-shrink-0">
                 {/* Mobile Menu Sheet */}
                 <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
                   <SheetTrigger asChild>
                     <Button 
                       variant="ghost" 
                       size="icon"
-                      className="xl:hidden text-[hsl(220,17%,92%)] hover:bg-[#89b4fa]/20 hover:text-[#89b4fa] z-[100] flex-shrink-0"
+                      className="xl:hidden text-[hsl(220,17%,92%)] hover:bg-[#89b4fa]/20 hover:text-[#89b4fa] z-[100] flex-shrink-0 h-9 w-9 sm:h-10 sm:w-10"
                       aria-label="Open navigation menu"
                     >
-                      <Menu className="h-6 w-6" />
+                      <Menu className="h-5 w-5 sm:h-6 sm:w-6" />
                       <span className="sr-only">Open menu</span>
                     </Button>
                   </SheetTrigger>
-                  <SheetContent side="left" className="w-[280px] bg-[#1e1e2e] border-ctp-surface1 z-[100]">
-                    <div className="flex flex-col gap-6 mt-8">
-                  <div className="flex items-center space-x-2 mb-4">
+                  <SheetContent side="left" className="w-[280px] sm:w-[320px] bg-[#1e1e2e] border-ctp-surface1 z-[100] overflow-y-auto">
+                    <div className="flex flex-col gap-4 sm:gap-6 mt-4 sm:mt-8 pb-4">
+                  <div className="flex items-center space-x-2 mb-2 sm:mb-4 px-2">
                     <LegoStudIcon size={28} color="#60a5fa" />
                     <span className="text-lg font-bold text-[#74c7ec]">lsw1.dev</span>
                   </div>
-                  <div className="pt-4 border-t border-ctp-surface1">
+                  
+                  {/* Navigation Links Section */}
+                  {sortedHeaderLinks.length > 0 && (
+                    <div className="px-2">
+                      <div className="text-xs font-semibold text-ctp-subtext1 uppercase tracking-wider mb-2 px-2">
+                        Navigation
+                      </div>
+                      <nav className="flex flex-col gap-1">
+                        {sortedHeaderLinks.map((link) => {
+                          const IconComponent = link.icon === "LegoStud" 
+                            ? LegoStudIcon 
+                            : (link.icon ? iconMap[link.icon] : null);
+                          const linkColor = link.color || "#cdd6f4";
+                          const isActive = location.pathname === link.route || 
+                            (link.route !== "/" && location.pathname.startsWith(link.route));
+
+                          return (
+                            <Link
+                              key={link.id}
+                              to={link.route}
+                              onClick={() => setIsMobileMenuOpen(false)}
+                              className={cn(
+                                "flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 text-sm font-medium",
+                                isActive 
+                                  ? "bg-ctp-surface1 text-ctp-text" 
+                                  : "text-ctp-subtext1 hover:bg-ctp-surface0 hover:text-ctp-text"
+                              )}
+                              style={isActive ? { borderLeft: `3px solid ${linkColor}` } : {}}
+                            >
+                              {IconComponent && (
+                                link.icon === "LegoStud" ? (
+                                  <LegoStudIcon 
+                                    size={18} 
+                                    color={isActive ? linkColor : "#cdd6f4"}
+                                  />
+                                ) : (
+                                  <IconComponent 
+                                    className="h-4 w-4 flex-shrink-0"
+                                    style={{ color: isActive ? linkColor : "#cdd6f4" }}
+                                  />
+                                )
+                              )}
+                              <span className="flex-1">{link.label}</span>
+                            </Link>
+                          );
+                        })}
+                      </nav>
+                    </div>
+                  )}
+                  
+                  <div className="px-2 pt-2 border-t border-ctp-surface1">
+                    <div className="text-xs font-semibold text-ctp-subtext1 uppercase tracking-wider mb-2 px-2">
+                      Account
+                    </div>
                     {authLoading ? (
-                      <div className="text-sm text-muted-foreground">Loading...</div>
+                      <div className="text-sm text-muted-foreground px-2">Loading...</div>
                     ) : currentUser ? (
-                      <div className="flex flex-col gap-3">
+                      <div className="flex flex-col gap-2">
                         <Link 
                           to={`/player/${currentUser.uid}`}
-                          className="text-sm text-ctp-text transition-colors"
+                          className="text-sm text-ctp-text transition-colors px-2 py-1.5 rounded-md hover:bg-ctp-surface0"
                           onClick={() => setIsMobileMenuOpen(false)}
                         >
                           Hi, {currentUser.displayName || currentUser.email?.split('@')[0]}
@@ -559,7 +710,7 @@ export function GameDetails({ className }: GameDetailsProps) {
                               handleNotificationClick();
                               setIsMobileMenuOpen(false);
                             }}
-                            className="relative w-full text-ctp-text hover:text-ctp-text border-yellow-600/50 hover:bg-yellow-600/20 hover:border-yellow-600"
+                            className="relative w-full text-ctp-text hover:text-ctp-text border-yellow-600/50 hover:bg-yellow-600/20 hover:border-yellow-600 justify-start"
                             title={currentUser.isAdmin ? `${unverifiedRunsCount} run(s) waiting for verification` : `${unclaimedRunsCount} unclaimed run(s)`}
                           >
                             <Bell className="h-4 w-4 mr-2" />
@@ -577,7 +728,7 @@ export function GameDetails({ className }: GameDetailsProps) {
                         <Button 
                           variant="outline" 
                           asChild
-                          className="w-full text-ctp-text hover:text-ctp-text border-ctp-surface1 hover:bg-ctp-blue hover:border-ctp-blue"
+                          className="w-full text-ctp-text hover:text-ctp-text border-ctp-surface1 hover:bg-ctp-blue hover:border-ctp-blue justify-start"
                           onClick={() => setIsMobileMenuOpen(false)}
                         >
                           <Link to="/settings">
@@ -591,7 +742,7 @@ export function GameDetails({ className }: GameDetailsProps) {
                             handleLogout();
                             setIsMobileMenuOpen(false);
                           }}
-                          className="w-full text-ctp-text hover:text-ctp-text border-ctp-surface1 hover:bg-ctp-blue hover:border-ctp-blue"
+                          className="w-full text-ctp-text hover:text-ctp-text border-ctp-surface1 hover:bg-ctp-blue hover:border-ctp-blue justify-start"
                         >
                           Logout
                         </Button>
@@ -603,19 +754,19 @@ export function GameDetails({ className }: GameDetailsProps) {
                           setIsLoginOpen(true);
                           setIsMobileMenuOpen(false);
                         }}
-                        className="w-full text-ctp-text hover:text-ctp-text border-ctp-surface1 hover:bg-ctp-blue hover:border-ctp-blue flex items-center gap-2"
+                        className="w-full text-ctp-text hover:text-ctp-text border-ctp-surface1 hover:bg-ctp-blue hover:border-ctp-blue flex items-center gap-2 justify-start"
                       >
                         <User className="h-4 w-4" />
                         Sign In
                       </Button>
                     )}
                   </div>
-                  <div className="flex gap-4 pt-4 border-t border-ctp-surface1">
+                  <div className="flex gap-4 pt-2 border-t border-ctp-surface1 px-2">
                     <a
                       href="https://discord.gg/6A5MNqaK49"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[#5865F2] hover:text-[#5865F2] transition-all duration-300 hover:scale-110"
+                      className="text-[#5865F2] hover:text-[#5865F2] transition-all duration-300 hover:scale-110 p-2 -m-2"
                       aria-label="Discord Server"
                     >
                       <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -627,7 +778,7 @@ export function GameDetails({ className }: GameDetailsProps) {
                         href={config.speedrunComUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-[#F59E0B] hover:text-[#F59E0B] transition-all duration-300 hover:scale-110"
+                        className="text-[#F59E0B] hover:text-[#F59E0B] transition-all duration-300 hover:scale-110 p-2 -m-2"
                         aria-label="Speedrun.com"
                       >
                         <Trophy className="h-5 w-5" />
@@ -637,7 +788,7 @@ export function GameDetails({ className }: GameDetailsProps) {
                       href="https://github.com/elle-trees/lsw1.dev"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-ctp-text hover:text-ctp-text transition-colors"
+                      className="text-ctp-text hover:text-ctp-text transition-colors p-2 -m-2"
                       aria-label="GitHub Repository"
                     >
                       <Github className="h-5 w-5" />
