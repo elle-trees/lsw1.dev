@@ -89,8 +89,6 @@ export default defineConfig(({ mode }) => {
             "**/stats.html*",
             "**/node_modules/**/*",
           ],
-          // Optimize build: use injection point strategy for smaller service worker
-          injectionPoint: undefined,
           // Skip waiting and claim clients immediately for faster updates
           skipWaiting: true,
           clientsClaim: true,
