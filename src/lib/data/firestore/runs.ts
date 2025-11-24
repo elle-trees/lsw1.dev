@@ -56,7 +56,7 @@ export const addLeaderboardEntryFirestore = async (entry: Omit<LeaderboardEntry,
     const finalLeaderboardType = normalized.leaderboardType || 'regular';
     
     // Build entry with explicit importedFromSRC field set BEFORE spreading normalized
-    const newEntry: LeaderboardEntry = {
+    const newEntry: any = {
         id: newDocRef.id,
         ...normalized,
         leaderboardType: finalLeaderboardType,
@@ -70,11 +70,15 @@ export const addLeaderboardEntryFirestore = async (entry: Omit<LeaderboardEntry,
         runType: normalized.runType || 'solo',
         time: normalized.time || "",
         date: normalized.date || "",
-        // CRITICAL: Explicitly set importedFromSRC as boolean true for Firestore rules
-        importedFromSRC: isImportedRun ? true : (normalized.importedFromSRC || false),
     };
 
-    console.log('Creating entry with importedFromSRC:', newEntry.importedFromSRC, 'Type:', typeof newEntry.importedFromSRC);
+    // CRITICAL: Set importedFromSRC AFTER spreading to ensure it's not overwritten
+    if (isImportedRun) {
+      newEntry.importedFromSRC = true;
+    }
+
+    console.log('Creating entry - importedFromSRC in entry?', 'importedFromSRC' in newEntry, 'Value:', newEntry.importedFromSRC);
+    console.log('Full entry keys:', Object.keys(newEntry));
 
     await setDoc(newDocRef, newEntry);
     
