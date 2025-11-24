@@ -321,7 +321,6 @@ const Live = () => {
           <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
             <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
               <div className="flex items-center gap-2 text-xl text-[#f38ba8]">
-                <Radio className="h-5 w-5" />
                 <span>Community Streams</span>
               </div>
             </CardHeader>

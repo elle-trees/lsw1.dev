@@ -18,7 +18,6 @@ import {
   Award,
   Star,
   Gem,
-  Filter,
   CalendarDays
 } from "lucide-react";
 import { getAllVerifiedRuns, getCategories, getPlatforms, getLevels, runTypes } from "@/lib/db";
@@ -954,7 +953,6 @@ const Stats = () => {
                 <Card className="bg-gradient-to-br from-ctp-base to-ctp-mantle border-ctp-surface1 shadow-xl rounded-none">
                   <CardHeader className="bg-gradient-to-r from-ctp-base to-ctp-mantle border-b border-ctp-surface1 py-3">
                     <CardTitle className="flex items-center gap-2 text-lg">
-                      <Filter className="h-4 w-4 text-ctp-mauve" />
                       <span className="text-ctp-text">Filter Results</span>
                     </CardTitle>
                   </CardHeader>

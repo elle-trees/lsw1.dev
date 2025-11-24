@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PlayerProfile } from "@/components/PlayerProfile";
-import { ArrowLeft, Trophy, User, Users, Clock, Star, Gem, CheckCircle, Filter, Gamepad2, Sparkles, MapPin, ExternalLink, Check } from "lucide-react";
+import { ArrowLeft, Trophy, User, Users, Clock, Star, Gem, CheckCircle, Gamepad2, Sparkles, MapPin, ExternalLink, Check } from "lucide-react";
 import { PrefetchLink } from "@/components/PrefetchLink";
 import { getPlayerRuns, getPlayerByUid, getCategories, getPlatforms, getPlayerPendingRuns, getLevels, getCategoriesFromFirestore, getUnclaimedRunsBySRCUsername, claimRun, runTypes } from "@/lib/db";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -657,7 +657,6 @@ const PlayerDetails = () => {
                       <Card className="bg-gradient-to-br from-ctp-base to-ctp-mantle border-ctp-surface1 shadow-xl mb-6 rounded-none">
                         <CardHeader className="bg-gradient-to-r from-ctp-base to-ctp-mantle border-b border-ctp-surface1 py-3">
                           <CardTitle className="flex items-center gap-2 text-lg">
-                            <Filter className="h-4 w-4 text-ctp-mauve" />
                             <span className="text-ctp-text">Filter Results</span>
                           </CardTitle>
                         </CardHeader>

@@ -5,7 +5,7 @@ import { AnimatedCard } from "@/components/ui/animated-card";
 import { FadeIn } from "@/components/ui/fade-in";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Filter, User, Users, Trophy, Sparkles, TrendingUp, Star, Gem, Gamepad2 } from "lucide-react";
+import { User, Users, Trophy, Sparkles, TrendingUp, Star, Gem, Gamepad2 } from "lucide-react";
 import { LeaderboardTable } from "@/components/LeaderboardTable";
 import { Pagination } from "@/components/Pagination";
 import { getLeaderboardEntries, getCategories, getPlatforms, runTypes, getLevels } from "@/lib/db";
@@ -514,7 +514,6 @@ const Leaderboards = () => {
             >
           <CardHeader className="bg-gradient-to-r from-ctp-base to-ctp-mantle border-b border-ctp-surface1 py-4">
             <CardTitle className="flex items-center gap-2 text-lg font-bold">
-              <Filter className="h-5 w-5 text-ctp-mauve" />
               <span className="text-ctp-text">Filter Results</span>
             </CardTitle>
           </CardHeader>

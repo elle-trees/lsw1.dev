@@ -268,7 +268,6 @@ const PointsLeaderboard = () => {
         >
           <CardHeader className="bg-gradient-to-r from-ctp-base to-ctp-mantle border-b border-ctp-surface1 py-4">
             <CardTitle className="flex items-center gap-2 text-lg text-[#fab387]">
-              <LegoStudIcon size={24} color="#fab387" />
               <span>Top Players by Studs</span>
               {players.length > 0 && !loading && (
                 <span className="ml-auto text-sm font-normal text-ctp-subtext1">
