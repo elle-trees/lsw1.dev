@@ -51,6 +51,7 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       // Type checking in dev mode only (faster than tsc watch)
+      // Disable in production builds for faster compilation
       !isProduction && checker({
         typescript: {
           tsconfigPath: "./tsconfig.app.json",
@@ -144,7 +145,8 @@ export default defineConfig(({ mode }) => {
         },
       }),
       // Bundle analyzer - only in production to avoid dev overhead
-      isProduction && visualizer({
+      // Disable during regular builds for speed, enable when needed for analysis
+      isProduction && process.env.ANALYZE && visualizer({
         filename: "dist/stats.html",
         open: false,
         gzipSize: true,
@@ -185,6 +187,12 @@ export default defineConfig(({ mode }) => {
       emptyOutDir: true,
       // Reduce build output verbosity
       assetsInlineLimit: 4096, // Inline assets smaller than 4KB
+      // Improve build performance
+      target: "esnext", // Target modern browsers for smaller bundles
+      // Disable compressed size reporting to speed up build
+      reportCompressedSize: false,
+      // Use terser for better minification (optional, esbuild is faster but terser produces smaller bundles)
+      // minify: 'terser', // Uncomment if you want smaller bundles at the cost of build time
       // Optimize chunking strategy
       rollupOptions: {
         output: {
@@ -213,6 +221,7 @@ export default defineConfig(({ mode }) => {
                 return 'vendor-radix';
               }
               // Recharts (only used on Stats page) - large charting library, lazy load
+              // This will be code-split since it's lazy loaded
               if (id.includes('recharts')) {
                 return 'vendor-recharts';
               }
@@ -246,10 +255,6 @@ export default defineConfig(({ mode }) => {
           },
         },
       },
-      // Target modern browsers for smaller bundles
-      target: "esnext",
-      // Reduce build output verbosity for faster builds
-      reportCompressedSize: false, // Disable compressed size reporting to speed up build
     },
   };
 });

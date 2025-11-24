@@ -24,10 +24,12 @@ import { getAllVerifiedRuns, getCategories, getPlatforms, getLevels, runTypes } 
 import { LeaderboardEntry, Player } from "@/types/database";
 import { formatTime, parseTimeToSeconds, formatSecondsToTime } from "@/lib/utils";
 import { getCategoryName, getPlatformName, getLevelName } from "@/lib/dataValidation";
-import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
-import { Line, LineChart, XAxis, YAxis, CartesianGrid, Brush } from "recharts";
 import { Link } from "react-router-dom";
 import { FadeIn } from "@/components/ui/fade-in";
+import { lazy, Suspense } from "react";
+
+// Lazy load the chart component to reduce initial bundle size
+const WRProgressionChart = lazy(() => import("@/components/WRProgressionChart").then(m => ({ default: m.WRProgressionChart })));
 
 // Category name overrides for stats page
 const CATEGORY_NAME_OVERRIDES: Record<string, string> = {
@@ -1072,99 +1074,15 @@ const Stats = () => {
                       </div>
                     </div>
                   
-                  <ChartContainer config={chartConfig} className="h-[600px] w-full [&_.recharts-brush]:fill-[hsl(var(--muted))] [&_.recharts-brush]:stroke-[hsl(var(--border))] [&_.recharts-brush-slide]:fill-[hsl(var(--muted))] [&_.recharts-brush-traveller]:fill-[hsl(var(--muted))] [&_.recharts-brush-traveller]:stroke-[hsl(var(--border))]">
-                    <LineChart 
+                  <Suspense fallback={<Skeleton className="h-[600px] w-full" />}>
+                    <WRProgressionChart 
                       data={filteredWRTimeProgression}
-                      margin={{ top: 10, right: 30, left: 0, bottom: 60 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis 
-                        dataKey="date" 
-                        tickFormatter={(value) => {
-                          const date = new Date(value);
-                          return `${date.getMonth() + 1}/${date.getFullYear()}`;
-                        }}
-                        angle={-45}
-                        textAnchor="end"
-                        height={80}
-                      />
-                      <YAxis 
-                        domain={['auto', 'auto']}
-                        tickFormatter={(value) => {
-                          return formatTime(formatSecondsToTime(value));
-                        }}
-                        reversed={false}
-                      />
-                      <ChartTooltip 
-                        content={({ active, payload }) => {
-                          if (active && payload && payload.length) {
-                            const data = payload[0].payload;
-                            const date = new Date(data.date);
-                            const run = data.run as LeaderboardEntry;
-                            
-                            if (!run) return null;
-                            
-                            const categoryName = getCategoryNameWithOverride(run.category, categories);
-                            const platformName = getPlatformName(run.platform, platforms);
-                            const levelName = run.level ? getLevelName(run.level, levels) : null;
-                            
-                            return (
-                              <div className="rounded-none border bg-background p-3 shadow-lg max-w-md">
-                                <div className="grid gap-3">
-                                  <div className="flex items-center justify-between gap-4 border-b pb-2">
-                                    <span className="text-sm font-medium">Date</span>
-                                    <span className="text-sm font-semibold">{date.toLocaleDateString()}</span>
-                                  </div>
-                                  <div className="flex items-center justify-between gap-4 border-b pb-2">
-                                    <span className="text-sm font-medium">World Record Time</span>
-                                    <span className="text-sm font-bold font-mono">{formatTime(data.timeString)}</span>
-                                  </div>
-                                  <div className="mt-2">
-                                    <div className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
-                                      WR Holder
-                                    </div>
-                                    <div className="text-xs border rounded p-2 bg-muted/30">
-                                      <div className="flex items-center justify-between mb-1">
-                                        <span className="font-semibold" style={{ color: run.nameColor || 'inherit' }}>
-                                          {run.playerName}
-                                          {run.player2Name && ` & ${run.player2Name}`}
-                                        </span>
-                                      </div>
-                                      <div className="flex items-center gap-2 flex-wrap text-muted-foreground">
-                                        <span>{categoryName}</span>
-                                        {levelName && <span>• {levelName}</span>}
-                                        <span>• {platformName}</span>
-                                        <span>• {run.runType === 'co-op' ? 'Co-op' : 'Solo'}</span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          }
-                          return null;
-                        }}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="time" 
-                        stroke="var(--color-count)" 
-                        strokeWidth={2}
-                        dot={{ r: 4 }}
-                        activeDot={{ r: 6 }}
-                      />
-                      <Brush 
-                        dataKey="date"
-                        height={30}
-                        tickFormatter={(value) => {
-                          const date = new Date(value);
-                          return `${date.getMonth() + 1}/${date.getFullYear()}`;
-                        }}
-                        fill="hsl(var(--muted))"
-                        stroke="hsl(var(--border))"
-                      />
-                    </LineChart>
-                  </ChartContainer>
+                      categories={categories}
+                      platforms={platforms}
+                      levels={levels}
+                      chartConfig={chartConfig}
+                    />
+                  </Suspense>
                 </>
               ) : (
                 <div className="h-[600px] flex items-center justify-center text-muted-foreground">
