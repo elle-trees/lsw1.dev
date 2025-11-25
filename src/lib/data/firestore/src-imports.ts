@@ -279,6 +279,9 @@ export const autoClaimRunsBySRCUsernameFirestore = async (uid: string, srcUserna
         // Normalize username for consistent matching (lowercase, trimmed)
         const normalizedUsername = srcUsername.trim().toLowerCase();
         
+        // Debug logging for troubleshooting
+        console.log(`[Autoclaim] Attempting to claim runs for user ${uid} with SRC username: "${srcUsername}" (normalized: "${normalizedUsername}")`);
+        
         // Query all imported runs (we can't do case-insensitive queries in Firestore)
         // So we fetch all imported runs and filter in memory
         // This handles both normalized and non-normalized srcPlayerName values
@@ -290,6 +293,8 @@ export const autoClaimRunsBySRCUsernameFirestore = async (uid: string, srcUserna
         
         const snapshot = await getDocs(q);
         let claimedCount = 0;
+        let matchedButClaimedCount = 0;
+        let unmatchedCount = 0;
         const batches: ReturnType<typeof writeBatch>[] = [];
         let currentBatch = writeBatch(db);
         let currentBatchSize = 0;
@@ -299,24 +304,39 @@ export const autoClaimRunsBySRCUsernameFirestore = async (uid: string, srcUserna
             const entry = doc.data();
             
             // Check if srcPlayerName matches (case-insensitive comparison)
-            if (!entry.srcPlayerName) continue;
-            const normalizedSrcPlayerName = entry.srcPlayerName.trim().toLowerCase();
-            if (normalizedSrcPlayerName !== normalizedUsername) continue;
+            if (!entry.srcPlayerName) {
+                unmatchedCount++;
+                continue;
+            }
             
-            // Only claim if currently unclaimed (works for both verified and unverified runs)
-            if (!entry.playerId || entry.playerId === "imported" || entry.playerId.trim() === "") {
-                currentBatch.update(doc.ref, { playerId: uid });
-                claimedCount++;
-                currentBatchSize++;
+            const normalizedSrcPlayerName = entry.srcPlayerName.trim().toLowerCase();
+            
+            // Debug: log potential matches
+            if (normalizedSrcPlayerName === normalizedUsername) {
+                const isUnclaimed = !entry.playerId || entry.playerId === "imported" || entry.playerId.trim() === "";
                 
-                // Commit batch if we hit the limit
-                if (currentBatchSize >= maxBatchSize) {
-                    batches.push(currentBatch);
-                    currentBatch = writeBatch(db);
-                    currentBatchSize = 0;
+                if (isUnclaimed) {
+                    currentBatch.update(doc.ref, { playerId: uid });
+                    claimedCount++;
+                    currentBatchSize++;
+                    
+                    // Commit batch if we hit the limit
+                    if (currentBatchSize >= maxBatchSize) {
+                        batches.push(currentBatch);
+                        currentBatch = writeBatch(db);
+                        currentBatchSize = 0;
+                    }
+                } else {
+                    matchedButClaimedCount++;
+                    console.log(`[Autoclaim] Found matching run ${entry.id} but it's already claimed by ${entry.playerId}`);
                 }
+            } else {
+                unmatchedCount++;
             }
         }
+        
+        // Debug logging
+        console.log(`[Autoclaim] Results for "${srcUsername}": ${claimedCount} claimed, ${matchedButClaimedCount} already claimed, ${unmatchedCount} unmatched`);
         
         // Commit all batches
         if (currentBatchSize > 0) {
@@ -330,7 +350,7 @@ export const autoClaimRunsBySRCUsernameFirestore = async (uid: string, srcUserna
         
         return claimedCount;
     } catch (error: any) {
-        console.error("Error auto-claiming runs:", error);
+        console.error(`[Autoclaim] Error auto-claiming runs for ${srcUsername}:`, error);
         return 0;
     }
 };
@@ -342,22 +362,41 @@ export const runAutoclaimingForAllUsersFirestore = async (): Promise<{ runsUpdat
     
     try {
         const playersWithSRC = await getPlayersWithSRCUsernamesFirestore();
+        console.log(`[Autoclaim] Found ${playersWithSRC.length} players with SRC usernames`);
         
         for (const player of playersWithSRC) {
             try {
-                const claimed = await autoClaimRunsBySRCUsernameFirestore(player.uid, player.srcUsername);
+                // Ensure srcUsername is normalized (should already be, but double-check)
+                const normalizedSrcUsername = player.srcUsername?.trim().toLowerCase();
+                if (!normalizedSrcUsername) {
+                    console.warn(`[Autoclaim] Player ${player.uid} (${player.displayName}) has empty srcUsername, skipping`);
+                    continue;
+                }
+                
+                // If stored srcUsername is not normalized, log a warning
+                if (player.srcUsername !== normalizedSrcUsername) {
+                    console.warn(`[Autoclaim] Player ${player.uid} has non-normalized srcUsername: "${player.srcUsername}" (should be "${normalizedSrcUsername}")`);
+                }
+                
+                const claimed = await autoClaimRunsBySRCUsernameFirestore(player.uid, normalizedSrcUsername);
                 if (claimed > 0) {
                     result.runsUpdated += claimed;
                     result.playersUpdated++;
+                    console.log(`[Autoclaim] Claimed ${claimed} run(s) for player ${player.uid} (${player.displayName}) with SRC username "${normalizedSrcUsername}"`);
                 }
             } catch (err: any) {
-                result.errors.push(`Error claiming for ${player.srcUsername}: ${err.message}`);
+                const errorMsg = `Error claiming for ${player.displayName} (${player.srcUsername}): ${err.message}`;
+                console.error(`[Autoclaim] ${errorMsg}`, err);
+                result.errors.push(errorMsg);
             }
         }
         
+        console.log(`[Autoclaim] Complete: ${result.runsUpdated} runs claimed for ${result.playersUpdated} players`);
         return result;
     } catch (error: any) {
-        result.errors.push(`Fatal error: ${error.message}`);
+        const errorMsg = `Fatal error: ${error.message}`;
+        console.error(`[Autoclaim] ${errorMsg}`, error);
+        result.errors.push(errorMsg);
         return result;
     }
 };

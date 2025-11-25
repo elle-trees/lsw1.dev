@@ -41,3 +41,6 @@ export const getAllVerifiedRuns = getAllVerifiedRunsFirestore;
 export const runAutoclaimingForAllUsers = runAutoclaimingForAllUsersFirestore;
 export const normalizeSRCPlayerNamesInRuns = normalizeSRCPlayerNamesInRunsFirestore;
 
+// Export debug function
+export { debugAutoclaimingForUser } from "../data/firestore/autoclaim-debug";
+
