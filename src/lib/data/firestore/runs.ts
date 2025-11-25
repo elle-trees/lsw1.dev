@@ -576,19 +576,25 @@ export const verifyRunWithTransactionFirestore = async (
   }
 };
 
-export const updateRunVerificationStatusFirestore = async (runId: string, verified: boolean, verifiedBy?: string): Promise<boolean> => {
-    if (!db) return false;
+export const updateRunVerificationStatusFirestore = async (runId: string, verified: boolean, verifiedBy?: string): Promise<{ success: boolean; error?: string }> => {
+    if (!db) return { success: false, error: "Database not initialized" };
     try {
         // Use transaction-based verification for better consistency
         if (verified && verifiedBy) {
           const result = await verifyRunWithTransactionFirestore(runId, true, verifiedBy);
-          return result.success;
+          if (!result.success) {
+            return { success: false, error: result.error || "Verification failed" };
+          }
+          return { success: true };
         }
         
         // For unverifying, use transaction
         if (!verified) {
           const result = await verifyRunWithTransactionFirestore(runId, false, verifiedBy || "");
-          return result.success;
+          if (!result.success) {
+            return { success: false, error: result.error || "Unverification failed" };
+          }
+          return { success: true };
         }
         
         // Fallback to simple update
@@ -614,10 +620,10 @@ export const updateRunVerificationStatusFirestore = async (runId: string, verifi
                 }
             }
         }
-        return success;
-    } catch (error) {
+        return { success, error: success ? undefined : "Failed to update verification status" };
+    } catch (error: any) {
         console.error("Error updating verification status and notifying:", error);
-        return false;
+        return { success: false, error: error.message || String(error) };
     }
 };
 

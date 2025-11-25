@@ -1170,9 +1170,9 @@ const Admin = () => {
       // Verify the run
       // Dynamic import at call site
 
-      const { updateRunVerificationStatus } = await import("@/lib/db/runs");
-      const success = await updateRunVerificationStatus(runId, true, verifiedBy);
-      if (success) {
+      const { updateRunVerificationStatusFirestore } = await import("@/lib/data/firestore/runs");
+      const result = await updateRunVerificationStatusFirestore(runId, true, verifiedBy);
+      if (result.success) {
         toast({
           title: "Run Verified",
           description: "The run has been successfully verified.",
@@ -1191,7 +1191,7 @@ const Admin = () => {
         if (importedSRCRuns.some(r => r.id === runId)) {
           setImportedSRCRuns(prev => prev.map(r => r.id === runId ? runToVerify : r));
         }
-        throw new Error("Failed to update verification status.");
+        throw new Error(result.error || "Failed to update verification status.");
       }
     } catch (error: any) {
       // Rollback optimistic update on error
@@ -3540,12 +3540,12 @@ const Admin = () => {
                       className="w-full"
                     >
                       <AnimatedTabsList 
-                        className="grid w-full grid-cols-3 p-0.5 gap-1 bg-ctp-surface0/50 rounded-none border border-ctp-surface1 h-auto"
-                        indicatorClassName="bg-[#f9e2af]"
+                        className="grid w-full grid-cols-3 p-1 gap-2 h-auto"
+                        indicatorClassName="h-0.5 bg-[#f9e2af]"
                       >
                         <AnimatedTabsTrigger 
                           value="regular"
-                          className="h-auto py-1.5 sm:py-2 px-2 sm:px-3 rounded-none transition-all duration-300 font-medium text-xs sm:text-sm whitespace-nowrap data-[state=active]:bg-[#f9e2af] data-[state=active]:text-[#11111b] data-[state=active]:hover:bg-[#f9e2af]/90 data-[state=active]:shadow-sm data-[state=inactive]:bg-ctp-surface0 data-[state=inactive]:text-ctp-text data-[state=inactive]:hover:bg-ctp-surface1 data-[state=inactive]:hover:text-ctp-text"
+                          className="h-auto py-1.5 sm:py-2 px-2 sm:px-3 transition-all duration-300 font-medium text-xs sm:text-sm whitespace-nowrap data-[state=active]:text-[#f9e2af]"
                         >
                           <Trophy className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1 sm:mr-1.5" />
                           <span className="hidden min-[375px]:inline">Full Game</span>
@@ -3553,7 +3553,7 @@ const Admin = () => {
                         </AnimatedTabsTrigger>
                         <AnimatedTabsTrigger 
                           value="individual-level"
-                          className="h-auto py-1.5 sm:py-2 px-2 sm:px-3 rounded-none transition-all duration-300 font-medium text-xs sm:text-sm whitespace-nowrap data-[state=active]:bg-[#f9e2af] data-[state=active]:text-[#11111b] data-[state=active]:hover:bg-[#f9e2af]/90 data-[state=active]:shadow-sm data-[state=inactive]:bg-ctp-surface0 data-[state=inactive]:text-ctp-text data-[state=inactive]:hover:bg-ctp-surface1 data-[state=inactive]:hover:text-ctp-text"
+                          className="h-auto py-1.5 sm:py-2 px-2 sm:px-3 transition-all duration-300 font-medium text-xs sm:text-sm whitespace-nowrap data-[state=active]:text-[#f9e2af]"
                         >
                           <Star className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1 sm:mr-1.5" />
                           <span className="hidden sm:inline">Individual Levels</span>
@@ -3561,7 +3561,7 @@ const Admin = () => {
                         </AnimatedTabsTrigger>
                         <AnimatedTabsTrigger 
                           value="community-golds"
-                          className="h-auto py-1.5 sm:py-2 px-2 sm:px-3 rounded-none transition-all duration-300 font-medium text-xs sm:text-sm whitespace-nowrap data-[state=active]:bg-[#f9e2af] data-[state=active]:text-[#11111b] data-[state=active]:hover:bg-[#f9e2af]/90 data-[state=active]:shadow-sm data-[state=inactive]:bg-ctp-surface0 data-[state=inactive]:text-ctp-text data-[state=inactive]:hover:bg-ctp-surface1 data-[state=inactive]:hover:text-ctp-text"
+                          className="h-auto py-1.5 sm:py-2 px-2 sm:px-3 transition-all duration-300 font-medium text-xs sm:text-sm whitespace-nowrap data-[state=active]:text-[#f9e2af]"
                         >
                           <Gem className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1 sm:mr-1.5" />
                           <span className="hidden sm:inline">Community Golds</span>
@@ -5391,26 +5391,26 @@ const Admin = () => {
               className="w-full mb-4"
             >
               <AnimatedTabsList 
-                className="grid w-full grid-cols-3 p-0.5 gap-1 bg-ctp-surface0/50 rounded-none border border-ctp-surface1 h-auto"
-                indicatorClassName="bg-[#94e2d5]"
+                className="grid w-full grid-cols-3 p-1 gap-2 h-auto"
+                indicatorClassName="h-0.5 bg-[#94e2d5]"
               >
                 <AnimatedTabsTrigger 
                   value="regular"
-                  className="py-2 px-3 text-sm transition-all duration-300 font-medium data-[state=active]:bg-[#94e2d5] data-[state=active]:text-[#11111b] data-[state=active]:hover:bg-[#94e2d5]/90 data-[state=active]:shadow-sm data-[state=inactive]:bg-ctp-surface0 data-[state=inactive]:text-ctp-text data-[state=inactive]:hover:bg-ctp-surface1 data-[state=inactive]:hover:text-ctp-text"
+                  className="py-2 px-3 text-sm transition-all duration-300 font-medium data-[state=active]:text-[#94e2d5]"
                 >
                   <Trophy className="h-4 w-4 mr-2" />
                   Full Game
                 </AnimatedTabsTrigger>
                 <AnimatedTabsTrigger 
                   value="individual-level"
-                  className="py-2 px-3 text-sm transition-all duration-300 font-medium data-[state=active]:bg-[#94e2d5] data-[state=active]:text-[#11111b] data-[state=active]:hover:bg-[#94e2d5]/90 data-[state=active]:shadow-sm data-[state=inactive]:bg-ctp-surface0 data-[state=inactive]:text-ctp-text data-[state=inactive]:hover:bg-ctp-surface1 data-[state=inactive]:hover:text-ctp-text"
+                  className="py-2 px-3 text-sm transition-all duration-300 font-medium data-[state=active]:text-[#94e2d5]"
                 >
                   <Star className="h-4 w-4 mr-2" />
                   Individual Level
                 </AnimatedTabsTrigger>
                 <AnimatedTabsTrigger 
                   value="community-golds"
-                  className="py-2 px-3 text-sm transition-all duration-300 font-medium data-[state=active]:bg-[#94e2d5] data-[state=active]:text-[#11111b] data-[state=active]:hover:bg-[#94e2d5]/90 data-[state=active]:shadow-sm data-[state=inactive]:bg-ctp-surface0 data-[state=inactive]:text-ctp-text data-[state=inactive]:hover:bg-ctp-surface1 data-[state=inactive]:hover:text-ctp-text"
+                  className="py-2 px-3 text-sm transition-all duration-300 font-medium data-[state=active]:text-[#94e2d5]"
                 >
                   <Gem className="h-4 w-4 mr-2" />
                   Community Golds
@@ -6042,19 +6042,19 @@ const Admin = () => {
                   className="w-full mb-4"
                 >
                   <AnimatedTabsList 
-                    className="grid w-full grid-cols-2 p-0.5 gap-1 bg-ctp-surface0/50 rounded-none border border-ctp-surface1 h-auto"
-                    indicatorClassName="bg-[#94e2d5]"
+                    className="grid w-full grid-cols-2 p-1 gap-2 h-auto"
+                    indicatorClassName="h-0.5 bg-[#94e2d5]"
                   >
                     <AnimatedTabsTrigger 
                       value="individual-level"
-                      className="py-2 px-3 text-sm transition-all duration-300 font-medium data-[state=active]:bg-[#94e2d5] data-[state=active]:text-[#11111b] data-[state=active]:hover:bg-[#94e2d5]/90 data-[state=active]:shadow-sm data-[state=inactive]:bg-ctp-surface0 data-[state=inactive]:text-ctp-text data-[state=inactive]:hover:bg-ctp-surface1 data-[state=inactive]:hover:text-ctp-text"
+                      className="py-2 px-3 text-sm transition-all duration-300 font-medium data-[state=active]:text-[#94e2d5]"
                     >
                       <Star className="h-4 w-4 mr-2" />
                       Individual Level
                     </AnimatedTabsTrigger>
                     <AnimatedTabsTrigger 
                       value="community-golds"
-                      className="py-2 px-3 text-sm transition-all duration-300 font-medium data-[state=active]:bg-[#94e2d5] data-[state=active]:text-[#11111b] data-[state=active]:hover:bg-[#94e2d5]/90 data-[state=active]:shadow-sm data-[state=inactive]:bg-ctp-surface0 data-[state=inactive]:text-ctp-text data-[state=inactive]:hover:bg-ctp-surface1 data-[state=inactive]:hover:text-ctp-text"
+                      className="py-2 px-3 text-sm transition-all duration-300 font-medium data-[state=active]:text-[#94e2d5]"
                     >
                       <Gem className="h-4 w-4 mr-2" />
                       Community Golds

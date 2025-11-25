@@ -54,7 +54,10 @@ export const updateLeaderboardEntry = async (runId: string, data: Partial<Leader
   }
 };
 
-export const updateRunVerificationStatus = updateRunVerificationStatusFirestore;
+export const updateRunVerificationStatus = async (runId: string, verified: boolean, verifiedBy?: string): Promise<boolean> => {
+  const result = await updateRunVerificationStatusFirestore(runId, verified, verifiedBy);
+  return result.success;
+};
 export const deleteLeaderboardEntry = deleteLeaderboardEntryFirestore;
 export const deleteAllLeaderboardEntries = deleteAllLeaderboardEntriesFirestore;
 export const updateRunObsoleteStatus = updateRunObsoleteStatusFirestore;
