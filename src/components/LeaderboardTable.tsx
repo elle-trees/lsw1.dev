@@ -96,7 +96,7 @@ export function LeaderboardTable({ data, platforms = [], categories = [], levels
               className={`border-b border-ctp-surface1/20 cursor-pointer transition-colors duration-50 ${isHighlighted ? 'bg-ctp-surface0' : ''} ${entry.isObsolete ? 'opacity-60 italic' : ''}`}
             >
               <TableCell className="py-2.5 pl-3 pr-1">
-                <PrefetchLink to={`/run/${entry.id}`} params={{ runId: entry.id }} className="block">
+                <PrefetchLink to="/run/$runId" params={{ runId: entry.id }} className="block">
                   <div className="flex items-center gap-1.5">
                     {entry.rank === 1 ? (
                       <LegoStudIcon size={28} color="#0055BF" />
@@ -150,7 +150,7 @@ export function LeaderboardTable({ data, platforms = [], categories = [], levels
                     return (
                       <>
                         <PrefetchLink 
-                          to={`/player/${entry.playerId}`} 
+                          to="/player/$playerId" 
                           params={{ playerId: entry.playerId }}
                           className="inline-block"
                           style={{ color: entry.nameColor || '#cba6f7' }}
@@ -163,7 +163,7 @@ export function LeaderboardTable({ data, platforms = [], categories = [], levels
                             <span className="text-ctp-overlay0 text-sm"> & </span>
                             {entry.player2Id && entry.player2Id.trim() !== "" ? (
                               <PrefetchLink 
-                                to={`/player/${entry.player2Id}`} 
+                                to="/player/$playerId" 
                                 params={{ playerId: entry.player2Id }}
                                 className="inline-block"
                                 style={{ color: entry.player2Color || '#cba6f7' }}
@@ -213,26 +213,26 @@ export function LeaderboardTable({ data, platforms = [], categories = [], levels
                 </TableCell>
               )}
               <TableCell className="py-2.5 px-2 hidden sm:table-cell text-left">
-                <PrefetchLink to={`/run/${entry.id}`} params={{ runId: entry.id }} className="block">
+                <PrefetchLink to="/run/$runId" params={{ runId: entry.id }} className="block">
                   <span className="text-sm font-semibold text-ctp-text">
                     {formatTime(entry.time)}
                   </span>
                 </PrefetchLink>
               </TableCell>
               <TableCell className="py-2.5 px-2 hidden md:table-cell text-left">
-                <PrefetchLink to={`/run/${entry.id}`} params={{ runId: entry.id }} className="block">
+                <PrefetchLink to="/run/$runId" params={{ runId: entry.id }} className="block">
                   <span className="text-sm text-ctp-subtext1 whitespace-nowrap">{entry.date}</span>
                 </PrefetchLink>
               </TableCell>
               <TableCell className="py-2.5 px-2 hidden lg:table-cell">
-                <PrefetchLink to={`/run/${entry.id}`} params={{ runId: entry.id }} className="block">
+                <PrefetchLink to="/run/$runId" params={{ runId: entry.id }} className="block">
                   <Badge variant="outline" className="border-ctp-surface1/50 bg-ctp-surface0/50 text-ctp-text text-xs px-1.5 py-0.5">
                     {platformName}
                   </Badge>
                 </PrefetchLink>
               </TableCell>
               <TableCell className="py-2.5 px-2 hidden lg:table-cell">
-                <PrefetchLink to={`/run/${entry.id}`} params={{ runId: entry.id }} className="block">
+                <PrefetchLink to="/run/$runId" params={{ runId: entry.id }} className="block">
                   <Badge variant="outline" className="border-ctp-surface1/50 bg-ctp-surface0/50 text-ctp-text flex items-center gap-1 w-fit text-xs px-1.5 py-0.5">
                     {entry.runType === 'solo' ? <User className="h-3 w-3" /> : <Users className="h-3 w-3" />}
                     {entry.runType.charAt(0).toUpperCase() + entry.runType.slice(1)}

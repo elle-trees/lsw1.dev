@@ -148,7 +148,7 @@ export function RecentRuns({ runs, loading, showRankBadge = true, maxRuns }: Rec
               >
                 {showRankBadge && (
                   <TableCell className="py-4 pl-4 pr-2">
-                    <PrefetchLink to={`/run/${run.id}`} params={{ runId: run.id }} className="block" onClick={(e) => e.stopPropagation()}>
+                    <PrefetchLink to="/run/$runId" params={{ runId: run.id }} className="block" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-2">
                         {rank === 1 ? (
                           <LegoStudIcon size={36} color="#0055BF" />
@@ -203,7 +203,7 @@ export function RecentRuns({ runs, loading, showRankBadge = true, maxRuns }: Rec
                         return (
                           <>
                             <PrefetchLink 
-                              to={`/player/${run.playerId}`} 
+                              to="/player/$playerId" 
                               params={{ playerId: run.playerId }}
                               className="inline-block"
                               style={{ color: run.nameColor || '#cba6f7' }}
@@ -216,7 +216,7 @@ export function RecentRuns({ runs, loading, showRankBadge = true, maxRuns }: Rec
                                 <span className="text-ctp-overlay0 text-base"> & </span>
                                 {run.player2Id && run.player2Id.trim() !== "" ? (
                                   <PrefetchLink 
-                                    to={`/player/${run.player2Id}`} 
+                                    to="/player/$playerId" 
                                     params={{ playerId: run.player2Id }}
                                     className="inline-block"
                                     style={{ color: run.player2Color || '#cba6f7' }}

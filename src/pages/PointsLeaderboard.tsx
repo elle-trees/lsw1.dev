@@ -348,7 +348,7 @@ const PointsLeaderboard = () => {
                             </TableCell>
                             <TableCell className="py-5 pl-2 pr-4 min-w-[200px]">
                               <PrefetchLink 
-                                to={`/player/${player.uid}`} 
+                                to="/player/$playerId" 
                                 params={{ playerId: player.uid }}
                                 className="inline-block"
                                 style={{ color: player.nameColor || '#cba6f7' }}

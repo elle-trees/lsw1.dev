@@ -815,7 +815,7 @@ const RunDetails = ({ runId }: RunDetailsProps) => {
                             return (
                               <>
                                 <PrefetchLink
-                                  to={`/player/${run.playerId}`}
+                                  to="/player/$playerId"
                                   params={{ playerId: run.playerId }}
                                   className="font-medium text-lg hover:opacity-80 transition-opacity"
                                   style={{ color: player?.nameColor || 'inherit' }}
@@ -827,7 +827,7 @@ const RunDetails = ({ runId }: RunDetailsProps) => {
                                     <span className="text-muted-foreground">&</span>
                                     {run.player2Id ? (
                                       <PrefetchLink
-                                        to={`/player/${run.player2Id}`}
+                                        to="/player/$playerId"
                                         params={{ playerId: run.player2Id }}
                                         className="font-medium text-lg hover:opacity-80 transition-opacity"
                                         style={{ color: player2?.nameColor || run.player2Color || 'inherit' }}
@@ -969,7 +969,7 @@ const RunDetails = ({ runId }: RunDetailsProps) => {
                         <div className="text-base text-muted-foreground ml-2">
                           by {verifier ? (
                             <PrefetchLink
-                              to={`/player/${verifier.uid}`}
+                              to="/player/$playerId"
                               params={{ playerId: verifier.uid }}
                               className="hover:text-[hsl(var(--mocha-mauve))] transition-colors"
                             >
