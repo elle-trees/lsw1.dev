@@ -153,30 +153,8 @@ const Stats = () => {
             if (currentTime < existingTime) {
               worldRecordMap.set(groupKey, run);
             }
-      // Calculate world records by finding the fastest run in each group
-      // Group key: leaderboardType_category_platform_runType_level
-      const worldRecordMap = new Map<string, LeaderboardEntry>();
-      
-      verifiedRuns.forEach(run => {
-        const leaderboardType = run.leaderboardType || 'regular';
-        const category = run.category || '';
-        const platform = run.platform || '';
-        const runType = run.runType || 'solo';
-        const level = run.level || '';
-        const groupKey = `${leaderboardType}_${category}_${platform}_${runType}_${level}`;
-        
-        const existing = worldRecordMap.get(groupKey);
-        if (!existing) {
-          worldRecordMap.set(groupKey, run);
-        } else {
-          // Compare times - keep the faster one
-          const existingTime = parseTimeToSeconds(existing.time) || Infinity;
-          const currentTime = parseTimeToSeconds(run.time) || Infinity;
-          if (currentTime < existingTime) {
-            worldRecordMap.set(groupKey, run);
           }
-        }
-      });
+        });
       
       const worldRecords = Array.from(worldRecordMap.values());
 
@@ -1263,8 +1241,18 @@ const Stats = () => {
                     })
                   : stats.longestHeldWRs;
                 
-                return filteredWRs.length > 0 ? (
-                <Table>
+                if (filteredWRs.length === 0) {
+                  return (
+                    <p className="text-center text-muted-foreground py-8">
+                      {filterCurrentWROnly 
+                        ? "No current world records found"
+                        : "No world record data available"}
+                    </p>
+                  );
+                }
+                
+                return (
+                  <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Duration</TableHead>
@@ -1367,13 +1355,7 @@ const Stats = () => {
                       );
                     })}
                   </TableBody>
-                </Table>
-                ) : (
-                  <p className="text-center text-muted-foreground py-8">
-                    {filterCurrentWROnly 
-                      ? "No current world records found"
-                      : "No world record data available"}
-                  </p>
+                  </Table>
                 );
               })() : (
                 <p className="text-center text-muted-foreground py-8">

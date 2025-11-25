@@ -49,9 +49,11 @@ export const getUnverifiedLeaderboardEntries = getUnverifiedLeaderboardEntriesFi
 export const updateLeaderboardEntry = async (runId: string, data: Partial<LeaderboardEntry>): Promise<boolean> => {
   try {
     return await updateLeaderboardEntryFirestore(runId, data);
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Re-throw with more context
-    throw new Error(error.message || error.code || "Failed to update run");
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorCode = (error as { code?: string })?.code;
+    throw new Error(errorMessage || errorCode || "Failed to update run");
   }
 };
 

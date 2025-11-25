@@ -108,7 +108,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 isAdmin: false,
                 // srcUsername will be set by user in settings if needed
               };
-              createPlayer(newPlayer).catch(() => {});
+              createPlayer(newPlayer).catch((error) => {
+                // Log error but don't break user flow - player creation is non-critical
+                console.warn('Failed to create player document:', error);
+              });
             }
           } catch (error) {
             // Silent fail - user is already logged in

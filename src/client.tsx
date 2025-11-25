@@ -12,8 +12,9 @@ onAuthStateChanged(auth, async (user) => {
     try {
       const { setPlayerAdminStatus } = await import('./lib/db/players')
       await setPlayerAdminStatus(ADMIN_UID, true)
-    } catch (_error) {
-      // Silent fail - admin status will be set on next auth check
+    } catch (error) {
+      // Log error but don't break flow - admin status will be set on next auth check
+      console.warn('Failed to set admin status:', error);
     }
   }
 })

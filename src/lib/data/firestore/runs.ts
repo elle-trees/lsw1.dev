@@ -93,19 +93,21 @@ export const addLeaderboardEntryFirestore = async (entry: Omit<LeaderboardEntry,
     // For now, I'll leave a comment to hook it up later or import it if I move it to a shared module.
     
     return newDocRef.id;
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Provide more detailed error information for debugging permission issues
-    if (error?.code === 'permission-denied' || error?.message?.includes('permission') || error?.message?.includes('Permission')) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorCode = (error as { code?: string })?.code;
+    if (errorCode === 'permission-denied' || errorMessage.includes('permission') || errorMessage.includes('Permission')) {
       const isImported = entry.importedFromSRC === true;
       console.error('Firestore permission error:', {
-        code: error?.code,
-        message: error?.message,
+        code: errorCode,
+        message: errorMessage,
         isImported,
         entry: { ...entry, playerId: entry.playerId || 'empty' }
       });
       const errorMsg = isImported 
-        ? `Permission denied: Admin access required to import runs. Error: ${error?.message || error?.code || 'Unknown error'}. Ensure your player document exists in Firestore with isAdmin: true and that Firestore rules have been deployed.`
-        : `Permission denied: ${error.message || 'Unable to create entry'}`;
+        ? `Permission denied: Admin access required to import runs. Error: ${errorMessage || errorCode || 'Unknown error'}. Ensure your player document exists in Firestore with isAdmin: true and that Firestore rules have been deployed.`
+        : `Permission denied: ${errorMessage || 'Unable to create entry'}`;
       throw new Error(errorMsg);
     }
     throw error;
@@ -331,9 +333,10 @@ export const batchVerifyRunsFirestore = async (
             // Continue with remaining runs in a new batch
             // This is a simplified approach - in practice, we'd need to track which runs were processed
           }
-        } catch (error: any) {
+        } catch (error: unknown) {
           result.errorCount++;
-          result.errors.push(`Error preparing run ${runId}: ${error.message || String(error)}`);
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          result.errors.push(`Error preparing run ${runId}: ${errorMessage}`);
         }
       }
 
@@ -344,10 +347,11 @@ export const batchVerifyRunsFirestore = async (
           // Count successful verifications (each run = 2 operations: update + verify, or just verify)
           const runsInBatch = Math.ceil(operationsInBatch / 2);
           result.successCount += runsInBatch;
-        } catch (error: any) {
+        } catch (error: unknown) {
           // If batch commit fails, all operations in the batch fail
           result.errorCount += Math.ceil(operationsInBatch / 2);
-          result.errors.push(`Batch commit failed: ${error.message || String(error)}`);
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          result.errors.push(`Batch commit failed: ${errorMessage}`);
         }
       }
     }
@@ -406,9 +410,10 @@ export const batchVerifyRunsFirestore = async (
         console.error("Error creating notifications for batch verification:", error);
       }
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     result.errorCount += runIds.length - result.successCount;
-    result.errors.push(`Batch verification error: ${error.message || String(error)}`);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    result.errors.push(`Batch verification error: ${errorMessage}`);
   }
 
   return result;
@@ -599,12 +604,13 @@ export const verifyRunWithTransactionFirestore = async (
     }
 
     return { success: true, points };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in transaction-based verification:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return { 
       success: false, 
       points: 0, 
-      error: error.message || String(error) 
+      error: errorMessage
     };
   }
 };
@@ -654,9 +660,10 @@ export const updateRunVerificationStatusFirestore = async (runId: string, verifi
             }
         }
         return { success, error: success ? undefined : "Failed to update verification status" };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error updating verification status and notifying:", error);
-        return { success: false, error: error.message || String(error) };
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { success: false, error: errorMessage };
     }
 };
 
