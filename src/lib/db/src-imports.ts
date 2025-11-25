@@ -17,7 +17,8 @@ import {
   getUnclaimedRunsBySRCUsernameFirestore,
   getUnassignedRunsFirestore,
   claimRunFirestore,
-  getAllVerifiedRunsFirestore
+  getAllVerifiedRunsFirestore,
+  normalizeSRCPlayerNamesInRunsFirestore
 } from "../data/firestore/src-imports";
 
 export const checkSRCRunExists = checkSRCRunExistsFirestore;
@@ -38,4 +39,5 @@ export const getUnassignedRuns = getUnassignedRunsFirestore;
 export const claimRun = claimRunFirestore;
 export const getAllVerifiedRuns = getAllVerifiedRunsFirestore;
 export const runAutoclaimingForAllUsers = runAutoclaimingForAllUsersFirestore;
+export const normalizeSRCPlayerNamesInRuns = normalizeSRCPlayerNamesInRunsFirestore;
 

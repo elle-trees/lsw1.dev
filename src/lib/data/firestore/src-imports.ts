@@ -266,36 +266,62 @@ export const removeDuplicateRunsFirestore = async (duplicateRuns: { runs: Leader
 
 export const autoClaimRunsBySRCUsernameFirestore = async (uid: string, srcUsername: string): Promise<number> => {
     if (!db) return 0;
+    if (!uid || !srcUsername) return 0;
+    
     try {
         // Normalize username for consistent matching (lowercase, trimmed)
         const normalizedUsername = srcUsername.trim().toLowerCase();
         
-        // Find runs with matching srcPlayerName
+        // Query all imported runs (we can't do case-insensitive queries in Firestore)
+        // So we fetch all imported runs and filter in memory
+        // This handles both normalized and non-normalized srcPlayerName values
         const q = query(
             collection(db, "leaderboardEntries").withConverter(leaderboardEntryConverter),
-            where("importedFromSRC", "==", true),
-            where("srcPlayerName", "==", normalizedUsername)
+            where("importedFromSRC", "==", true)
         );
         
         const snapshot = await getDocs(q);
         let claimedCount = 0;
-        const batch = writeBatch(db);
+        const batches: ReturnType<typeof writeBatch>[] = [];
+        let currentBatch = writeBatch(db);
+        let currentBatchSize = 0;
+        const maxBatchSize = 500; // Firestore batch limit
         
-        snapshot.docs.forEach(doc => {
+        for (const doc of snapshot.docs) {
             const entry = doc.data();
+            
+            // Check if srcPlayerName matches (case-insensitive comparison)
+            if (!entry.srcPlayerName) continue;
+            const normalizedSrcPlayerName = entry.srcPlayerName.trim().toLowerCase();
+            if (normalizedSrcPlayerName !== normalizedUsername) continue;
+            
             // Only claim if currently unclaimed
             if (!entry.playerId || entry.playerId === "imported" || entry.playerId.trim() === "") {
-                batch.update(doc.ref, { playerId: uid });
+                currentBatch.update(doc.ref, { playerId: uid });
                 claimedCount++;
+                currentBatchSize++;
+                
+                // Commit batch if we hit the limit
+                if (currentBatchSize >= maxBatchSize) {
+                    batches.push(currentBatch);
+                    currentBatch = writeBatch(db);
+                    currentBatchSize = 0;
+                }
             }
-        });
+        }
         
-        if (claimedCount > 0) {
-            await batch.commit();
+        // Commit all batches
+        if (currentBatchSize > 0) {
+            batches.push(currentBatch);
+        }
+        
+        // Execute all batches in parallel
+        if (batches.length > 0) {
+            await Promise.all(batches.map(batch => batch.commit()));
         }
         
         return claimedCount;
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error auto-claiming runs:", error);
         return 0;
     }
@@ -328,6 +354,85 @@ export const runAutoclaimingForAllUsersFirestore = async (): Promise<{ runsUpdat
     }
 };
 
+/**
+ * Normalize srcPlayerName and srcPlayer2Name for all imported runs
+ * This fixes existing runs that may have non-normalized usernames
+ * Should be run as a one-time migration or admin function
+ */
+export const normalizeSRCPlayerNamesInRunsFirestore = async (onProgress?: (normalized: number) => void): Promise<{ normalized: number; errors: string[] }> => {
+    if (!db) return { normalized: 0, errors: ["Database not initialized"] };
+    
+    const result = { normalized: 0, errors: [] as string[] };
+    
+    try {
+        const q = query(
+            collection(db, "leaderboardEntries").withConverter(leaderboardEntryConverter),
+            where("importedFromSRC", "==", true)
+        );
+        
+        const snapshot = await getDocs(q);
+        const batches: ReturnType<typeof writeBatch>[] = [];
+        let currentBatch = writeBatch(db);
+        let currentBatchSize = 0;
+        const maxBatchSize = 500;
+        
+        for (const doc of snapshot.docs) {
+            const entry = doc.data();
+            let needsUpdate = false;
+            const updates: Partial<LeaderboardEntry> = {};
+            
+            // Normalize srcPlayerName if it exists and isn't already normalized
+            if (entry.srcPlayerName) {
+                const normalized = entry.srcPlayerName.trim().toLowerCase();
+                if (entry.srcPlayerName !== normalized) {
+                    updates.srcPlayerName = normalized;
+                    needsUpdate = true;
+                }
+            }
+            
+            // Normalize srcPlayer2Name if it exists and isn't already normalized
+            if (entry.srcPlayer2Name) {
+                const normalized = entry.srcPlayer2Name.trim().toLowerCase();
+                if (entry.srcPlayer2Name !== normalized) {
+                    updates.srcPlayer2Name = normalized;
+                    needsUpdate = true;
+                }
+            }
+            
+            if (needsUpdate) {
+                currentBatch.update(doc.ref, updates);
+                result.normalized++;
+                currentBatchSize++;
+                
+                if (currentBatchSize >= maxBatchSize) {
+                    batches.push(currentBatch);
+                    currentBatch = writeBatch(db);
+                    currentBatchSize = 0;
+                }
+                
+                if (onProgress && result.normalized % 100 === 0) {
+                    onProgress(result.normalized);
+                }
+            }
+        }
+        
+        // Commit remaining batch
+        if (currentBatchSize > 0) {
+            batches.push(currentBatch);
+        }
+        
+        // Execute all batches
+        if (batches.length > 0) {
+            await Promise.all(batches.map(batch => batch.commit()));
+        }
+        
+        return result;
+    } catch (error: any) {
+        result.errors.push(`Fatal error: ${error.message}`);
+        return result;
+    }
+};
+
 export const tryAutoAssignRunFirestore = async (runId: string, entry: LeaderboardEntry): Promise<boolean> => {
     // Logic to match entry.srcPlayerName to a player with that srcUsername
     if (!db) return false;
@@ -335,8 +440,10 @@ export const tryAutoAssignRunFirestore = async (runId: string, entry: Leaderboar
     
     try {
         // Normalize both values for consistent matching
+        // Handle both normalized and non-normalized srcPlayerName values
         const normalizedSrcPlayerName = entry.srcPlayerName.trim().toLowerCase();
         
+        // Query players with matching srcUsername (already normalized in players collection)
         const q = query(
             collection(db, "players"),
             where("srcUsername", "==", normalizedSrcPlayerName),
@@ -346,11 +453,15 @@ export const tryAutoAssignRunFirestore = async (runId: string, entry: Leaderboar
         
         if (!snapshot.empty) {
             const player = snapshot.docs[0].data();
-            await updateDoc(doc(db, "leaderboardEntries", runId), { playerId: player.uid });
-            return true;
+            // Only auto-assign if run is currently unclaimed
+            if (!entry.playerId || entry.playerId === "imported" || entry.playerId.trim() === "") {
+                await updateDoc(doc(db, "leaderboardEntries", runId), { playerId: player.uid });
+                return true;
+            }
         }
         return false;
     } catch (error) {
+        console.error("Error in tryAutoAssignRunFirestore:", error);
         return false;
     }
 };
@@ -361,16 +472,32 @@ export const getUnclaimedRunsBySRCUsernameFirestore = async (srcUsername: string
         // Normalize username for consistent matching (lowercase, trimmed)
         const normalizedUsername = srcUsername.trim().toLowerCase();
         
+        // Query all imported runs (we can't do case-insensitive queries in Firestore)
+        // So we fetch all unclaimed imported runs and filter in memory
+        // This handles both normalized and non-normalized srcPlayerName values
         const q = query(
             collection(db, "leaderboardEntries").withConverter(leaderboardEntryConverter),
-            where("importedFromSRC", "==", true),
-            where("srcPlayerName", "==", normalizedUsername)
+            where("importedFromSRC", "==", true)
         );
         const snapshot = await getDocs(q);
+        
         return snapshot.docs
             .map(doc => doc.data())
-            .filter(entry => !entry.playerId || entry.playerId === "imported" || entry.playerId.trim() === "");
+            .filter(entry => {
+                // Check if run is unclaimed
+                const isUnclaimed = !entry.playerId || entry.playerId === "imported" || entry.playerId.trim() === "";
+                if (!isUnclaimed) return false;
+                
+                // Check if srcPlayerName matches (case-insensitive comparison)
+                if (entry.srcPlayerName) {
+                    const normalizedSrcPlayerName = entry.srcPlayerName.trim().toLowerCase();
+                    return normalizedSrcPlayerName === normalizedUsername;
+                }
+                
+                return false;
+            });
     } catch (error) {
+        console.error("Error fetching unclaimed runs by SRC username:", error);
         return [];
     }
 };
@@ -381,10 +508,36 @@ export const getUnassignedRunsFirestore = async (): Promise<LeaderboardEntry[]> 
 
 export const claimRunFirestore = async (runId: string, userId: string): Promise<boolean> => {
     if (!db) return false;
+    if (!runId || !userId) return false;
+    
     try {
-        await updateDoc(doc(db, "leaderboardEntries", runId), { playerId: userId });
+        const runRef = doc(db, "leaderboardEntries", runId).withConverter(leaderboardEntryConverter);
+        const runDoc = await getDoc(runRef);
+        
+        if (!runDoc.exists()) {
+            console.error(`Run ${runId} does not exist`);
+            return false;
+        }
+        
+        const run = runDoc.data();
+        
+        // Only allow claiming imported SRC runs
+        if (!run.importedFromSRC) {
+            console.error(`Run ${runId} is not an imported SRC run`);
+            return false;
+        }
+        
+        // Check if run is already claimed by someone else
+        if (run.playerId && run.playerId.trim() !== "" && run.playerId !== "imported" && run.playerId !== userId) {
+            console.error(`Run ${runId} is already claimed by another user`);
+            return false;
+        }
+        
+        // Update the run to claim it
+        await updateDoc(runRef, { playerId: userId });
         return true;
-    } catch (error) {
+    } catch (error: any) {
+        console.error("Error claiming run:", error);
         return false;
     }
 };

@@ -370,9 +370,9 @@ export function getSRCUsername(player: SRCRun['players'][0]): string | undefined
     if (username) return username;
   }
   
-  // Fallback: for guest players, use the name field
+  // Fallback: for guest players, use the name field (normalize it)
   if (actualPlayer?.rel === "guest" && actualPlayer?.name) {
-    return actualPlayer.name.trim();
+    return normalizeSRCUsername(actualPlayer.name);
   }
   
   return undefined;
@@ -966,10 +966,11 @@ export async function mapSRCRunToLeaderboardEntry(
     srcLevelName: levelName || undefined,
     // Store SRC player IDs and usernames for claiming
     // Use username from weblink for proper matching, fallback to display name if username not available
+    // CRITICAL: Always normalize usernames to lowercase for consistent matching during claiming
     srcPlayerId: srcPlayerId || undefined,
     srcPlayer2Id: srcPlayer2Id || undefined,
-    srcPlayerName: srcPlayer1Username || player1Name.trim() || undefined,
-    srcPlayer2Name: runType === 'co-op' ? (srcPlayer2Username || (player2Name ? player2Name.trim() : undefined)) : undefined,
+    srcPlayerName: srcPlayer1Username ? normalizeSRCUsername(srcPlayer1Username) : (player1Name.trim() ? normalizeSRCUsername(player1Name.trim()) : undefined),
+    srcPlayer2Name: runType === 'co-op' ? (srcPlayer2Username ? normalizeSRCUsername(srcPlayer2Username) : (player2Name ? normalizeSRCUsername(player2Name.trim()) : undefined)) : undefined,
     // Store subcategory info
     subcategory: subcategoryId,
     srcSubcategory: srcSubcategory,

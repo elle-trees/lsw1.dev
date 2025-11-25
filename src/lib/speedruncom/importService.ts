@@ -781,9 +781,12 @@ export async function importSRCRuns(
     // This ensures newly imported runs are automatically claimed
     try {
       const autoclaimResult = await runAutoclaimingForAllUsersFirestore();
-      if (autoclaimResult.totalClaimed > 0) {
+      if (autoclaimResult.runsUpdated > 0) {
+        // Runs were automatically claimed
       }
       if (autoclaimResult.errors.length > 0) {
+        // Log errors but don't fail the import
+        console.warn("Autoclaiming errors:", autoclaimResult.errors);
       }
     } catch (_autoclaimError) {
       // Don't fail the import if autoclaiming fails
