@@ -1,12 +1,12 @@
 import { useRef, useCallback } from "react";
 import { useRouter } from "@tanstack/react-router";
-import { prefetchRouteAndData } from "@/lib/prefetch";
+import { prefetchRouteData } from "@/lib/prefetch";
 
 /**
  * Comprehensive prefetch hook for routes and data
  * 
  * This hook provides prefetching capabilities that:
- * 1. Prefetch route chunks (JavaScript bundles) on hover
+ * 1. Prefetch route chunks using TanStack Router's built-in prefetching
  * 2. Prefetch page data (Firestore queries, etc.) on hover
  * 3. Work with both static and dynamic routes
  * 
@@ -21,34 +21,43 @@ export function usePrefetch(
   const router = useRouter();
   const hasPrefetched = useRef(false);
 
-  const handleMouseEnter = useCallback(() => {
-    if (!hasPrefetched.current && typeof document !== "undefined") {
-      // Build the href from the route
-      let href = to;
-      if (params) {
-        // Replace route params in the path
-        Object.entries(params).forEach(([key, value]) => {
-          href = href.replace(`$${key}`, value);
-        });
-      }
-      // Prefetch both route and data
-      prefetchRouteAndData(href, to, params);
-      hasPrefetched.current = true;
+  const buildPath = useCallback(() => {
+    let path = to;
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        path = path.replace(`$${key}`, value);
+      });
     }
+    return path;
   }, [to, params]);
+
+  const handleMouseEnter = useCallback(() => {
+    if (hasPrefetched.current) return;
+    
+    const path = buildPath();
+    
+    // Use TanStack Router's built-in prefetching
+    try {
+      if (typeof router.preloadRoute === 'function') {
+        router.preloadRoute({ to, params });
+      }
+    } catch (error) {
+      // Fallback if preloadRoute doesn't exist
+    }
+    
+    // Prefetch data using our system
+    prefetchRouteData(path, params).catch(() => {
+      // Silent fail
+    });
+    
+    hasPrefetched.current = true;
+  }, [to, params, router, buildPath]);
 
   return {
     onMouseEnter: handleMouseEnter,
     prefetch: () => {
       if (!hasPrefetched.current) {
-        let href = to;
-        if (params) {
-          Object.entries(params).forEach(([key, value]) => {
-            href = href.replace(`$${key}`, value);
-          });
-        }
-        prefetchRouteAndData(href, to, params);
-        hasPrefetched.current = true;
+        handleMouseEnter();
       }
     },
   };

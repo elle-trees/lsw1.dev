@@ -220,7 +220,7 @@ export function GameDetails({ className }: GameDetailsProps) {
   const handleTabChange = (value: string) => {
     const link = sortedHeaderLinks.find((l) => l.id === value);
     if (link) {
-      navigate(link.route);
+      navigate({ to: link.route });
     }
   };
 
@@ -725,7 +725,7 @@ export function GameDetails({ className }: GameDetailsProps) {
                                 }}
                                 onClick={(e) => {
                                   e.preventDefault();
-                                  navigate(link.route);
+                                  navigate({ to: link.route });
                                 }}
                               >
                                 {IconComponent && (
