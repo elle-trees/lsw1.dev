@@ -426,8 +426,9 @@ export const runAutoclaimingForAllUsersFirestore = async (): Promise<{ runsUpdat
                     result.playersUpdated++;
                     console.log(`[Autoclaim] Claimed ${claimed} run(s) for player ${player.uid} (${player.displayName}) with SRC username "${normalizedSrcUsername}"`);
                 }
-            } catch (err: any) {
-                const errorMsg = `Error claiming for ${player.displayName} (${player.srcUsername}): ${err.message}`;
+            } catch (err: unknown) {
+                const errorMessage = err instanceof Error ? err.message : String(err);
+                const errorMsg = `Error claiming for ${player.displayName} (${player.srcUsername}): ${errorMessage}`;
                 console.error(`[Autoclaim] ${errorMsg}`, err);
                 result.errors.push(errorMsg);
             }
@@ -435,8 +436,9 @@ export const runAutoclaimingForAllUsersFirestore = async (): Promise<{ runsUpdat
         
         console.log(`[Autoclaim] Complete: ${result.runsUpdated} runs claimed for ${result.playersUpdated} players`);
         return result;
-    } catch (error: any) {
-        const errorMsg = `Fatal error: ${error.message}`;
+    } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMsg = `Fatal error: ${errorMessage}`;
         console.error(`[Autoclaim] ${errorMsg}`, error);
         result.errors.push(errorMsg);
         return result;

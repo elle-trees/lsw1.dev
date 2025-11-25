@@ -412,7 +412,6 @@ const Stats = () => {
       });
       
       setLoading(false);
-      }
     });
 
     return () => {

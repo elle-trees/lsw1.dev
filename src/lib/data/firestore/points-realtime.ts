@@ -271,8 +271,9 @@ export const recalculateAllPlayerPointsFirestore = async (
             if (onProgress) {
               onProgress(processed, totalPlayers);
             }
-          } catch (error: any) {
-            errors.push(`Error recalculating points for player ${player.uid}: ${error.message}`);
+          } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            errors.push(`Error recalculating points for player ${player.uid}: ${errorMessage}`);
             processed++;
             if (onProgress) {
               onProgress(processed, totalPlayers);
@@ -290,8 +291,9 @@ export const recalculateAllPlayerPointsFirestore = async (
     const allRunsSnapshot = await getDocs(allRunsQuery);
     runsUpdated = allRunsSnapshot.docs.length;
     
-  } catch (error: any) {
-    errors.push(`Fatal error in recalculation: ${error.message}`);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    errors.push(`Fatal error in recalculation: ${errorMessage}`);
   }
   
   return { playersUpdated, runsUpdated, errors };

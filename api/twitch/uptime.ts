@@ -41,7 +41,8 @@ export async function GET(request: Request) {
         'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60',
       },
     });
-  } catch (error) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     console.error('[API] Error fetching Twitch uptime:', error);
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,

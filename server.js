@@ -11,21 +11,12 @@ const __dirname = dirname(__filename);
 const PORT = parseInt(process.env.PORT || '8080', 10);
 const HOST = '0.0.0.0';
 const DIST_DIR = resolve(__dirname, 'dist');
-const SERVER_ENTRY = resolve(DIST_DIR, 'server/server.js');
 
-// Check if SSR is available (server bundle exists)
-const SSR_ENABLED = existsSync(SERVER_ENTRY);
-
-// Lazy load SSR render function only if SSR is enabled
-let render;
-if (SSR_ENABLED) {
-  try {
-    const serverModule = await import(SERVER_ENTRY);
-    render = serverModule.render;
-  } catch (error) {
-    console.warn('SSR module failed to load, falling back to SPA mode:', error.message);
-  }
-}
+// SSR is not currently enabled - this is a client-side only SPA
+// If SSR is needed in the future, uncomment and configure:
+// const SERVER_ENTRY = resolve(DIST_DIR, 'server/server.js');
+// const SSR_ENABLED = existsSync(SERVER_ENTRY);
+let render = null;
 
 const MIME_TYPES = {
   '.html': 'text/html',
@@ -74,6 +65,28 @@ const server = createServer(async (req, res) => {
       return;
     }
     
+    // Check if dist directory exists and has index.html
+    const indexPath = resolve(DIST_DIR, 'index.html');
+    const distExists = existsSync(DIST_DIR);
+    const indexExists = existsSync(indexPath);
+    
+    if (!distExists || !indexExists) {
+      res.writeHead(503, { 'Content-Type': 'text/html' });
+      res.end(`
+        <!DOCTYPE html>
+        <html>
+          <head><title>Build Required</title></head>
+          <body style="font-family: sans-serif; padding: 2rem; text-align: center;">
+            <h1>Build Required</h1>
+            <p>The application needs to be built before running the production server.</p>
+            <p><strong>For development:</strong> Run <code>npm run dev</code></p>
+            <p><strong>For production:</strong> Run <code>npm run build</code> then <code>npm start</code></p>
+          </body>
+        </html>
+      `);
+      return;
+    }
+    
     // Check if this is a static asset request
     const ext = extname(pathname).toLowerCase();
     const isStaticAsset = ext && ext !== '.html' && !pathname.startsWith('/api');
@@ -93,47 +106,7 @@ const server = createServer(async (req, res) => {
       }
     }
     
-    // For HTML requests, use SSR if available, otherwise fall back to SPA
-    if (render && !isStaticAsset) {
-      try {
-        // Render the app server-side
-        const { html, dehydratedState } = await render(url, req, res);
-        
-        // Read the HTML template
-        const indexPath = resolve(DIST_DIR, 'index.html');
-        const indexResult = serveFile(indexPath);
-        
-        if (indexResult) {
-          let htmlContent = indexResult.content.toString();
-          
-          // Inject the rendered HTML into the root div
-          htmlContent = htmlContent.replace(
-            '<div id="root"></div>',
-            `<div id="root">${html}</div>`
-          );
-          
-          // Inject dehydrated state for React Query hydration
-          const stateScript = `<script>window.__REACT_QUERY_STATE__ = ${JSON.stringify(dehydratedState)};</script>`;
-          htmlContent = htmlContent.replace(
-            '</head>',
-            `${stateScript}</head>`
-          );
-          
-          res.writeHead(200, {
-            'Content-Type': 'text/html',
-            'Cache-Control': 'no-cache',
-          });
-          res.end(htmlContent);
-          return;
-        }
-      } catch (ssrError) {
-        console.error('SSR rendering error:', ssrError);
-        // Fall through to SPA fallback
-      }
-    }
-    
-    // Fallback to SPA mode: serve index.html
-    const indexPath = resolve(DIST_DIR, 'index.html');
+    // Serve index.html for all non-asset requests (SPA routing)
     const indexResult = serveFile(indexPath);
     
     if (indexResult) {
@@ -155,7 +128,11 @@ const server = createServer(async (req, res) => {
 
 server.listen(PORT, HOST, () => {
   console.log(`Server running on http://${HOST}:${PORT}`);
-  console.log(SSR_ENABLED && render ? 'SSR mode enabled' : 'Serving static files (SPA mode)');
+  console.log('Serving static files (SPA mode)');
+  if (!existsSync(resolve(DIST_DIR, 'index.html'))) {
+    console.warn('⚠️  WARNING: dist/index.html not found. Run "npm run build" first.');
+    console.warn('   For development, use "npm run dev" instead.');
+  }
 });
 
 server.on('error', (error) => {

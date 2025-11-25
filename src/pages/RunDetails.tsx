@@ -386,10 +386,11 @@ const RunDetails = ({ runId }: RunDetailsProps) => {
       } else {
         throw new Error("Failed to update run");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       toast({
         title: "Error",
-        description: error.message || "Failed to update run information.",
+        description: errorMessage || "Failed to update run information.",
         variant: "destructive",
       });
     } finally {
@@ -420,10 +421,11 @@ const RunDetails = ({ runId }: RunDetailsProps) => {
       } else {
         throw new Error("Failed to delete run");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       toast({
         title: "Error",
-        description: error.message || "Failed to delete run.",
+        description: errorMessage || "Failed to delete run.",
         variant: "destructive",
       });
     } finally {
@@ -484,7 +486,7 @@ const RunDetails = ({ runId }: RunDetailsProps) => {
       <div className="max-w-[120rem] mx-auto px-4 sm:px-6 w-full" id="page-container">
         <Button
           variant="ghost"
-          onClick={() => navigate("/leaderboards")}
+          onClick={() => navigate({ to: '/leaderboards' })}
           className="mb-6 text-ctp-overlay0 hover:text-ctp-text"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />

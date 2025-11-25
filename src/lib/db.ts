@@ -88,6 +88,11 @@ export const runAutoclaimingForAllUsers = async () => {
   return module.runAutoclaimingForAllUsers();
 };
 
+export const autoClaimRunsBySRCUsername = async (uid: string, srcUsername: string) => {
+  const module = await import("./db/src-imports");
+  return module.autoClaimRunsBySRCUsername(uid, srcUsername);
+};
+
 // Re-export commonly used functions with lazy loading
 export const getCategories = async (leaderboardType?: 'regular' | 'individual-level' | 'community-golds') => {
   const module = await import("./db/categories");

@@ -86,6 +86,32 @@ A modern, fast, speedrunning leaderboard platform built with React, TypeScript, 
   - Shows "Imported from Speedrun.com" for imported runs with link to original run
   - Displays verification status and verifier information
 
+## Getting Started
+
+### Development
+
+```bash
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+
+# The app will be available at http://localhost:8080
+```
+
+### Production Build
+
+```bash
+# Build the application
+npm run build
+
+# Start production server
+npm start
+```
+
+**Note:** For development, always use `npm run dev`. The production server (`npm start`) requires a build first.
+
 ## Tech Stack
 
 - **Frontend**: React 18 + TypeScript

@@ -25,7 +25,7 @@ const rootElement = document.getElementById('root')!
 const hasServerRenderedContent = rootElement.hasChildNodes()
 
 // Get dehydrated state from server if available
-const dehydratedState = typeof window !== 'undefined' && (window as any).__REACT_QUERY_STATE__
+const dehydratedState = typeof window !== 'undefined' && (window as Window & { __REACT_QUERY_STATE__?: unknown }).__REACT_QUERY_STATE__
 
 // Create QueryClient
 const queryClient = new QueryClient({
