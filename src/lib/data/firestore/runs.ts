@@ -503,13 +503,31 @@ export const verifyRunWithTransactionFirestore = async (
 
       const currentRun = runDocSnap.data();
       
-      // Update run verification status
-      transaction.update(runRef, {
+      // Update run verification status - only include defined fields (Firestore doesn't allow undefined)
+      const updateData: any = {
         verified,
-        verifiedBy: verified ? verifiedBy : undefined,
-        rank: rank !== undefined ? rank : currentRun.rank,
-        points: verified ? points : undefined
-      } as any);
+      };
+      
+      if (verified && verifiedBy) {
+        updateData.verifiedBy = verifiedBy;
+      } else if (!verified) {
+        // Remove verifiedBy when unverifying
+        updateData.verifiedBy = null;
+      }
+      
+      // Only include rank if it's defined (don't include if both rank and currentRun.rank are undefined)
+      if (rank !== undefined) {
+        updateData.rank = rank;
+      } else if (currentRun.rank !== undefined && currentRun.rank !== null) {
+        updateData.rank = currentRun.rank;
+      }
+      
+      // Only include points when verifying and they're calculated
+      if (verified && points !== undefined && points !== null) {
+        updateData.points = points;
+      }
+      
+      transaction.update(runRef, updateData);
 
       // Update player points if run has a valid playerId
       if (run.playerId && run.playerId !== "imported") {
