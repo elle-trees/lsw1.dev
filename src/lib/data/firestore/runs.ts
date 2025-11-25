@@ -12,13 +12,15 @@ import {
   orderBy, 
   limit as firestoreLimit,
   DocumentData,
+  DocumentReference,
+  DocumentSnapshot,
   onSnapshot,
   Unsubscribe,
   QuerySnapshot,
   writeBatch,
   runTransaction
 } from "firebase/firestore";
-import { LeaderboardEntry } from "@/types/database";
+import { LeaderboardEntry, Player } from "@/types/database";
 import { leaderboardEntryConverter, playerConverter } from "./converters";
 import { normalizeLeaderboardEntry, validateLeaderboardEntry } from "@/lib/dataValidation";
 
@@ -495,6 +497,8 @@ export const verifyRunWithTransactionFirestore = async (
 
     // Use transaction to atomically update run and player points
     await runTransaction(db, async (transaction) => {
+      // ALL READS MUST COME BEFORE ALL WRITES in Firestore transactions
+      
       // Re-read the run within the transaction
       const runDocSnap = await transaction.get(runRef);
       if (!runDocSnap.exists()) {
@@ -502,6 +506,16 @@ export const verifyRunWithTransactionFirestore = async (
       }
 
       const currentRun = runDocSnap.data();
+      
+      // Read player document if needed (must happen before any writes)
+      let playerRef: DocumentReference<Player> | null = null;
+      let playerDocSnap: DocumentSnapshot<Player> | null = null;
+      if (run.playerId && run.playerId !== "imported") {
+        playerRef = doc(db, "players", run.playerId).withConverter(playerConverter);
+        playerDocSnap = await transaction.get(playerRef);
+      }
+      
+      // NOW WE CAN DO ALL WRITES
       
       // Update run verification status - only include defined fields (Firestore doesn't allow undefined)
       const updateData: any = {
@@ -530,10 +544,7 @@ export const verifyRunWithTransactionFirestore = async (
       transaction.update(runRef, updateData);
 
       // Update player points if run has a valid playerId
-      if (run.playerId && run.playerId !== "imported") {
-        const playerRef = doc(db, "players", run.playerId).withConverter(playerConverter);
-        const playerDocSnap = await transaction.get(playerRef);
-        
+      if (playerRef && playerDocSnap) {
         if (playerDocSnap.exists()) {
           const player = playerDocSnap.data();
           const currentPoints = player.totalPoints || 0;
