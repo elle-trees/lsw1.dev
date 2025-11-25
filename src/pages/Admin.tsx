@@ -54,6 +54,7 @@ const Admin = () => {
   const [batchVerifying, setBatchVerifying] = useState(false);
   const [batchVerifyingAll, setBatchVerifyingAll] = useState(false);
   const [autoclaiming, setAutoclaiming] = useState(false);
+  const [backfillingSrcPlayerName, setBackfillingSrcPlayerName] = useState(false);
   const itemsPerPage = 25;
   // SRC categories with variables
   const [srcCategoriesWithVars, setSrcCategoriesWithVars] = useState<Array<SRCCategory & { variablesData?: Array<{ id: string; name: string; values: { values: Record<string, { label: string }> } }> }>>([]);
@@ -1683,6 +1684,69 @@ const Admin = () => {
       });
     } finally {
       setAutoclaiming(false);
+    }
+  };
+
+  const handleBackfillSrcPlayerName = async () => {
+    if (!currentUser?.isAdmin) {
+      toast({
+        title: "Error",
+        description: "You must be an admin to backfill srcPlayerName.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (backfillingSrcPlayerName) return;
+
+    if (!window.confirm(
+      "This will backfill the srcPlayerName field for all imported runs that are missing it. " +
+      "This uses the playerName field as a fallback. Continue?"
+    )) {
+      return;
+    }
+
+    setBackfillingSrcPlayerName(true);
+    try {
+      const { backfillSrcPlayerNameForRuns } = await import("@/lib/db/src-imports");
+      const result = await backfillSrcPlayerNameForRuns((processed, updated) => {
+        console.log(`Backfilling srcPlayerName: ${processed} processed, ${updated} updated`);
+      });
+      
+      if (result.errors.length > 0) {
+        toast({
+          title: "Backfill Complete with Errors",
+          description: `Processed ${result.processed} runs, updated ${result.updated} with srcPlayerName. ${result.errors.length} runs could not be backfilled.`,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Backfill Complete",
+          description: `Successfully updated ${result.updated} run(s) with srcPlayerName out of ${result.processed} processed.`,
+        });
+        // Refresh imported runs to show updated data
+        const fetchImportedRuns = async () => {
+          setLoadingImportedRuns(true);
+          try {
+            const { getImportedSRCRuns } = await import("@/lib/db/src-imports");
+            const runs = await getImportedSRCRuns(1000);
+            setImportedSRCRuns(runs);
+          } catch (error) {
+            console.error("Error refreshing imported runs:", error);
+          } finally {
+            setLoadingImportedRuns(false);
+          }
+        };
+        await fetchImportedRuns();
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to backfill srcPlayerName.",
+        variant: "destructive",
+      });
+    } finally {
+      setBackfillingSrcPlayerName(false);
     }
   };
 
@@ -4462,15 +4526,41 @@ const Admin = () => {
                   )}
                 </div>
 
+                {/* Backfill srcPlayerName Section */}
+                <div className="space-y-4 pb-6 pt-2 border-b border-[hsl(235,13%,30%)]">
+                  <p className="text-[hsl(222,15%,60%)]">
+                    Backfill the srcPlayerName field for older imported runs that don't have it set. 
+                    This uses the playerName field as a fallback and normalizes it for autoclaiming. 
+                    Run this before autoclaiming if you have older imports.
+                  </p>
+                  <Button
+                    onClick={handleBackfillSrcPlayerName}
+                    disabled={backfillingSrcPlayerName || importingRuns}
+                    className="bg-gradient-to-r from-[#89b4fa] to-[#74c7ec] hover:from-[#74c7ec] hover:to-[#89b4fa] text-[hsl(240,21%,15%)] font-bold transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                  >
+                    {backfillingSrcPlayerName ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Backfilling...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Backfill srcPlayerName for All Runs
+                      </>
+                    )}
+                  </Button>
+                </div>
+
                 {/* Autoclaiming Section */}
                 <div className="space-y-4 pb-6 pt-2 border-b border-[hsl(235,13%,30%)]">
                   <p className="text-[hsl(222,15%,60%)]">
                     Automatically claim imported runs (both verified and unverified) for players who have set their SRC username. 
-                    This will match runs based on the player name from speedrun.com.
+                    This will match runs based on the player name from speedrun.com. Make sure to run the backfill above first if you have older imports.
                   </p>
                   <Button
                     onClick={handleAutoclaimRuns}
-                    disabled={autoclaiming || importingRuns}
+                    disabled={autoclaiming || importingRuns || backfillingSrcPlayerName}
                     className="bg-gradient-to-r from-[#f9e2af] to-[#e6d19a] hover:from-[#e6d19a] hover:to-[#f9e2af] text-[hsl(240,21%,15%)] font-bold transition-all duration-300 hover:scale-105 hover:shadow-lg"
                   >
                     {autoclaiming ? (

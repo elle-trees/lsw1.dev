@@ -4,6 +4,8 @@ import {
   query,
   where,
   getDocs,
+  getDoc,
+  doc,
   limit as firestoreLimit,
 } from "firebase/firestore";
 import { LeaderboardEntry, Player } from "@/types/database";
@@ -147,6 +149,58 @@ export const debugAutoclaimingForUser = async (
       unclaimedMatchingRuns: unclaimedMatchingRuns.length,
       alreadyClaimedMatchingRuns: alreadyClaimedMatchingRuns.length,
     },
+  };
+};
+
+/**
+ * Check a specific run's srcPlayerName value and compare it to a username
+ * Useful for debugging why autoclaiming isn't working
+ */
+export const checkRunSrcPlayerName = async (
+  runId: string,
+  expectedUsername?: string
+): Promise<{
+  runId: string;
+  srcPlayerName: string | undefined;
+  normalizedSrcPlayerName: string;
+  playerId: string | undefined;
+  verified: boolean;
+  importedFromSRC: boolean;
+  expectedUsername?: string;
+  normalizedExpectedUsername?: string;
+  matches: boolean;
+}> => {
+  if (!db) {
+    throw new Error("Database not initialized");
+  }
+
+  const runRef = doc(db, "leaderboardEntries", runId).withConverter(leaderboardEntryConverter);
+  const runSnap = await getDoc(runRef);
+
+  if (!runSnap.exists()) {
+    throw new Error(`Run ${runId} not found`);
+  }
+
+  const run = runSnap.data();
+  const normalizedSrcPlayerName = run.srcPlayerName
+    ? String(run.srcPlayerName).trim().toLowerCase()
+    : "";
+  const normalizedExpectedUsername = expectedUsername
+    ? expectedUsername.trim().toLowerCase()
+    : undefined;
+
+  return {
+    runId,
+    srcPlayerName: run.srcPlayerName,
+    normalizedSrcPlayerName,
+    playerId: run.playerId,
+    verified: run.verified || false,
+    importedFromSRC: run.importedFromSRC || false,
+    expectedUsername,
+    normalizedExpectedUsername,
+    matches: normalizedExpectedUsername
+      ? normalizedSrcPlayerName === normalizedExpectedUsername
+      : false,
   };
 };
 

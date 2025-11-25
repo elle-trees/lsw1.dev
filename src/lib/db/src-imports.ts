@@ -41,6 +41,9 @@ export const getAllVerifiedRuns = getAllVerifiedRunsFirestore;
 export const runAutoclaimingForAllUsers = runAutoclaimingForAllUsersFirestore;
 export const normalizeSRCPlayerNamesInRuns = normalizeSRCPlayerNamesInRunsFirestore;
 
+// Export backfill function
+export { backfillSrcPlayerNameForRunsFirestore as backfillSrcPlayerNameForRuns } from "../data/firestore/src-imports";
+
 // Export debug function
 export { debugAutoclaimingForUser } from "../data/firestore/autoclaim-debug";
 

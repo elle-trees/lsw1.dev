@@ -300,18 +300,35 @@ export const autoClaimRunsBySRCUsernameFirestore = async (uid: string, srcUserna
         let currentBatchSize = 0;
         const maxBatchSize = 500; // Firestore batch limit
         
+        // Sample some runs for debugging
+        let sampleRunsLogged = 0;
+        const maxSampleRuns = 5;
+        
         for (const doc of snapshot.docs) {
             const entry = doc.data();
             
-            // Check if srcPlayerName matches (case-insensitive comparison)
-            if (!entry.srcPlayerName) {
+            // Handle srcPlayerName - it might be undefined, null, or empty string
+            const srcPlayerNameValue = entry.srcPlayerName;
+            if (!srcPlayerNameValue || typeof srcPlayerNameValue !== 'string' || srcPlayerNameValue.trim() === '') {
                 unmatchedCount++;
+                // Log sample of runs without srcPlayerName for debugging
+                if (sampleRunsLogged < maxSampleRuns && unmatchedCount <= maxSampleRuns) {
+                    console.log(`[Autoclaim] Run ${entry.id} has no srcPlayerName (value: ${JSON.stringify(srcPlayerNameValue)})`);
+                    sampleRunsLogged++;
+                }
                 continue;
             }
             
-            const normalizedSrcPlayerName = entry.srcPlayerName.trim().toLowerCase();
+            // Normalize srcPlayerName - handle both already-normalized and non-normalized values
+            const normalizedSrcPlayerName = String(srcPlayerNameValue).trim().toLowerCase();
             
-            // Debug: log potential matches
+            // Debug: log first few potential matches for troubleshooting
+            if (sampleRunsLogged < maxSampleRuns) {
+                console.log(`[Autoclaim] Sample run ${entry.id}: srcPlayerName="${srcPlayerNameValue}" (normalized: "${normalizedSrcPlayerName}"), playerId="${entry.playerId || 'none'}"`);
+                sampleRunsLogged++;
+            }
+            
+            // Check if srcPlayerName matches (case-insensitive comparison)
             if (normalizedSrcPlayerName === normalizedUsername) {
                 const isUnclaimed = !entry.playerId || entry.playerId === "imported" || entry.playerId.trim() === "";
                 
@@ -328,15 +345,40 @@ export const autoClaimRunsBySRCUsernameFirestore = async (uid: string, srcUserna
                     }
                 } else {
                     matchedButClaimedCount++;
-                    console.log(`[Autoclaim] Found matching run ${entry.id} but it's already claimed by ${entry.playerId}`);
+                    // Only log first few to avoid spam
+                    if (matchedButClaimedCount <= 3) {
+                        console.log(`[Autoclaim] Found matching run ${entry.id} but it's already claimed by ${entry.playerId}`);
+                    }
                 }
             } else {
                 unmatchedCount++;
             }
         }
         
-        // Debug logging
-        console.log(`[Autoclaim] Results for "${srcUsername}": ${claimedCount} claimed, ${matchedButClaimedCount} already claimed, ${unmatchedCount} unmatched`);
+        // Debug logging with more details
+        console.log(`[Autoclaim] Results for "${srcUsername}" (normalized: "${normalizedUsername}"): ${claimedCount} claimed, ${matchedButClaimedCount} already claimed, ${unmatchedCount} unmatched out of ${snapshot.docs.length} total imported runs`);
+        
+        // If no matches found, log a sample of what srcPlayerName values exist
+        if (claimedCount === 0 && matchedButClaimedCount === 0 && snapshot.docs.length > 0) {
+            const sampleSrcPlayerNames = new Set<string>();
+            let sampleCount = 0;
+            for (const doc of snapshot.docs) {
+                const entry = doc.data();
+                if (entry.srcPlayerName && typeof entry.srcPlayerName === 'string') {
+                    const normalized = entry.srcPlayerName.trim().toLowerCase();
+                    if (normalized && !sampleSrcPlayerNames.has(normalized) && sampleCount < 10) {
+                        sampleSrcPlayerNames.add(normalized);
+                        sampleCount++;
+                    }
+                }
+                if (sampleCount >= 10) break;
+            }
+            if (sampleSrcPlayerNames.size > 0) {
+                console.log(`[Autoclaim] Sample srcPlayerName values found in runs:`, Array.from(sampleSrcPlayerNames).slice(0, 10));
+            } else {
+                console.warn(`[Autoclaim] No srcPlayerName values found in any imported runs! This suggests runs may not have been imported with srcPlayerName field.`);
+            }
+        }
         
         // Commit all batches
         if (currentBatchSize > 0) {
@@ -402,10 +444,108 @@ export const runAutoclaimingForAllUsersFirestore = async (): Promise<{ runsUpdat
 };
 
 /**
- * Normalize srcPlayerName and srcPlayer2Name for all imported runs
- * This fixes existing runs that may have non-normalized usernames
- * Should be run as a one-time migration or admin function
+ * Backfill srcPlayerName for older imported runs that don't have it set
+ * Uses playerName as fallback and normalizes it
+ * @param onProgress - Optional callback for progress updates
+ * @returns Summary of the backfill operation
  */
+export const backfillSrcPlayerNameForRunsFirestore = async (
+  onProgress?: (processed: number, updated: number) => void
+): Promise<{ processed: number; updated: number; errors: string[] }> => {
+  if (!db) return { processed: 0, updated: 0, errors: ["Database not initialized"] };
+  
+  const result = { processed: 0, updated: 0, errors: [] as string[] };
+  
+  try {
+    // Import normalizeSRCUsername function
+    const { normalizeSRCUsername } = await import("@/lib/speedruncom");
+    
+    // Get all imported runs
+    const q = query(
+      collection(db, "leaderboardEntries").withConverter(leaderboardEntryConverter),
+      where("importedFromSRC", "==", true)
+    );
+    
+    const snapshot = await getDocs(q);
+    const batches: ReturnType<typeof writeBatch>[] = [];
+    let currentBatch = writeBatch(db);
+    let currentBatchSize = 0;
+    const maxBatchSize = 500;
+    
+    for (const doc of snapshot.docs) {
+      result.processed++;
+      const entry = doc.data();
+      
+      // Skip if srcPlayerName already exists
+      if (entry.srcPlayerName && entry.srcPlayerName.trim() !== '') {
+        if (onProgress && result.processed % 100 === 0) {
+          onProgress(result.processed, result.updated);
+        }
+        continue;
+      }
+      
+      // Try to reconstruct srcPlayerName from available data
+      let srcPlayerName: string | undefined = undefined;
+      
+      // First, try using playerName (most reliable for older imports)
+      if (entry.playerName && entry.playerName.trim() !== '' && entry.playerName.trim() !== 'Unknown') {
+        srcPlayerName = normalizeSRCUsername(entry.playerName);
+      }
+      
+      // If we have a srcPlayerName now, update the run
+      if (srcPlayerName) {
+        const updates: Partial<LeaderboardEntry> = { srcPlayerName };
+        
+        // Also backfill srcPlayer2Name for co-op runs if missing
+        if (entry.runType === 'co-op' && entry.player2Name && 
+            (!entry.srcPlayer2Name || entry.srcPlayer2Name.trim() === '') &&
+            entry.player2Name.trim() !== '' && entry.player2Name.trim() !== 'Unknown') {
+          updates.srcPlayer2Name = normalizeSRCUsername(entry.player2Name);
+        }
+        
+        currentBatch.update(doc.ref, updates);
+        result.updated++;
+        currentBatchSize++;
+        
+        if (currentBatchSize >= maxBatchSize) {
+          batches.push(currentBatch);
+          currentBatch = writeBatch(db);
+          currentBatchSize = 0;
+        }
+      } else {
+        // Couldn't reconstruct - log for manual review
+        result.errors.push(`Run ${entry.id}: Could not reconstruct srcPlayerName (playerName: "${entry.playerName}", srcPlayerId: "${entry.srcPlayerId || 'none'}")`);
+      }
+      
+      if (onProgress && result.processed % 100 === 0) {
+        onProgress(result.processed, result.updated);
+      }
+    }
+    
+    // Commit remaining batch
+    if (currentBatchSize > 0) {
+      batches.push(currentBatch);
+    }
+    
+    // Execute all batches
+    if (batches.length > 0) {
+      await Promise.all(batches.map(batch => batch.commit()));
+    }
+    
+    console.log(`[Backfill] Processed ${result.processed} runs, updated ${result.updated} with srcPlayerName`);
+    if (result.errors.length > 0) {
+      console.warn(`[Backfill] ${result.errors.length} runs could not be backfilled`);
+    }
+    
+    return result;
+  } catch (error: any) {
+    const errorMsg = `Fatal error in backfill: ${error.message}`;
+    console.error(`[Backfill] ${errorMsg}`, error);
+    result.errors.push(errorMsg);
+    return result;
+  }
+};
+
 export const normalizeSRCPlayerNamesInRunsFirestore = async (onProgress?: (normalized: number) => void): Promise<{ normalized: number; errors: string[] }> => {
     if (!db) return { normalized: 0, errors: ["Database not initialized"] };
     
