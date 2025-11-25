@@ -264,7 +264,7 @@ const Admin = () => {
         // For community-golds, use community-golds categories (now configurable)
         // For individual-level, use individual-level categories
         const { getCategoriesFirestore: getCategories } = await import("@/lib/data/firestore/categories");
-        const categoriesData = await getCategoriesFromFirestore(levelLeaderboardType);
+        const categoriesData = await getCategories(levelLeaderboardType);
         setFirestoreCategories(categoriesData);
       } catch (_error) {
         // Silent fail
@@ -304,7 +304,7 @@ const Admin = () => {
           // Dynamic import at call site
 
           const { getCategoriesFirestore: getCategories } = await import("@/lib/data/firestore/categories");
-          const categories = await getCategoriesFromFirestore('regular');
+          const categories = await getCategories('regular');
           const category = categories.find(c => c.id === editingImportedRunForm.category);
           if (category && category.subcategories && category.subcategories.length > 0) {
             const sorted = [...category.subcategories].sort((a, b) => {
@@ -390,7 +390,7 @@ const Admin = () => {
       // Dynamic import at call site
 
       const { getCategoriesFirestore: getCategories } = await import("@/lib/data/firestore/categories");
-      const categoriesData = await getCategoriesFromFirestore(type);
+      const categoriesData = await getCategories(type);
       setFirestoreCategories(categoriesData);
     } catch (_error) {
       toast({
@@ -585,7 +585,7 @@ const Admin = () => {
     (async () => {
       const { subscribeToUnverifiedRunsFirestore } = await import("@/lib/data/firestore/runs");
       if (!isMounted) return;
-      unsubscribe = subscribeToUnverifiedRuns((runs) => {
+      unsubscribe = subscribeToUnverifiedRunsFirestore((runs) => {
         if (!isMounted) return;
         // Filter out imported runs that are automatically handled/verified differently
         const manualUnverified = runs.filter(run => !run.importedFromSRC);
@@ -610,7 +610,7 @@ const Admin = () => {
   const fetchPlatforms = useCallback(async () => {
     try {
       const { getPlatformsFirestore: getPlatforms } = await import("@/lib/data/firestore/categories");
-      const platformsData = await getPlatformsFromFirestore();
+      const platformsData = await getPlatforms();
       setFirestorePlatforms(platformsData);
     } catch (_error) {
       toast({
@@ -1085,8 +1085,8 @@ const Admin = () => {
       // Fetch ALL categories (regular and IL) for linking
       const { getCategoriesFirestore: getCategories } = await import("@/lib/data/firestore/categories");
       const [regularCats, ilCats] = await Promise.all([
-        getCategoriesFromFirestore('regular'),
-        getCategoriesFromFirestore('individual-level')
+        getCategories('regular'),
+        getCategories('individual-level')
       ]);
       setAllCategoriesForSRCLinking([...regularCats, ...ilCats]);
     } catch (error: any) {
@@ -1288,9 +1288,11 @@ const Admin = () => {
     try {
       // Dynamic import to avoid circular dependency
       const { batchVerifyRuns } = await import("@/lib/data/runFieldService");
-      const [runsModule, categoriesModule] = await Promise.all([
+      const [runsModule, categoriesModule, platformsModule, levelsModule] = await Promise.all([
         import("@/lib/data/firestore/runs"),
-        import("@/lib/data/firestore/categories")
+        import("@/lib/data/firestore/categories"),
+        import("@/lib/data/firestore/platforms"),
+        import("@/lib/data/firestore/levels")
       ]);
       // Use optimized batch verification service
       const result = await batchVerifyRuns(
@@ -1298,9 +1300,9 @@ const Admin = () => {
         verifiedBy,
         runsModule.updateRunVerificationStatus,
         runsModule.updateLeaderboardEntry,
-        categoriesModule.getCategoriesFromFirestore,
-        categoriesModule.getPlatformsFromFirestore,
-        categoriesModule.getLevels,
+        categoriesModule.getCategoriesFirestore,
+        platformsModule.getPlatformsFirestore,
+        levelsModule.getLevelsFirestore,
         20, // Process 20 runs in parallel
         (_processed, _total) => {
           // Optional: Could show progress here if needed
@@ -1527,9 +1529,11 @@ const Admin = () => {
     try {
       // Dynamic import to avoid circular dependency
       const { batchVerifyRuns } = await import("@/lib/data/runFieldService");
-      const [runsModule, categoriesModule] = await Promise.all([
+      const [runsModule, categoriesModule, platformsModule, levelsModule] = await Promise.all([
         import("@/lib/data/firestore/runs"),
-        import("@/lib/data/firestore/categories")
+        import("@/lib/data/firestore/categories"),
+        import("@/lib/data/firestore/platforms"),
+        import("@/lib/data/firestore/levels")
       ]);
       // Use optimized batch verification service
       const result = await batchVerifyRuns(
@@ -1537,9 +1541,9 @@ const Admin = () => {
         verifiedBy,
         runsModule.updateRunVerificationStatus,
         runsModule.updateLeaderboardEntry,
-        categoriesModule.getCategoriesFromFirestore,
-        categoriesModule.getPlatformsFromFirestore,
-        categoriesModule.getLevels,
+        categoriesModule.getCategoriesFirestore,
+        platformsModule.getPlatformsFirestore,
+        levelsModule.getLevelsFirestore,
         20, // Process 20 runs in parallel
         (_processed, _total) => {
           // Optional: Could show progress here if needed
@@ -2020,7 +2024,7 @@ const Admin = () => {
         // Dynamic import at call site
 
         const { getCategoriesFirestore: getCategories } = await import("@/lib/data/firestore/categories");
-        const updated = await getCategoriesFromFirestore(categoryLeaderboardType);
+        const updated = await getCategories(categoryLeaderboardType);
         const refreshed = updated.find(c => c.id === selectedCategoryForSubcategories.id) as Category | undefined;
         if (refreshed) {
           setSelectedCategoryForSubcategories(refreshed);
@@ -2088,7 +2092,7 @@ const Admin = () => {
         // Dynamic import at call site
 
         const { getCategoriesFirestore: getCategories } = await import("@/lib/data/firestore/categories");
-        const updated = await getCategoriesFromFirestore(categoryLeaderboardType);
+        const updated = await getCategories(categoryLeaderboardType);
         const refreshed = updated.find(c => c.id === selectedCategoryForSubcategories.id) as Category | undefined;
         if (refreshed) {
           setSelectedCategoryForSubcategories(refreshed);
@@ -2135,7 +2139,7 @@ const Admin = () => {
         // Dynamic import at call site
 
         const { getCategoriesFirestore: getCategories } = await import("@/lib/data/firestore/categories");
-        const updated = await getCategoriesFromFirestore(categoryLeaderboardType);
+        const updated = await getCategories(categoryLeaderboardType);
         const refreshed = updated.find(c => c.id === selectedCategoryForSubcategories.id) as Category | undefined;
         if (refreshed) {
           setSelectedCategoryForSubcategories(refreshed);
@@ -2184,7 +2188,7 @@ const Admin = () => {
         // Dynamic import at call site
 
         const { getCategoriesFirestore: getCategories } = await import("@/lib/data/firestore/categories");
-        const updated = await getCategoriesFromFirestore(categoryLeaderboardType);
+        const updated = await getCategories(categoryLeaderboardType);
         const refreshed = updated.find(c => c.id === selectedCategoryForSubcategories.id) as Category | undefined;
         if (refreshed) {
           setSelectedCategoryForSubcategories(refreshed);
@@ -2235,7 +2239,7 @@ const Admin = () => {
         // Dynamic import at call site
 
         const { getCategoriesFirestore: getCategories } = await import("@/lib/data/firestore/categories");
-        const updated = await getCategoriesFromFirestore(categoryLeaderboardType);
+        const updated = await getCategories(categoryLeaderboardType);
         const refreshed = updated.find(c => c.id === selectedCategoryForSubcategories.id) as Category | undefined;
         if (refreshed) {
           setSelectedCategoryForSubcategories(refreshed);
@@ -2280,7 +2284,7 @@ const Admin = () => {
         // Dynamic import at call site
 
         const { getCategoriesFirestore: getCategories } = await import("@/lib/data/firestore/categories");
-        const updated = await getCategoriesFromFirestore(categoryLeaderboardType);
+        const updated = await getCategories(categoryLeaderboardType);
         const refreshed = updated.find(c => c.id === selectedCategoryForSubcategories.id) as Category | undefined;
         if (refreshed) {
           setSelectedCategoryForSubcategories(refreshed);
@@ -2367,7 +2371,7 @@ const Admin = () => {
         // Dynamic import at call site
 
         const { getCategoriesFirestore: getCategories } = await import("@/lib/data/firestore/categories");
-        const updated = await getCategoriesFromFirestore(categoryLeaderboardType);
+        const updated = await getCategories(categoryLeaderboardType);
         const refreshed = updated.find(c => c.id === selectedCategoryForSubcategories.id) as Category | undefined;
         if (refreshed) {
           setSelectedCategoryForSubcategories(refreshed);
