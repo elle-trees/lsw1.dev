@@ -174,7 +174,7 @@ const Index = () => {
   }, [channel]);
 
   return (
-    <div className="min-h-screen text-ctp-text overflow-x-hidden relative">
+    <div className="min-h-screen bg-[#1e1e2e] text-ctp-text overflow-x-hidden relative">
       <FadeIn className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-[1920px] mx-auto w-full">
           {/* Top Row - Stats Cards and Title */}

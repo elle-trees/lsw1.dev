@@ -425,7 +425,7 @@ const PlayerDetails = () => {
   }
 
   return (
-    <div className="min-h-screen text-ctp-text py-8 overflow-x-hidden relative">
+    <div className="min-h-screen bg-[#1e1e2e] text-ctp-text py-8 overflow-x-hidden relative">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 w-full">
         <div className="mb-8 mt-4 animate-fade-in">
           <Button variant="outline" className="text-ctp-text border-ctp-surface1/50 bg-glass hover:bg-ctp-surface0/50 hover:border-ctp-mauve/50 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-ctp-mauve/20 rounded-none backdrop-blur-sm" asChild>

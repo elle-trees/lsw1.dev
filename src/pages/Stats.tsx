@@ -643,7 +643,7 @@ const Stats = () => {
   };
 
   return (
-    <FadeIn className="container mx-auto px-4 py-8">
+    <FadeIn className="min-h-screen bg-[#1e1e2e] container mx-auto px-4 py-8">
 
       {/* Overview Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
