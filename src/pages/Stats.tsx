@@ -21,7 +21,7 @@ import {
   Gem,
   CalendarDays
 } from "lucide-react";
-import { getAllVerifiedRuns, getCategories, getPlatforms, getLevels, runTypes } from "@/lib/db";
+import { subscribeToAllVerifiedRuns, getCategories, getPlatforms, getLevels, runTypes } from "@/lib/db";
 import { LeaderboardEntry, Player } from "@/types/database";
 import { formatTime, parseTimeToSeconds, formatSecondsToTime } from "@/lib/utils";
 import { getCategoryName, getPlatformName, getLevelName } from "@/lib/dataValidation";
@@ -91,12 +91,11 @@ const Stats = () => {
   const [activeTab, setActiveTab] = useState("overview");
   const [filterCurrentWROnly, setFilterCurrentWROnly] = useState(false);
 
+  // Fetch categories, platforms, and levels once on mount
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
+    const fetchMetadata = async () => {
       try {
-        const [allRuns, fetchedCategories, fetchedPlatforms, fetchedLevels] = await Promise.all([
-          getAllVerifiedRuns(),
+        const [fetchedCategories, fetchedPlatforms, fetchedLevels] = await Promise.all([
           getCategories(),
           getPlatforms(),
           import("@/lib/db").then(m => m.getLevels())
@@ -105,15 +104,38 @@ const Stats = () => {
         setCategories(fetchedCategories);
         setPlatforms(fetchedPlatforms);
         setLevels(fetchedLevels);
+        
+        // Initialize filter defaults
+        if (fetchedPlatforms.length > 0) {
+          setWrProgressionPlatform(fetchedPlatforms[0].id);
+        }
+        if (runTypes.length > 0) {
+          setWrProgressionRunType(runTypes[0].id);
+        }
+        if (fetchedLevels.length > 0) {
+          setWrProgressionLevel(fetchedLevels[0].id);
+        }
+      } catch (error) {
+        console.error("Error fetching metadata:", error);
+      }
+    };
 
-        // Calculate statistics
-        const verifiedRuns = allRuns.filter(run => run.verified && !run.isObsolete);
-        
-        // Calculate world records by finding the fastest run in each group
-        // Group key: leaderboardType_category_platform_runType_level
-        const worldRecordMap = new Map<string, LeaderboardEntry>();
-        
-        verifiedRuns.forEach(run => {
+    fetchMetadata();
+  }, []);
+
+  // Set up real-time listener for all verified runs
+  useEffect(() => {
+    const unsubscribe = subscribeToAllVerifiedRuns((allRuns) => {
+      setLoading(true);
+      
+      // Calculate statistics from the realtime data
+      const verifiedRuns = allRuns.filter(run => run.verified && !run.isObsolete);
+      
+      // Calculate world records by finding the fastest run in each group
+      // Group key: leaderboardType_category_platform_runType_level
+      const worldRecordMap = new Map<string, LeaderboardEntry>();
+      
+      verifiedRuns.forEach(run => {
           const leaderboardType = run.leaderboardType || 'regular';
           const category = run.category || '';
           const platform = run.platform || '';
@@ -131,282 +153,293 @@ const Stats = () => {
             if (currentTime < existingTime) {
               worldRecordMap.set(groupKey, run);
             }
+      // Calculate world records by finding the fastest run in each group
+      // Group key: leaderboardType_category_platform_runType_level
+      const worldRecordMap = new Map<string, LeaderboardEntry>();
+      
+      verifiedRuns.forEach(run => {
+        const leaderboardType = run.leaderboardType || 'regular';
+        const category = run.category || '';
+        const platform = run.platform || '';
+        const runType = run.runType || 'solo';
+        const level = run.level || '';
+        const groupKey = `${leaderboardType}_${category}_${platform}_${runType}_${level}`;
+        
+        const existing = worldRecordMap.get(groupKey);
+        if (!existing) {
+          worldRecordMap.set(groupKey, run);
+        } else {
+          // Compare times - keep the faster one
+          const existingTime = parseTimeToSeconds(existing.time) || Infinity;
+          const currentTime = parseTimeToSeconds(run.time) || Infinity;
+          if (currentTime < existingTime) {
+            worldRecordMap.set(groupKey, run);
           }
+        }
+      });
+      
+      const worldRecords = Array.from(worldRecordMap.values());
+
+      // Group runs by category
+      const runsByCategory = new Map<string, number>();
+      verifiedRuns.forEach(run => {
+        const categoryId = run.category || 'unknown';
+        runsByCategory.set(categoryId, (runsByCategory.get(categoryId) || 0) + 1);
+      });
+
+      // Group runs by platform
+      const runsByPlatform = new Map<string, number>();
+      verifiedRuns.forEach(run => {
+        const platformId = run.platform || 'unknown';
+        runsByPlatform.set(platformId, (runsByPlatform.get(platformId) || 0) + 1);
+      });
+
+      // Group by run type
+      const runsByRunType = {
+        solo: verifiedRuns.filter(run => run.runType === 'solo').length,
+        coOp: verifiedRuns.filter(run => run.runType === 'co-op').length,
+      };
+
+      // Group by leaderboard type
+      const runsByLeaderboardType = {
+        regular: verifiedRuns.filter(run => run.leaderboardType === 'regular' || !run.leaderboardType).length,
+        individualLevel: verifiedRuns.filter(run => run.leaderboardType === 'individual-level').length,
+        communityGolds: verifiedRuns.filter(run => run.leaderboardType === 'community-golds').length,
+      };
+
+      // World record progression over time
+      // Track runs by date for tooltip display
+      const wrProgression = new Map<string, number>();
+      const wrRunsByDate = new Map<string, LeaderboardEntry[]>();
+      const sortedWRs = worldRecords
+        .filter(wr => wr.date)
+        .sort((a, b) => {
+          const dateA = new Date(a.date).getTime();
+          const dateB = new Date(b.date).getTime();
+          return dateA - dateB;
+        });
+
+      let cumulativeCount = 0;
+      sortedWRs.forEach(wr => {
+        cumulativeCount++;
+        const date = wr.date!;
+        
+        // Track runs for this date
+        if (!wrRunsByDate.has(date)) {
+          wrRunsByDate.set(date, []);
+        }
+        wrRunsByDate.get(date)!.push(wr);
+        
+        wrProgression.set(date, cumulativeCount);
+      });
+
+      const progressionData = Array.from(wrProgression.entries())
+        .map(([date, count]) => ({ 
+          date, 
+          count,
+          runs: wrRunsByDate.get(date) || []
+        }))
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+      // Calculate WR start and end dates
+      const wrStartDate = progressionData.length > 0 ? progressionData[0].date : undefined;
+      const wrEndDate = progressionData.length > 0 ? progressionData[progressionData.length - 1].date : undefined;
+
+      // Calculate who has held WRs the longest
+      // Track WR holders by group (category/platform/runType/level) over time
+      // For each group, find all runs that were WRs at some point
+      const wrHoldersByGroup = new Map<string, Array<{ playerName: string; date: string; endDate?: string }>>();
+      const longestHeldWRsList: LongestHeldWR[] = [];
+      const now = new Date();
+      const nowDateStr = now.toISOString().split('T')[0];
+      
+      // Group all verified runs by their leaderboard group
+      const runsByGroup = new Map<string, LeaderboardEntry[]>();
+      verifiedRuns.forEach(run => {
+        if (!run.date) return;
+        
+        const leaderboardType = run.leaderboardType || 'regular';
+        const category = run.category || '';
+        const platform = run.platform || '';
+        const runType = run.runType || 'solo';
+        const level = run.level || '';
+        const groupKey = `${leaderboardType}_${category}_${platform}_${runType}_${level}`;
+        
+        if (!runsByGroup.has(groupKey)) {
+          runsByGroup.set(groupKey, []);
+        }
+        runsByGroup.get(groupKey)!.push(run);
+      });
+      
+      // For each group, sort by time and track WR progression
+      runsByGroup.forEach((runs, groupKey) => {
+        // Sort by time (fastest first)
+        runs.sort((a, b) => {
+          const timeA = parseTimeToSeconds(a.time) || Infinity;
+          const timeB = parseTimeToSeconds(b.time) || Infinity;
+          return timeA - timeB;
         });
         
-        const worldRecords = Array.from(worldRecordMap.values());
-
-        // Group runs by category
-        const runsByCategory = new Map<string, number>();
-        verifiedRuns.forEach(run => {
-          const categoryId = run.category || 'unknown';
-          runsByCategory.set(categoryId, (runsByCategory.get(categoryId) || 0) + 1);
-        });
-
-        // Group runs by platform
-        const runsByPlatform = new Map<string, number>();
-        verifiedRuns.forEach(run => {
-          const platformId = run.platform || 'unknown';
-          runsByPlatform.set(platformId, (runsByPlatform.get(platformId) || 0) + 1);
-        });
-
-        // Group by run type
-        const runsByRunType = {
-          solo: verifiedRuns.filter(run => run.runType === 'solo').length,
-          coOp: verifiedRuns.filter(run => run.runType === 'co-op').length,
-        };
-
-        // Group by leaderboard type
-        const runsByLeaderboardType = {
-          regular: verifiedRuns.filter(run => run.leaderboardType === 'regular' || !run.leaderboardType).length,
-          individualLevel: verifiedRuns.filter(run => run.leaderboardType === 'individual-level').length,
-          communityGolds: verifiedRuns.filter(run => run.leaderboardType === 'community-golds').length,
-        };
-
-        // World record progression over time
-        // Track runs by date for tooltip display
-        const wrProgression = new Map<string, number>();
-        const wrRunsByDate = new Map<string, LeaderboardEntry[]>();
-        const sortedWRs = worldRecords
-          .filter(wr => wr.date)
-          .sort((a, b) => {
-            const dateA = new Date(a.date).getTime();
-            const dateB = new Date(b.date).getTime();
-            return dateA - dateB;
-          });
-
-        let cumulativeCount = 0;
-        sortedWRs.forEach(wr => {
-          cumulativeCount++;
-          const date = wr.date!;
-          
-          // Track runs for this date
-          if (!wrRunsByDate.has(date)) {
-            wrRunsByDate.set(date, []);
-          }
-          wrRunsByDate.get(date)!.push(wr);
-          
-          wrProgression.set(date, cumulativeCount);
-        });
-
-        const progressionData = Array.from(wrProgression.entries())
-          .map(([date, count]) => ({ 
-            date, 
-            count,
-            runs: wrRunsByDate.get(date) || []
-          }))
-          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-        // Calculate WR start and end dates
-        const wrStartDate = progressionData.length > 0 ? progressionData[0].date : undefined;
-        const wrEndDate = progressionData.length > 0 ? progressionData[progressionData.length - 1].date : undefined;
-
-        // Calculate who has held WRs the longest
-        // Track WR holders by group (category/platform/runType/level) over time
-        // For each group, find all runs that were WRs at some point
-        const wrHoldersByGroup = new Map<string, Array<{ playerName: string; date: string; endDate?: string }>>();
-        const longestHeldWRsList: LongestHeldWR[] = [];
-        const now = new Date();
-        const nowDateStr = now.toISOString().split('T')[0];
-        
-        // Group all verified runs by their leaderboard group
-        const runsByGroup = new Map<string, LeaderboardEntry[]>();
-        verifiedRuns.forEach(run => {
-          if (!run.date) return;
-          
-          const leaderboardType = run.leaderboardType || 'regular';
-          const category = run.category || '';
-          const platform = run.platform || '';
-          const runType = run.runType || 'solo';
-          const level = run.level || '';
-          const groupKey = `${leaderboardType}_${category}_${platform}_${runType}_${level}`;
-          
-          if (!runsByGroup.has(groupKey)) {
-            runsByGroup.set(groupKey, []);
-          }
-          runsByGroup.get(groupKey)!.push(run);
+        // Track when each player held the WR
+        // Sort runs by date first to track chronological WR progression
+        const runsByDate = [...runs].sort((a, b) => {
+          const dateA = new Date(a.date).getTime();
+          const dateB = new Date(b.date).getTime();
+          return dateA - dateB;
         });
         
-        // For each group, sort by time and track WR progression
-        runsByGroup.forEach((runs, groupKey) => {
-          // Sort by time (fastest first)
-          runs.sort((a, b) => {
-            const timeA = parseTimeToSeconds(a.time) || Infinity;
-            const timeB = parseTimeToSeconds(b.time) || Infinity;
-            return timeA - timeB;
-          });
+        // Track the current WR holder over time
+        const holders: Array<{ playerName: string; date: string; endDate?: string }> = [];
+        const wrRuns: Array<{ run: LeaderboardEntry; startDate: string; endDate?: string }> = [];
+        let currentWR: LeaderboardEntry | null = null;
+        let currentWRDate: string | null = null;
+        
+        // Process runs chronologically
+        runsByDate.forEach(run => {
+          const runTime = parseTimeToSeconds(run.time) || Infinity;
+          const currentWRTime = currentWR ? (parseTimeToSeconds(currentWR.time) || Infinity) : Infinity;
           
-          // Track when each player held the WR
-          // Sort runs by date first to track chronological WR progression
-          const runsByDate = [...runs].sort((a, b) => {
-            const dateA = new Date(a.date).getTime();
-            const dateB = new Date(b.date).getTime();
-            return dateA - dateB;
-          });
-          
-          // Track the current WR holder over time
-          const holders: Array<{ playerName: string; date: string; endDate?: string }> = [];
-          const wrRuns: Array<{ run: LeaderboardEntry; startDate: string; endDate?: string }> = [];
-          let currentWR: LeaderboardEntry | null = null;
-          let currentWRDate: string | null = null;
-          
-          // Process runs chronologically
-          runsByDate.forEach(run => {
-            const runTime = parseTimeToSeconds(run.time) || Infinity;
-            const currentWRTime = currentWR ? (parseTimeToSeconds(currentWR.time) || Infinity) : Infinity;
-            
-            // If this run is faster than current WR, it becomes the new WR
-            if (runTime < currentWRTime) {
-              // If there was a previous WR holder, record when their WR ended
-              if (currentWR && currentWRDate) {
-                const lastHolder = holders[holders.length - 1];
-                if (lastHolder && lastHolder.playerName === (currentWR.playerName || 'Unknown') && !lastHolder.endDate) {
-                  lastHolder.endDate = run.date;
-                } else {
-                  holders.push({
-                    playerName: currentWR.playerName || 'Unknown',
-                    date: currentWRDate,
-                    endDate: run.date,
-                  });
-                }
-                
-                // Record when the previous WR run ended
-                const lastWRRun = wrRuns[wrRuns.length - 1];
-                if (lastWRRun && lastWRRun.run.id === currentWR.id && !lastWRRun.endDate) {
-                  // Update the existing entry's end date
-                  lastWRRun.endDate = run.date;
-                } else {
-                  // This shouldn't happen, but add it as a fallback
-                  wrRuns.push({
-                    run: currentWR,
-                    startDate: currentWRDate,
-                    endDate: run.date,
-                  });
-                }
+          // If this run is faster than current WR, it becomes the new WR
+          if (runTime < currentWRTime) {
+            // If there was a previous WR holder, record when their WR ended
+            if (currentWR && currentWRDate) {
+              const lastHolder = holders[holders.length - 1];
+              if (lastHolder && lastHolder.playerName === (currentWR.playerName || 'Unknown') && !lastHolder.endDate) {
+                lastHolder.endDate = run.date;
+              } else {
+                holders.push({
+                  playerName: currentWR.playerName || 'Unknown',
+                  date: currentWRDate,
+                  endDate: run.date,
+                });
               }
               
-              // Set new WR holder
-              currentWR = run;
-              currentWRDate = run.date;
-              holders.push({
-                playerName: run.playerName || 'Unknown',
-                date: run.date,
-                endDate: undefined, // Will be set when broken or at end
-              });
-              wrRuns.push({
-                run: run,
-                startDate: run.date,
-                endDate: undefined, // Will be set when broken or at end
-              });
+              // Record when the previous WR run ended
+              const lastWRRun = wrRuns[wrRuns.length - 1];
+              if (lastWRRun && lastWRRun.run.id === currentWR.id && !lastWRRun.endDate) {
+                // Update the existing entry's end date
+                lastWRRun.endDate = run.date;
+              } else {
+                // This shouldn't happen, but add it as a fallback
+                wrRuns.push({
+                  run: currentWR,
+                  startDate: currentWRDate,
+                  endDate: run.date,
+                });
+              }
             }
-          });
-          
-          // Set end date for current WR holder (if still holding)
-          if (holders.length > 0) {
-            const lastHolder = holders[holders.length - 1];
-            if (!lastHolder.endDate) {
-              lastHolder.endDate = nowDateStr;
-            }
-          }
-          
-          // Set end date for current WR run (if still holding)
-          if (wrRuns.length > 0) {
-            const lastWRRun = wrRuns[wrRuns.length - 1];
-            if (!lastWRRun.endDate) {
-              lastWRRun.endDate = nowDateStr;
-            }
-          }
-          
-          wrHoldersByGroup.set(groupKey, holders);
-          
-          // Add all WR runs from this group to the longest-held list
-          wrRuns.forEach(wrRun => {
-            const startDate = new Date(wrRun.startDate);
-            const endDate = new Date(wrRun.endDate || nowDateStr);
-            const days = Math.max(0, Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
             
-            longestHeldWRsList.push({
-              run: wrRun.run,
-              days,
-              startDate: wrRun.startDate,
-              endDate: wrRun.endDate || nowDateStr,
-              groupKey,
+            // Set new WR holder
+            currentWR = run;
+            currentWRDate = run.date;
+            holders.push({
+              playerName: run.playerName || 'Unknown',
+              date: run.date,
+              endDate: undefined, // Will be set when broken or at end
             });
-          });
-        });
-        
-        // Calculate total days each player has held WRs (across all groups)
-        // Sum up all WR-holding periods for each player
-        const playerWRDays = new Map<string, number>();
-        wrHoldersByGroup.forEach(holders => {
-          holders.forEach(holder => {
-            const startDate = new Date(holder.date);
-            const endDate = new Date(holder.endDate || nowDateStr);
-            const days = Math.max(0, Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
-            
-            // Sum up days for this player across all groups
-            const currentDays = playerWRDays.get(holder.playerName) || 0;
-            playerWRDays.set(holder.playerName, currentDays + days);
-          });
-        });
-        
-        // Find player with most days
-        let longestWRHolder: { playerName: string; days: number } | undefined;
-        playerWRDays.forEach((days, playerName) => {
-          if (!longestWRHolder || days > longestWRHolder.days) {
-            longestWRHolder = { playerName, days };
+            wrRuns.push({
+              run: run,
+              startDate: run.date,
+              endDate: undefined, // Will be set when broken or at end
+            });
           }
         });
         
-        // Sort longest-held WRs by duration (longest first)
-        longestHeldWRsList.sort((a, b) => b.days - a.days);
-
-        // Recent world records (last 20)
-        const recentWorldRecords = worldRecords
-          .filter(wr => wr.date)
-          .sort((a, b) => {
-            const dateA = new Date(a.date).getTime();
-            const dateB = new Date(b.date).getTime();
-            return dateB - dateA;
-          })
-          .slice(0, 20);
-
-        setStats({
-          totalRuns: allRuns.length,
-          verifiedRuns: verifiedRuns.length,
-          worldRecords: worldRecords.length,
-          runsByCategory,
-          runsByPlatform,
-          runsByRunType,
-          runsByLeaderboardType,
-          worldRecordProgression: progressionData,
-          recentWorldRecords,
-          wrStartDate,
-          wrEndDate,
-          longestWRHolder,
-          longestHeldWRs: longestHeldWRsList,
-          allWorldRecords: worldRecords,
-          allVerifiedRuns: verifiedRuns,
-        });
+        // Set end date for current WR holder (if still holding)
+        if (holders.length > 0) {
+          const lastHolder = holders[holders.length - 1];
+          if (!lastHolder.endDate) {
+            lastHolder.endDate = nowDateStr;
+          }
+        }
         
-        // Initialize filter defaults
-        if (fetchedPlatforms.length > 0) {
-          setWrProgressionPlatform(fetchedPlatforms[0].id);
+        // Set end date for current WR run (if still holding)
+        if (wrRuns.length > 0) {
+          const lastWRRun = wrRuns[wrRuns.length - 1];
+          if (!lastWRRun.endDate) {
+            lastWRRun.endDate = nowDateStr;
+          }
         }
-        if (runTypes.length > 0) {
-          setWrProgressionRunType(runTypes[0].id);
+        
+        wrHoldersByGroup.set(groupKey, holders);
+        
+        // Add all WR runs from this group to the longest-held list
+        wrRuns.forEach(wrRun => {
+          const startDate = new Date(wrRun.startDate);
+          const endDate = new Date(wrRun.endDate || nowDateStr);
+          const days = Math.max(0, Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
+          
+          longestHeldWRsList.push({
+            run: wrRun.run,
+            days,
+            startDate: wrRun.startDate,
+            endDate: wrRun.endDate || nowDateStr,
+            groupKey,
+          });
+        });
+      });
+      
+      // Calculate total days each player has held WRs (across all groups)
+      // Sum up all WR-holding periods for each player
+      const playerWRDays = new Map<string, number>();
+      wrHoldersByGroup.forEach(holders => {
+        holders.forEach(holder => {
+          const startDate = new Date(holder.date);
+          const endDate = new Date(holder.endDate || nowDateStr);
+          const days = Math.max(0, Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
+          
+          // Sum up days for this player across all groups
+          const currentDays = playerWRDays.get(holder.playerName) || 0;
+          playerWRDays.set(holder.playerName, currentDays + days);
+        });
+      });
+      
+      // Find player with most days
+      let longestWRHolder: { playerName: string; days: number } | undefined;
+      playerWRDays.forEach((days, playerName) => {
+        if (!longestWRHolder || days > longestWRHolder.days) {
+          longestWRHolder = { playerName, days };
         }
-        if (fetchedLevels.length > 0) {
-          setWrProgressionLevel(fetchedLevels[0].id);
-        }
-      } catch (error) {
-        console.error("Error fetching stats:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+      });
+      
+      // Sort longest-held WRs by duration (longest first)
+      longestHeldWRsList.sort((a, b) => b.days - a.days);
 
-    fetchData();
+      // Recent world records (last 20)
+      const recentWorldRecords = worldRecords
+        .filter(wr => wr.date)
+        .sort((a, b) => {
+          const dateA = new Date(a.date).getTime();
+          const dateB = new Date(b.date).getTime();
+          return dateB - dateA;
+        })
+        .slice(0, 20);
+
+      setStats({
+        totalRuns: allRuns.length,
+        verifiedRuns: verifiedRuns.length,
+        worldRecords: worldRecords.length,
+        runsByCategory,
+        runsByPlatform,
+        runsByRunType,
+        runsByLeaderboardType,
+        worldRecordProgression: progressionData,
+        recentWorldRecords,
+        wrStartDate,
+        wrEndDate,
+        longestWRHolder,
+        longestHeldWRs: longestHeldWRsList,
+        allWorldRecords: worldRecords,
+        allVerifiedRuns: verifiedRuns,
+      });
+      
+      setLoading(false);
+      }
+    });
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, []);
 
   // Update available categories when WR progression leaderboard type changes

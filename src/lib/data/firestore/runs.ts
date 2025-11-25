@@ -773,3 +773,31 @@ export const subscribeToLeaderboardEntryFirestore = (
     return null;
   }
 };
+
+/**
+ * Subscribe to real-time updates for all verified runs
+ * @param callback - Callback function that receives the runs array
+ * @returns Unsubscribe function to stop listening
+ */
+export const subscribeToAllVerifiedRunsFirestore = (
+  callback: (runs: LeaderboardEntry[]) => void
+): Unsubscribe | null => {
+  if (!db) return null;
+  try {
+    const q = query(
+      collection(db, "leaderboardEntries").withConverter(leaderboardEntryConverter),
+      where("verified", "==", true)
+    );
+    
+    return onSnapshot(q, (snapshot: QuerySnapshot) => {
+      const runs = snapshot.docs.map(d => d.data()) as LeaderboardEntry[];
+      callback(runs);
+    }, (error) => {
+      console.error("Error in all verified runs subscription:", error);
+      callback([]);
+    });
+  } catch (error) {
+    console.error("Error setting up all verified runs subscription:", error);
+    return null;
+  }
+};

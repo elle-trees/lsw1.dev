@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Sparkles, Info } from "lucide-react";
 import { Player, LeaderboardEntry } from "@/types/database";
 import { Pagination } from "@/components/Pagination";
-import { getPlayerRuns, getCategories, getPlatforms, subscribeToPlayersByPoints } from "@/lib/db";
+import { getCategories, getPlatforms, subscribeToPlayersByPoints, subscribeToPlayerRuns } from "@/lib/db";
 import type { Unsubscribe } from "firebase/firestore";
 import { getCategoryName, getPlatformName } from "@/lib/dataValidation";
 import { calculatePoints } from "@/lib/utils";
@@ -16,6 +16,8 @@ import { AnimatedCard } from "@/components/ui/animated-card";
 import { PrefetchLink } from "@/components/PrefetchLink";
 import { Skeleton } from "@/components/ui/skeleton";
 import { pageCache } from "@/lib/pageCache";
+import { AnimatePresence, motion } from "framer-motion";
+import { staggerContainerVariants, staggerItemVariants } from "@/lib/animations";
 
 const CACHE_KEY_PLAYERS = "points-leaderboard-players";
 const CACHE_KEY_CATEGORIES = "points-leaderboard-categories";
@@ -147,24 +149,35 @@ const PointsLeaderboard = () => {
     };
   }, []);
 
-  // Fetch player runs when dialog opens
+  // Set up realtime listener for player runs when dialog opens
   useEffect(() => {
-    if (dialogOpen && selectedPlayer?.uid) {
-      setLoadingRuns(true);
-      getPlayerRuns(selectedPlayer.uid)
-        .then((runs) => {
-          setPlayerRuns(runs);
-        })
-        .catch(() => {
-          setPlayerRuns([]);
-        })
-        .finally(() => {
-          setLoadingRuns(false);
-        });
-    } else {
+    if (!dialogOpen || !selectedPlayer?.uid) {
       setPlayerRuns([]);
       setRecalculatedPoints(new Map());
+      setLoadingRuns(false);
+      return;
     }
+
+    setLoadingRuns(true);
+    let unsubscribe: Unsubscribe | null = null;
+    let isMounted = true;
+
+    (async () => {
+      if (!isMounted) return;
+      
+      unsubscribe = subscribeToPlayerRuns(selectedPlayer.uid, (runs) => {
+        if (!isMounted) return;
+        setPlayerRuns(runs);
+        setLoadingRuns(false);
+      });
+    })();
+
+    return () => {
+      isMounted = false;
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, [dialogOpen, selectedPlayer?.uid]);
 
   // Recalculate points for all runs using current configuration
@@ -477,222 +490,284 @@ const PointsLeaderboard = () => {
               </DialogDescription>
             </DialogHeader>
             
-            <FadeIn className="mt-4" delay={0.1}>
+            <AnimatePresence mode="wait">
               {loadingRuns || (playerRuns.length > 0 && recalculatedPoints.size === 0) ? (
-                <div className="space-y-6">
-                  {/* Loading skeleton for By Leaderboard Type */}
-                  <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)]">
-                    <CardHeader>
-                      <CardTitle className="text-lg text-[#fab387]">
-                        <Skeleton className="h-6 w-48 rounded-none" />
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        <Skeleton className="h-10 w-full rounded-none" />
-                        <Skeleton className="h-10 w-full rounded-none" />
-                        <Skeleton className="h-10 w-full rounded-none" />
-                      </div>
-                    </CardContent>
-                  </Card>
+                <motion.div
+                  key="loading"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+                  className="mt-4 space-y-6"
+                >
+                        {/* Loading skeleton for By Leaderboard Type */}
+                        <motion.div
+                          variants={staggerItemVariants}
+                          initial="hidden"
+                          animate="visible"
+                        >
+                          <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)]">
+                            <CardHeader>
+                              <CardTitle className="text-lg text-[#fab387]">
+                                <Skeleton className="h-6 w-48 rounded-none bg-[hsl(235,13%,20%)]" />
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="space-y-2">
+                                <Skeleton className="h-10 w-full rounded-none bg-[hsl(235,13%,20%)]" />
+                                <Skeleton className="h-10 w-full rounded-none bg-[hsl(235,13%,20%)]" />
+                                <Skeleton className="h-10 w-full rounded-none bg-[hsl(235,13%,20%)]" />
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </motion.div>
 
-                  {/* Loading skeleton for By Category */}
-                  <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)]">
-                    <CardHeader>
-                      <CardTitle className="text-lg text-[#fab387]">
-                        <Skeleton className="h-6 w-32 rounded-none" />
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        <Skeleton className="h-10 w-full rounded-none" />
-                        <Skeleton className="h-10 w-full rounded-none" />
-                        <Skeleton className="h-10 w-full rounded-none" />
-                        <Skeleton className="h-10 w-[90%] rounded-none" />
-                      </div>
-                    </CardContent>
-                  </Card>
+                        {/* Loading skeleton for By Category */}
+                        <motion.div
+                          variants={staggerItemVariants}
+                          initial="hidden"
+                          animate="visible"
+                          transition={{ delay: 0.1 }}
+                        >
+                          <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)]">
+                            <CardHeader>
+                              <CardTitle className="text-lg text-[#fab387]">
+                                <Skeleton className="h-6 w-32 rounded-none bg-[hsl(235,13%,20%)]" />
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="space-y-2">
+                                <Skeleton className="h-10 w-full rounded-none bg-[hsl(235,13%,20%)]" />
+                                <Skeleton className="h-10 w-full rounded-none bg-[hsl(235,13%,20%)]" />
+                                <Skeleton className="h-10 w-full rounded-none bg-[hsl(235,13%,20%)]" />
+                                <Skeleton className="h-10 w-[90%] rounded-none bg-[hsl(235,13%,20%)]" />
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </motion.div>
 
-                  {/* Loading skeleton for By Platform */}
-                  <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)]">
-                    <CardHeader>
-                      <CardTitle className="text-lg text-[#fab387]">
-                        <Skeleton className="h-6 w-36 rounded-none" />
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        <Skeleton className="h-10 w-full rounded-none" />
-                        <Skeleton className="h-10 w-full rounded-none" />
-                        <Skeleton className="h-10 w-full rounded-none" />
-                      </div>
-                    </CardContent>
-                  </Card>
+                        {/* Loading skeleton for By Platform */}
+                        <motion.div
+                          variants={staggerItemVariants}
+                          initial="hidden"
+                          animate="visible"
+                          transition={{ delay: 0.2 }}
+                        >
+                          <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)]">
+                            <CardHeader>
+                              <CardTitle className="text-lg text-[#fab387]">
+                                <Skeleton className="h-6 w-36 rounded-none bg-[hsl(235,13%,20%)]" />
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="space-y-2">
+                                <Skeleton className="h-10 w-full rounded-none bg-[hsl(235,13%,20%)]" />
+                                <Skeleton className="h-10 w-full rounded-none bg-[hsl(235,13%,20%)]" />
+                                <Skeleton className="h-10 w-full rounded-none bg-[hsl(235,13%,20%)]" />
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </motion.div>
 
-                  {/* Loading skeleton for By Run Type */}
-                  <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)]">
-                    <CardHeader>
-                      <CardTitle className="text-lg text-[#fab387]">
-                        <Skeleton className="h-6 w-40 rounded-none" />
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        <Skeleton className="h-10 w-full rounded-none" />
-                        <Skeleton className="h-10 w-full rounded-none" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
+                        {/* Loading skeleton for By Run Type */}
+                        <motion.div
+                          variants={staggerItemVariants}
+                          initial="hidden"
+                          animate="visible"
+                          transition={{ delay: 0.3 }}
+                        >
+                          <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)]">
+                            <CardHeader>
+                              <CardTitle className="text-lg text-[#fab387]">
+                                <Skeleton className="h-6 w-40 rounded-none bg-[hsl(235,13%,20%)]" />
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="space-y-2">
+                                <Skeleton className="h-10 w-full rounded-none bg-[hsl(235,13%,20%)]" />
+                                <Skeleton className="h-10 w-full rounded-none bg-[hsl(235,13%,20%)]" />
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </motion.div>
+                </motion.div>
               ) : studsBreakdown ? (
-                <div className="space-y-6">
-                {/* By Leaderboard Type */}
-                <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)]">
-                  <CardHeader>
-                    <CardTitle className="text-lg text-[#fab387]">By Leaderboard Type</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="border-[hsl(235,13%,30%)]">
-                          <TableHead className="text-ctp-text">Type</TableHead>
-                          <TableHead className="text-ctp-text text-right">Studs</TableHead>
-                          <TableHead className="text-ctp-text text-right">Runs</TableHead>
-                          <TableHead className="text-ctp-text text-right">%</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {Array.from(studsBreakdown.byLeaderboardType.entries())
-                          .sort((a, b) => b[1].studs - a[1].studs)
-                          .map(([type, data]) => (
-                            <TableRow key={type} className="border-[hsl(235,13%,30%)]">
-                              <TableCell className="font-medium text-ctp-text">{type}</TableCell>
-                              <TableCell className="text-right text-[#fab387] font-semibold">
-                                {formatPoints(data.studs)}
-                              </TableCell>
-                              <TableCell className="text-right text-ctp-subtext1">{data.runs}</TableCell>
-                              <TableCell className="text-right text-ctp-subtext1">
-                                {((data.studs / studsBreakdown.total) * 100).toFixed(1)}%
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                </Card>
+                <motion.div
+                  key="content"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+                  className="mt-4"
+                >
+                  <motion.div
+                    variants={staggerContainerVariants}
+                    initial="hidden"
+                    animate="visible"
+                    className="space-y-6"
+                  >
+                          {/* By Leaderboard Type */}
+                          <motion.div variants={staggerItemVariants}>
+                            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)]">
+                              <CardHeader>
+                                <CardTitle className="text-lg text-[#fab387]">By Leaderboard Type</CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow className="border-[hsl(235,13%,30%)]">
+                                      <TableHead className="text-ctp-text">Type</TableHead>
+                                      <TableHead className="text-ctp-text text-right">Studs</TableHead>
+                                      <TableHead className="text-ctp-text text-right">Runs</TableHead>
+                                      <TableHead className="text-ctp-text text-right">%</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {Array.from(studsBreakdown.byLeaderboardType.entries())
+                                      .sort((a, b) => b[1].studs - a[1].studs)
+                                      .map(([type, data]) => (
+                                        <TableRow key={type} className="border-[hsl(235,13%,30%)]">
+                                          <TableCell className="font-medium text-ctp-text">{type}</TableCell>
+                                          <TableCell className="text-right text-[#fab387] font-semibold">
+                                            {formatPoints(data.studs)}
+                                          </TableCell>
+                                          <TableCell className="text-right text-ctp-subtext1">{data.runs}</TableCell>
+                                          <TableCell className="text-right text-ctp-subtext1">
+                                            {((data.studs / studsBreakdown.total) * 100).toFixed(1)}%
+                                          </TableCell>
+                                        </TableRow>
+                                      ))}
+                                  </TableBody>
+                                </Table>
+                              </CardContent>
+                            </Card>
+                          </motion.div>
 
-                {/* By Category */}
-                <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)]">
-                  <CardHeader>
-                    <CardTitle className="text-lg text-[#fab387]">By Category</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="border-[hsl(235,13%,30%)]">
-                          <TableHead className="text-ctp-text">Category</TableHead>
-                          <TableHead className="text-ctp-text text-right">Studs</TableHead>
-                          <TableHead className="text-ctp-text text-right">Runs</TableHead>
-                          <TableHead className="text-ctp-text text-right">%</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {Array.from(studsBreakdown.byCategory.entries())
-                          .sort((a, b) => b[1].studs - a[1].studs)
-                          .slice(0, 10)
-                          .map(([category, data]) => (
-                            <TableRow key={category} className="border-[hsl(235,13%,30%)]">
-                              <TableCell className="font-medium text-ctp-text">{category}</TableCell>
-                              <TableCell className="text-right text-[#fab387] font-semibold">
-                                {formatPoints(data.studs)}
-                              </TableCell>
-                              <TableCell className="text-right text-ctp-subtext1">{data.runs}</TableCell>
-                              <TableCell className="text-right text-ctp-subtext1">
-                                {((data.studs / studsBreakdown.total) * 100).toFixed(1)}%
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                </Card>
+                          {/* By Category */}
+                          <motion.div variants={staggerItemVariants}>
+                            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)]">
+                              <CardHeader>
+                                <CardTitle className="text-lg text-[#fab387]">By Category</CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow className="border-[hsl(235,13%,30%)]">
+                                      <TableHead className="text-ctp-text">Category</TableHead>
+                                      <TableHead className="text-ctp-text text-right">Studs</TableHead>
+                                      <TableHead className="text-ctp-text text-right">Runs</TableHead>
+                                      <TableHead className="text-ctp-text text-right">%</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {Array.from(studsBreakdown.byCategory.entries())
+                                      .sort((a, b) => b[1].studs - a[1].studs)
+                                      .slice(0, 10)
+                                      .map(([category, data]) => (
+                                        <TableRow key={category} className="border-[hsl(235,13%,30%)]">
+                                          <TableCell className="font-medium text-ctp-text">{category}</TableCell>
+                                          <TableCell className="text-right text-[#fab387] font-semibold">
+                                            {formatPoints(data.studs)}
+                                          </TableCell>
+                                          <TableCell className="text-right text-ctp-subtext1">{data.runs}</TableCell>
+                                          <TableCell className="text-right text-ctp-subtext1">
+                                            {((data.studs / studsBreakdown.total) * 100).toFixed(1)}%
+                                          </TableCell>
+                                        </TableRow>
+                                      ))}
+                                  </TableBody>
+                                </Table>
+                              </CardContent>
+                            </Card>
+                          </motion.div>
 
-                {/* By Platform */}
-                <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)]">
-                  <CardHeader>
-                    <CardTitle className="text-lg text-[#fab387]">By Platform</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="border-[hsl(235,13%,30%)]">
-                          <TableHead className="text-ctp-text">Platform</TableHead>
-                          <TableHead className="text-ctp-text text-right">Studs</TableHead>
-                          <TableHead className="text-ctp-text text-right">Runs</TableHead>
-                          <TableHead className="text-ctp-text text-right">%</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {Array.from(studsBreakdown.byPlatform.entries())
-                          .sort((a, b) => b[1].studs - a[1].studs)
-                          .map(([platform, data]) => (
-                            <TableRow key={platform} className="border-[hsl(235,13%,30%)]">
-                              <TableCell className="font-medium text-ctp-text">{platform}</TableCell>
-                              <TableCell className="text-right text-[#fab387] font-semibold">
-                                {formatPoints(data.studs)}
-                              </TableCell>
-                              <TableCell className="text-right text-ctp-subtext1">{data.runs}</TableCell>
-                              <TableCell className="text-right text-ctp-subtext1">
-                                {((data.studs / studsBreakdown.total) * 100).toFixed(1)}%
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                </Card>
+                          {/* By Platform */}
+                          <motion.div variants={staggerItemVariants}>
+                            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)]">
+                              <CardHeader>
+                                <CardTitle className="text-lg text-[#fab387]">By Platform</CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow className="border-[hsl(235,13%,30%)]">
+                                      <TableHead className="text-ctp-text">Platform</TableHead>
+                                      <TableHead className="text-ctp-text text-right">Studs</TableHead>
+                                      <TableHead className="text-ctp-text text-right">Runs</TableHead>
+                                      <TableHead className="text-ctp-text text-right">%</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {Array.from(studsBreakdown.byPlatform.entries())
+                                      .sort((a, b) => b[1].studs - a[1].studs)
+                                      .map(([platform, data]) => (
+                                        <TableRow key={platform} className="border-[hsl(235,13%,30%)]">
+                                          <TableCell className="font-medium text-ctp-text">{platform}</TableCell>
+                                          <TableCell className="text-right text-[#fab387] font-semibold">
+                                            {formatPoints(data.studs)}
+                                          </TableCell>
+                                          <TableCell className="text-right text-ctp-subtext1">{data.runs}</TableCell>
+                                          <TableCell className="text-right text-ctp-subtext1">
+                                            {((data.studs / studsBreakdown.total) * 100).toFixed(1)}%
+                                          </TableCell>
+                                        </TableRow>
+                                      ))}
+                                  </TableBody>
+                                </Table>
+                              </CardContent>
+                            </Card>
+                          </motion.div>
 
-                {/* By Run Type */}
-                <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)]">
-                  <CardHeader>
-                    <CardTitle className="text-lg text-[#fab387]">By Run Type</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="border-[hsl(235,13%,30%)]">
-                          <TableHead className="text-ctp-text">Type</TableHead>
-                          <TableHead className="text-ctp-text text-right">Studs</TableHead>
-                          <TableHead className="text-ctp-text text-right">Runs</TableHead>
-                          <TableHead className="text-ctp-text text-right">%</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {Array.from(studsBreakdown.byRunType.entries())
-                          .sort((a, b) => b[1].studs - a[1].studs)
-                          .map(([type, data]) => (
-                            <TableRow key={type} className="border-[hsl(235,13%,30%)]">
-                              <TableCell className="font-medium text-ctp-text">{type}</TableCell>
-                              <TableCell className="text-right text-[#fab387] font-semibold">
-                                {formatPoints(data.studs)}
-                              </TableCell>
-                              <TableCell className="text-right text-ctp-subtext1">{data.runs}</TableCell>
-                              <TableCell className="text-right text-ctp-subtext1">
-                                {((data.studs / studsBreakdown.total) * 100).toFixed(1)}%
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                </Card>
-                </div>
-              ) : (
-                <div className="text-center py-12 text-ctp-subtext1">
-                  No runs found for this player.
-                </div>
-              )}
-            </FadeIn>
+                          {/* By Run Type */}
+                          <motion.div variants={staggerItemVariants}>
+                            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)]">
+                              <CardHeader>
+                                <CardTitle className="text-lg text-[#fab387]">By Run Type</CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow className="border-[hsl(235,13%,30%)]">
+                                      <TableHead className="text-ctp-text">Type</TableHead>
+                                      <TableHead className="text-ctp-text text-right">Studs</TableHead>
+                                      <TableHead className="text-ctp-text text-right">Runs</TableHead>
+                                      <TableHead className="text-ctp-text text-right">%</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {Array.from(studsBreakdown.byRunType.entries())
+                                      .sort((a, b) => b[1].studs - a[1].studs)
+                                      .map(([type, data]) => (
+                                        <TableRow key={type} className="border-[hsl(235,13%,30%)]">
+                                          <TableCell className="font-medium text-ctp-text">{type}</TableCell>
+                                          <TableCell className="text-right text-[#fab387] font-semibold">
+                                            {formatPoints(data.studs)}
+                                          </TableCell>
+                                          <TableCell className="text-right text-ctp-subtext1">{data.runs}</TableCell>
+                                          <TableCell className="text-right text-ctp-subtext1">
+                                            {((data.studs / studsBreakdown.total) * 100).toFixed(1)}%
+                                          </TableCell>
+                                        </TableRow>
+                                      ))}
+                                  </TableBody>
+                                </Table>
+                              </CardContent>
+                            </Card>
+                          </motion.div>
+                        </motion.div>
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="empty"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="text-center py-12 text-ctp-subtext1"
+                      >
+                        No runs found for this player.
+                      </motion.div>
+                    )}
+            </AnimatePresence>
           </DialogContent>
         </Dialog>
       </div>

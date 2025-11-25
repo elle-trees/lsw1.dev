@@ -4,7 +4,7 @@ import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, Clock, ExternalLink } from "lucide-react";
-import { getAllVerifiedRuns, subscribeToRecentRuns } from "@/lib/db";
+import { subscribeToRecentRuns, subscribeToAllVerifiedRuns } from "@/lib/db";
 import { LeaderboardEntry } from "@/types/database";
 import type { Unsubscribe } from "firebase/firestore";
 import { RecentRuns } from "@/components/RecentRuns";
@@ -86,53 +86,39 @@ const Index = () => {
     };
   }, []);
 
+  // Set up real-time listener for stats
   useEffect(() => {
-    const fetchStats = async () => {
-      setStatsLoading(true);
-      try {
-        // Use optimized aggregation queries for better performance
-        const { getVerifiedRunsStatsFirestore } = await import("@/lib/data/firestore/stats");
-        const { count, totalTime: totalSeconds } = await getVerifiedRunsStatsFirestore();
-        
-        setTotalVerifiedRuns(count);
-        const formattedTime = formatTimeWithDays(totalSeconds);
-        setTotalTime(formattedTime);
-        
-        // Cache stats for instant navigation
-        pageCache.set(CACHE_KEY_STATS, {
-          totalVerifiedRuns: count,
-          totalTime: formattedTime,
-        }, 1000 * 60 * 10); // 10 minutes
-      } catch (_error) {
-        // Fallback to old method if aggregation queries fail
-        try {
-          const verifiedRuns = await getAllVerifiedRuns();
-          const totalRuns = verifiedRuns.length;
-          setTotalVerifiedRuns(totalRuns);
-          
-          const totalSeconds = verifiedRuns.reduce((sum, run) => {
-            return sum + parseTimeToSeconds(run.time);
-          }, 0);
-          const formattedTime = formatTimeWithDays(totalSeconds);
-          setTotalTime(formattedTime);
-          
-          pageCache.set(CACHE_KEY_STATS, {
-            totalVerifiedRuns: totalRuns,
-            totalTime: formattedTime,
-          }, 1000 * 60 * 10);
-        } catch (fallbackError) {
-          // Silent fail
-        }
-      } finally {
-        setStatsLoading(false);
-      }
-    };
-
-    // Only fetch if not in cache
-    if (!cachedStats) {
-      fetchStats();
+    // Use cached data immediately if available
+    if (cachedStats) {
+      setTotalVerifiedRuns(cachedStats.totalVerifiedRuns);
+      setTotalTime(cachedStats.totalTime);
+      setStatsLoading(false);
     }
-  }, [cachedStats]);
+
+    // Subscribe to real-time updates for all verified runs
+    const unsubscribe = subscribeToAllVerifiedRuns((runs) => {
+      const verifiedRuns = runs.filter(run => run.verified && !run.isObsolete);
+      const totalRuns = verifiedRuns.length;
+      setTotalVerifiedRuns(totalRuns);
+      
+      const totalSeconds = verifiedRuns.reduce((sum, run) => {
+        return sum + parseTimeToSeconds(run.time);
+      }, 0);
+      const formattedTime = formatTimeWithDays(totalSeconds);
+      setTotalTime(formattedTime);
+      setStatsLoading(false);
+      
+      // Update cache for instant navigation
+      pageCache.set(CACHE_KEY_STATS, {
+        totalVerifiedRuns: totalRuns,
+        totalTime: formattedTime,
+      }, 1000 * 60 * 10); // 10 minutes
+    });
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     // Check if stream is live

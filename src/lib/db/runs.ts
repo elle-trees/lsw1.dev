@@ -14,7 +14,8 @@ import {
   subscribeToUnverifiedRunsFirestore,
   subscribeToLeaderboardEntryFirestore,
   subscribeToPlayerRunsFirestore,
-  subscribeToPlayerPendingRunsFirestore
+  subscribeToPlayerPendingRunsFirestore,
+  subscribeToAllVerifiedRunsFirestore
 } from "../data/firestore/runs";
 
 import {
@@ -113,5 +114,11 @@ export const subscribeToPlayerPendingRuns = (
   callback: (runs: LeaderboardEntry[]) => void
 ): Unsubscribe | null => {
   return subscribeToPlayerPendingRunsFirestore(playerId, callback);
+};
+
+export const subscribeToAllVerifiedRuns = (
+  callback: (runs: LeaderboardEntry[]) => void
+): Unsubscribe | null => {
+  return subscribeToAllVerifiedRunsFirestore(callback);
 };
 
