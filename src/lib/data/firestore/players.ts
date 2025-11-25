@@ -336,6 +336,62 @@ export const getPlayersByPointsFirestore = async (limitCount: number = 100): Pro
  * @param limitCount - Maximum number of players to return (default: 100)
  * @returns Unsubscribe function to stop listening
  */
+/**
+ * Set admin status for a player
+ * Creates player document if it doesn't exist
+ */
+export const setPlayerAdminStatusFirestore = async (uid: string, isAdmin: boolean): Promise<boolean> => {
+  if (!db) return false;
+  try {
+    const existingPlayer = await getPlayerByUidFirestore(uid);
+    
+    if (!existingPlayer) {
+      const today = new Date().toISOString().split('T')[0];
+      const newPlayer = {
+        id: uid,
+        uid: uid,
+        displayName: "",
+        email: "",
+        joinDate: today,
+        totalRuns: 0,
+        bestRank: null,
+        favoriteCategory: null,
+        favoritePlatform: null,
+        nameColor: "#cba6f7",
+        isAdmin: isAdmin,
+      };
+      const result = await createPlayerFirestore(newPlayer);
+      return result !== null;
+    } else {
+      const playerDocRef = doc(db, "players", uid);
+      const docSnap = await getDoc(playerDocRef);
+      
+      if (docSnap.exists()) {
+        try {
+          await updateDoc(playerDocRef, { isAdmin });
+          return true;
+        } catch (updateError: any) {
+          // Try alternative method if permission denied
+          if (updateError?.code === 'permission-denied') {
+            try {
+              await setDoc(playerDocRef, { uid, isAdmin }, { merge: true });
+              return true;
+            } catch {
+              return false;
+            }
+          }
+          return false;
+        }
+      } else {
+        await setDoc(playerDocRef, { uid, isAdmin }, { merge: true });
+        return true;
+      }
+    }
+  } catch {
+    return false;
+  }
+};
+
 export const subscribeToPlayersByPointsFirestore = (
   callback: (players: Player[]) => void,
   limitCount: number = 100

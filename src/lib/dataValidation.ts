@@ -1,5 +1,6 @@
 import { LeaderboardEntry } from "@/types/database";
 import { getCategoryTranslation, getPlatformTranslation, getLevelTranslation } from "@/lib/i18n/entity-translations";
+import { validateTimeFormat, validateDateFormat } from "@/lib/validation/common";
 
 /**
  * Normalize category ID to string
@@ -297,13 +298,13 @@ export function validateLeaderboardEntry(entry: Partial<LeaderboardEntry>): {
     errors.push("Leaderboard type must be 'regular', 'individual-level', or 'community-golds'");
   }
   
-  // Validate time format
-  if (entry.time && !/^\d{1,2}:\d{2}:\d{2}$/.test(entry.time)) {
+  // Validate time format using shared utility
+  if (entry.time && !validateTimeFormat(entry.time)) {
     errors.push("Time must be in format HH:MM:SS");
   }
   
-  // Validate date format
-  if (entry.date && !/^\d{4}-\d{2}-\d{2}$/.test(entry.date)) {
+  // Validate date format using shared utility
+  if (entry.date && !validateDateFormat(entry.date)) {
     errors.push("Date must be in format YYYY-MM-DD");
   }
   

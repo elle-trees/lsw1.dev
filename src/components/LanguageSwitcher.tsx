@@ -25,9 +25,8 @@ export function LanguageSwitcher() {
   const handleLanguageChange = async (langCode: string) => {
     try {
       await i18nInstance.changeLanguage(langCode);
-      console.log('Language changed to:', langCode);
     } catch (error) {
-      console.error('Error changing language:', error);
+      // Language change errors are non-critical, silently fail
     }
   };
 

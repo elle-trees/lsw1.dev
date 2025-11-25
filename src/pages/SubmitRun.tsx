@@ -13,7 +13,8 @@ import { Upload, Gamepad2, Timer, User, Users, FileText, Sparkles, CheckCircle, 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
-import { addLeaderboardEntry, getCategories, getCategoriesFromFirestore, getPlatforms, runTypes, getPlayerByDisplayName, getLevels } from "@/lib/db";
+import { addLeaderboardEntry, getCategories, getPlatforms, getLevels, getPlayerByDisplayName } from "@/lib/data/firestore";
+import { runTypes } from "@/lib/constants";
 import { Category } from "@/types/database";
 import { useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
@@ -113,7 +114,7 @@ const SubmitRun = () => {
       if (leaderboardType === 'regular' && formData.category) {
         setLoadingSubcategories(true);
         try {
-          const categories = await getCategoriesFromFirestore('regular');
+          const categories = await getCategories('regular');
           const category = categories.find(c => c.id === formData.category);
           if (category && category.subcategories && category.subcategories.length > 0) {
             // Sort subcategories by order

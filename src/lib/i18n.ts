@@ -1,14 +1,8 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
-import { loadLanguageTranslations, initAdminTranslationSubscription } from './i18n/translation-service';
 import { initAutoTranslate } from './i18n/auto-translate';
 import type { Unsubscribe } from 'firebase/firestore';
-
-// Import static translation files as fallback
-import enTranslations from '../locales/en';
-import esTranslations from '../locales/es';
-import ptBRTranslations from '../locales/pt-BR';
 
 // Store the current subscription unsubscribe function
 let currentUnsubscribe: Unsubscribe | null = null;
@@ -27,20 +21,31 @@ plugins.forEach(plugin => i18n.use(plugin));
 if (!isInitialized) {
   isInitialized = true;
   
-  // Initialize i18n
+  // Load translations dynamically to improve code splitting
+  const loadInitialTranslations = async () => {
+    const [enTranslations, esTranslations, ptBRTranslations] = await Promise.all([
+      import('../locales/en').then(m => m.default),
+      import('../locales/es').then(m => m.default),
+      import('../locales/pt-BR').then(m => m.default),
+    ]);
+    
+    return {
+      en: {
+        translation: enTranslations,
+      },
+      es: {
+        translation: esTranslations,
+      },
+      'pt-BR': {
+        translation: ptBRTranslations,
+      },
+    };
+  };
+  
+  // Initialize i18n with empty resources first, then load translations
   i18n.init({
-  // Initial resources (static translations)
-  resources: {
-    en: {
-      translation: enTranslations,
-    },
-    es: {
-      translation: esTranslations,
-    },
-    'pt-BR': {
-      translation: ptBRTranslations,
-    },
-  },
+  // Initial resources (will be loaded dynamically)
+  resources: {},
   
   fallbackLng: 'en',
   supportedLngs: ['en', 'es', 'pt-BR'],
@@ -61,6 +66,12 @@ if (!isInitialized) {
   },
 })
 .then(async () => {
+  // Load initial translations dynamically
+  const resources = await loadInitialTranslations();
+  Object.keys(resources).forEach(lang => {
+    i18n.addResourceBundle(lang, 'translation', resources[lang as keyof typeof resources].translation, true, true);
+  });
+  
   // Initialize auto-translate service
   if (typeof window !== 'undefined') {
     initAutoTranslate(i18n);
@@ -72,6 +83,9 @@ if (!isInitialized) {
   
   // Set up real-time subscription for admin translations
   if (typeof window !== 'undefined') {
+    // Dynamically import translation-service to avoid static import
+    const { initAdminTranslationSubscription } = await import('./i18n/translation-service');
+    
     // Unsubscribe from previous subscription if it exists
     if (currentUnsubscribe) {
       currentUnsubscribe();
@@ -89,7 +103,8 @@ if (!isInitialized) {
       }
       
       await loadAndMergeAdminTranslations(lng);
-      currentUnsubscribe = initAdminTranslationSubscription(lng);
+      const { initAdminTranslationSubscription: initSubscription } = await import('./i18n/translation-service');
+      currentUnsubscribe = initSubscription(lng);
     });
   }
   
@@ -100,10 +115,9 @@ if (!isInitialized) {
       // @ts-ignore - setI18n exists but may not be in types
       if (reactI18nextModule.setI18n) {
         reactI18nextModule.setI18n(i18n);
-        console.log('i18n initialized with auto-translate and admin translations');
       }
     } catch (error) {
-      console.warn('Could not explicitly set i18n instance:', error);
+      // Non-critical: i18n instance may not need explicit setting
     }
   }
 })
@@ -118,13 +132,14 @@ if (!isInitialized) {
  */
 const loadAndMergeAdminTranslations = async (language: string) => {
   try {
+    // Dynamically import to avoid static import warning
     const { loadLanguageTranslations, updateI18nResources } = await import('./i18n/translation-service');
     const resource = await loadLanguageTranslations(language);
     if (resource.translation) {
       updateI18nResources(language, resource.translation);
     }
   } catch (error) {
-    console.error(`Error loading admin translations for ${language}:`, error);
+    // Error loading admin translations - non-critical, will use static translations
   }
 };
 

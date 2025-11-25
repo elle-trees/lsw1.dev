@@ -8,9 +8,10 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, updateProfile } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { isDisplayNameAvailable, createPlayer } from "@/lib/db";
+import { isDisplayNameAvailableFirestore as isDisplayNameAvailable, createPlayerFirestore as createPlayer } from "@/lib/data/firestore/players";
 import { getErrorMessage } from "@/lib/errorUtils";
 import { useTranslation } from "react-i18next";
+import { validateEmail, validatePassword, validateDisplayName } from "@/lib/validation/common";
 
 interface LoginModalProps {
   open: boolean;
@@ -27,29 +28,6 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const { t } = useTranslation();
-
-  // Validate email format
-  const validateEmail = (email: string): boolean => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
-
-  // Validate password strength
-  const validatePassword = (password: string): { valid: boolean; message?: string } => {
-    if (password.length < 8) {
-      return { valid: false, message: t("auth.passwordTooShort") };
-    }
-    if (!/[A-Z]/.test(password)) {
-      return { valid: false, message: t("auth.passwordNoUppercase") };
-    }
-    if (!/[a-z]/.test(password)) {
-      return { valid: false, message: t("auth.passwordNoLowercase") };
-    }
-    if (!/[0-9]/.test(password)) {
-      return { valid: false, message: t("auth.passwordNoNumber") };
-    }
-    return { valid: true };
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,28 +46,11 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
     if (!isLogin) {
       // Validate display name
       const trimmedDisplayName = displayName.trim();
-      if (!trimmedDisplayName) {
+      const displayNameValidation = validateDisplayName(trimmedDisplayName);
+      if (!displayNameValidation.valid) {
         toast({
           title: t("auth.displayNameRequired"),
-          description: t("auth.displayNameRequired"),
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (trimmedDisplayName.length < 2) {
-        toast({
-          title: t("auth.displayNameTooShort"),
-          description: t("auth.displayNameTooShort"),
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (trimmedDisplayName.length > 50) {
-        toast({
-          title: t("auth.displayNameTooLong"),
-          description: t("auth.displayNameTooLong"),
+          description: t(displayNameValidation.message || "auth.displayNameRequired"),
           variant: "destructive",
         });
         return;

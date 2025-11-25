@@ -6,10 +6,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Sparkles, Info } from "lucide-react";
 import { Player, LeaderboardEntry } from "@/types/database";
 import { Pagination } from "@/components/Pagination";
-import { getCategories, getPlatforms, subscribeToPlayersByPoints, subscribeToPlayerRuns } from "@/lib/db";
+import { getCategoriesFirestore as getCategories } from "@/lib/data/firestore/categories";
+import { getPlatformsFirestore as getPlatforms } from "@/lib/data/firestore/platforms";
+import { subscribeToPlayersByPointsFirestore as subscribeToPlayersByPoints } from "@/lib/data/firestore/players";
+import { subscribeToPlayerRunsFirestore as subscribeToPlayerRuns } from "@/lib/data/firestore/runs";
 import type { Unsubscribe } from "firebase/firestore";
 import { getCategoryName, getPlatformName } from "@/lib/dataValidation";
-import { calculatePoints } from "@/lib/utils";
+import { calculatePoints } from "@/lib/points-config";
 import LegoStudIcon from "@/components/icons/LegoStudIcon";
 import { FadeIn } from "@/components/ui/fade-in";
 import { AnimatedCard } from "@/components/ui/animated-card";
@@ -119,7 +122,7 @@ const PointsLeaderboard = () => {
     let isMounted = true;
 
     (async () => {
-      const { subscribeToPlayersByPoints } = await import("@/lib/db/players");
+      const { subscribeToPlayersByPointsFirestore: subscribeToPlayersByPoints } = await import("@/lib/data/firestore/players");
       if (!isMounted) return;
       
       unsubscribe = subscribeToPlayersByPoints((playersData) => {

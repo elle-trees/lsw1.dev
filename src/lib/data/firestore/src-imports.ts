@@ -279,9 +279,6 @@ export const autoClaimRunsBySRCUsernameFirestore = async (uid: string, srcUserna
         // Normalize username for consistent matching (lowercase, trimmed)
         const normalizedUsername = srcUsername.trim().toLowerCase();
         
-        // Debug logging for troubleshooting
-        console.log(`[Autoclaim] Attempting to claim runs for user ${uid} with SRC username: "${srcUsername}" (normalized: "${normalizedUsername}")`);
-        
         // Query all imported runs (we can't do case-insensitive queries in Firestore)
         // So we fetch all imported runs and filter in memory
         // This handles both normalized and non-normalized srcPlayerName values
@@ -300,10 +297,6 @@ export const autoClaimRunsBySRCUsernameFirestore = async (uid: string, srcUserna
         let currentBatchSize = 0;
         const maxBatchSize = 500; // Firestore batch limit
         
-        // Sample some runs for debugging
-        let sampleRunsLogged = 0;
-        const maxSampleRuns = 5;
-        
         for (const doc of snapshot.docs) {
             const entry = doc.data();
             
@@ -311,22 +304,11 @@ export const autoClaimRunsBySRCUsernameFirestore = async (uid: string, srcUserna
             const srcPlayerNameValue = entry.srcPlayerName;
             if (!srcPlayerNameValue || typeof srcPlayerNameValue !== 'string' || srcPlayerNameValue.trim() === '') {
                 unmatchedCount++;
-                // Log sample of runs without srcPlayerName for debugging
-                if (sampleRunsLogged < maxSampleRuns && unmatchedCount <= maxSampleRuns) {
-                    console.log(`[Autoclaim] Run ${entry.id} has no srcPlayerName (value: ${JSON.stringify(srcPlayerNameValue)})`);
-                    sampleRunsLogged++;
-                }
                 continue;
             }
             
             // Normalize srcPlayerName - handle both already-normalized and non-normalized values
             const normalizedSrcPlayerName = String(srcPlayerNameValue).trim().toLowerCase();
-            
-            // Debug: log first few potential matches for troubleshooting
-            if (sampleRunsLogged < maxSampleRuns) {
-                console.log(`[Autoclaim] Sample run ${entry.id}: srcPlayerName="${srcPlayerNameValue}" (normalized: "${normalizedSrcPlayerName}"), playerId="${entry.playerId || 'none'}"`);
-                sampleRunsLogged++;
-            }
             
             // Check if srcPlayerName matches (case-insensitive comparison)
             if (normalizedSrcPlayerName === normalizedUsername) {
@@ -345,18 +327,11 @@ export const autoClaimRunsBySRCUsernameFirestore = async (uid: string, srcUserna
                     }
                 } else {
                     matchedButClaimedCount++;
-                    // Only log first few to avoid spam
-                    if (matchedButClaimedCount <= 3) {
-                        console.log(`[Autoclaim] Found matching run ${entry.id} but it's already claimed by ${entry.playerId}`);
-                    }
                 }
             } else {
                 unmatchedCount++;
             }
         }
-        
-        // Debug logging with more details
-        console.log(`[Autoclaim] Results for "${srcUsername}" (normalized: "${normalizedUsername}"): ${claimedCount} claimed, ${matchedButClaimedCount} already claimed, ${unmatchedCount} unmatched out of ${snapshot.docs.length} total imported runs`);
         
         // If no matches found, log a sample of what srcPlayerName values exist
         if (claimedCount === 0 && matchedButClaimedCount === 0 && snapshot.docs.length > 0) {
@@ -373,9 +348,7 @@ export const autoClaimRunsBySRCUsernameFirestore = async (uid: string, srcUserna
                 }
                 if (sampleCount >= 10) break;
             }
-            if (sampleSrcPlayerNames.size > 0) {
-                console.log(`[Autoclaim] Sample srcPlayerName values found in runs:`, Array.from(sampleSrcPlayerNames).slice(0, 10));
-            } else {
+            if (sampleSrcPlayerNames.size === 0) {
                 console.warn(`[Autoclaim] No srcPlayerName values found in any imported runs! This suggests runs may not have been imported with srcPlayerName field.`);
             }
         }
@@ -404,7 +377,6 @@ export const runAutoclaimingForAllUsersFirestore = async (): Promise<{ runsUpdat
     
     try {
         const playersWithSRC = await getPlayersWithSRCUsernamesFirestore();
-        console.log(`[Autoclaim] Found ${playersWithSRC.length} players with SRC usernames`);
         
         for (const player of playersWithSRC) {
             try {
@@ -424,7 +396,6 @@ export const runAutoclaimingForAllUsersFirestore = async (): Promise<{ runsUpdat
                 if (claimed > 0) {
                     result.runsUpdated += claimed;
                     result.playersUpdated++;
-                    console.log(`[Autoclaim] Claimed ${claimed} run(s) for player ${player.uid} (${player.displayName}) with SRC username "${normalizedSrcUsername}"`);
                 }
             } catch (err: unknown) {
                 const errorMessage = err instanceof Error ? err.message : String(err);
@@ -434,7 +405,6 @@ export const runAutoclaimingForAllUsersFirestore = async (): Promise<{ runsUpdat
             }
         }
         
-        console.log(`[Autoclaim] Complete: ${result.runsUpdated} runs claimed for ${result.playersUpdated} players`);
         return result;
     } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : String(error);
@@ -534,7 +504,6 @@ export const backfillSrcPlayerNameForRunsFirestore = async (
       await Promise.all(batches.map(batch => batch.commit()));
     }
     
-    console.log(`[Backfill] Processed ${result.processed} runs, updated ${result.updated} with srcPlayerName`);
     if (result.errors.length > 0) {
       console.warn(`[Backfill] ${result.errors.length} runs could not be backfilled`);
     }

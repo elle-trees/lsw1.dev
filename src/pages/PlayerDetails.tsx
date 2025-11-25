@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { PlayerProfile } from "@/components/PlayerProfile";
 import { ArrowLeft, Trophy, User, Users, Clock, Star, Gem, CheckCircle, Gamepad2, Sparkles, MapPin, ExternalLink, Check } from "lucide-react";
 import { PrefetchLink } from "@/components/PrefetchLink";
-import { getCategories, getPlatforms, getLevels, getCategoriesFromFirestore, getUnclaimedRunsBySRCUsername, claimRun, runTypes, subscribeToPlayer, subscribeToPlayerRuns, subscribeToPlayerPendingRuns } from "@/lib/db";
+import { getCategories, getPlatforms, getLevels, getUnclaimedRunsBySRCUsername, claimRun, subscribeToPlayer, subscribeToPlayerRuns, subscribeToPlayerPendingRuns } from "@/lib/data/firestore";
+import { runTypes } from "@/lib/constants";
 import type { Unsubscribe } from "firebase/firestore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import LegoStudIcon from "@/components/icons/LegoStudIcon";
@@ -64,7 +65,7 @@ const PlayerDetails = ({ playerId }: PlayerDetailsProps) => {
 
     (async () => {
       // Set up real-time listener for player data
-      const { subscribeToPlayer } = await import("@/lib/db/players");
+      const { subscribeToPlayerFirestore: subscribeToPlayer } = await import("@/lib/data/firestore/players");
       if (!isMounted) return;
       
       const unsubPlayer = subscribeToPlayer(playerId, (playerData) => {
@@ -84,7 +85,7 @@ const PlayerDetails = ({ playerId }: PlayerDetailsProps) => {
       if (unsubPlayer) unsubscribes.push(unsubPlayer);
 
       // Set up real-time listener for player runs
-      const { subscribeToPlayerRuns } = await import("@/lib/db/runs");
+      const { subscribeToPlayerRunsFirestore: subscribeToPlayerRuns } = await import("@/lib/data/firestore/runs");
       if (!isMounted) return;
       
       const unsubRuns = subscribeToPlayerRuns(playerId, (runs) => {
@@ -95,7 +96,7 @@ const PlayerDetails = ({ playerId }: PlayerDetailsProps) => {
 
       // Set up real-time listener for pending runs (only for own profile)
       if (currentUser && currentUser.uid && currentUser.uid === playerId) {
-        const { subscribeToPlayerPendingRuns } = await import("@/lib/db/runs");
+        const { subscribeToPlayerPendingRunsFirestore: subscribeToPlayerPendingRuns } = await import("@/lib/data/firestore/runs");
         if (!isMounted) return;
         
         setLoadingPendingRuns(true);
@@ -107,7 +108,15 @@ const PlayerDetails = ({ playerId }: PlayerDetailsProps) => {
         if (unsubPending) unsubscribes.push(unsubPending);
 
         // Fetch unclaimed runs (this still needs polling as it's a complex query)
-        const { getPlayerByUid, getUnclaimedRunsBySRCUsername } = await import("@/lib/db");
+        const [
+          { getPlayerByUidFirestore },
+          { getUnclaimedRunsBySRCUsernameFirestore }
+        ] = await Promise.all([
+          import("@/lib/data/firestore/players"),
+          import("@/lib/data/firestore/src-imports")
+        ]);
+        const getPlayerByUid = getPlayerByUidFirestore;
+        const getUnclaimedRunsBySRCUsername = getUnclaimedRunsBySRCUsernameFirestore;
         getPlayerByUid(playerId).then((playerData) => {
           if (!isMounted || !playerData) return;
           if (playerData.srcUsername) {
@@ -132,9 +141,9 @@ const PlayerDetails = ({ playerId }: PlayerDetailsProps) => {
 
     // Fetch static data (categories, platforms, levels) - these don't need real-time
     Promise.all([
-      getCategoriesFromFirestore('regular'),
-      getCategoriesFromFirestore('individual-level'),
-      getCategoriesFromFirestore('community-golds'),
+      getCategories('regular'),
+      getCategories('individual-level'),
+      getCategories('community-golds'),
       getPlatforms(),
       getLevels()
     ]).then(([regularCategories, ilCategories, cgCategories, fetchedPlatforms, fetchedLevels]) => {

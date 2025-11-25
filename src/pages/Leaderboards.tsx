@@ -8,7 +8,8 @@ import { Tabs, AnimatedTabsList, AnimatedTabsTrigger, AnimatedTabsContent } from
 import { User, Users, Trophy, Sparkles, TrendingUp, Star, Gem, Gamepad2 } from "lucide-react";
 import { LeaderboardTable } from "@/components/LeaderboardTable";
 import { Pagination } from "@/components/Pagination";
-import { getCategories, getPlatforms, runTypes, getLevels, subscribeToLeaderboardEntries } from "@/lib/db";
+import { getCategories, getPlatforms, getLevels, subscribeToLeaderboardEntries } from "@/lib/data/firestore";
+import { runTypes } from "@/lib/constants";
 import type { Unsubscribe } from "firebase/firestore";
 import { LeaderboardEntry, Category, Level } from "@/types/database";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -196,7 +197,7 @@ const Leaderboards = () => {
     let isMounted = true;
 
     (async () => {
-      const { subscribeToLeaderboardEntries } = await import("@/lib/db/runs");
+      const { subscribeToLeaderboardEntriesFirestore: subscribeToLeaderboardEntries } = await import("@/lib/data/firestore/runs");
       if (!isMounted) return;
       
       unsubscribe = subscribeToLeaderboardEntries(

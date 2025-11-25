@@ -23,15 +23,10 @@ import {
 import { Separator } from "@/components/ui/separator";
 
 import { useAuth } from "@/components/AuthProvider";
-import {
-  markNotificationAsRead,
-  markAllNotificationsAsRead,
-  deleteNotification,
-  getUnclaimedRunsBySRCUsername,
-  getPlayerByUid,
-  subscribeToUnreadUserNotifications,
-  subscribeToUnverifiedRuns
-} from "@/lib/db";
+import { markNotificationAsReadFirestore as markNotificationAsRead, markAllNotificationsAsReadFirestore as markAllNotificationsAsRead, deleteNotificationFirestore as deleteNotification, subscribeToUnreadUserNotificationsFirestore as subscribeToUnreadUserNotifications } from "@/lib/data/firestore/notifications";
+import { getUnclaimedRunsBySRCUsernameFirestore as getUnclaimedRunsBySRCUsername } from "@/lib/data/firestore/src-imports";
+import { getPlayerByUidFirestore as getPlayerByUid } from "@/lib/data/firestore/players";
+import { subscribeToUnverifiedRunsFirestore as subscribeToUnverifiedRuns } from "@/lib/data/firestore/runs";
 import { Notification } from "@/types/notifications";
 import { LeaderboardEntry } from "@/types/database";
 import type { Unsubscribe } from "firebase/firestore";

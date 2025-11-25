@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Download, ExternalLink } from "lucide-react";
-import { getDownloadEntries, getDownloadCategories } from "@/lib/db";
+import { getDownloadEntriesFirestore as getDownloadEntries, getDownloadCategoriesFirestore as getDownloadCategories } from "@/lib/data/firestore/downloads";
 import { DownloadEntry } from "@/types/database";
 import { FadeIn } from "@/components/ui/fade-in";
 import { AnimatedCard } from "@/components/ui/animated-card";

@@ -85,14 +85,14 @@ export function usePrefetchVisible(
 
     const prefetchFn = async () => {
       if (item.type === "player") {
-        const { getPlayerByUid } = await import("@/lib/db/players");
-        const { getPlayerRuns } = await import("@/lib/db/runs");
+        const { getPlayerByUidFirestore: getPlayerByUid } = await import("@/lib/data/firestore/players");
+        const { getPlayerRunsFirestore: getPlayerRuns } = await import("@/lib/data/firestore/runs");
         await Promise.all([
           getPlayerByUid(item.id).catch(() => null),
           getPlayerRuns(item.id).catch(() => null),
         ]);
       } else if (item.type === "run") {
-        const { getLeaderboardEntryById } = await import("@/lib/db/runs");
+        const { getLeaderboardEntryByIdFirestore: getLeaderboardEntryById } = await import("@/lib/data/firestore/leaderboards");
         await getLeaderboardEntryById(item.id).catch(() => null);
       }
     };

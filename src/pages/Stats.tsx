@@ -21,7 +21,8 @@ import {
   Gem,
   CalendarDays
 } from "lucide-react";
-import { subscribeToAllVerifiedRuns, getCategories, getPlatforms, getLevels, runTypes } from "@/lib/db";
+import { subscribeToAllVerifiedRuns, getCategories, getPlatforms, getLevels } from "@/lib/data/firestore";
+import { runTypes } from "@/lib/constants";
 import { LeaderboardEntry, Player } from "@/types/database";
 import { formatTime, parseTimeToSeconds, formatSecondsToTime } from "@/lib/utils";
 import { getCategoryName, getPlatformName, getLevelName } from "@/lib/dataValidation";
@@ -100,7 +101,7 @@ const Stats = () => {
         const [fetchedCategories, fetchedPlatforms, fetchedLevels] = await Promise.all([
           getCategories(),
           getPlatforms(),
-          import("@/lib/db").then(m => m.getLevels())
+          import("@/lib/data/firestore/levels").then(m => m.getLevelsFirestore())
         ]);
 
         setCategories(fetchedCategories);

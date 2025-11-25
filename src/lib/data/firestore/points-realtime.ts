@@ -15,7 +15,8 @@ import {
 } from "firebase/firestore";
 import { LeaderboardEntry, Player, PointsConfig } from "@/types/database";
 import { leaderboardEntryConverter, playerConverter } from "./converters";
-import { calculatePoints, parseTimeToSeconds } from "@/lib/utils";
+import { parseTimeToSeconds } from "@/lib/utils";
+import { calculatePoints } from "@/lib/points-config";
 import { getCategoriesFirestore } from "./categories";
 import { getPlatformsFirestore } from "./platforms";
 import { subscribeToPointsConfigFirestore } from "./points";
@@ -338,12 +339,7 @@ class PointsRecalculationService {
           this.notifyCallbacks(true);
           
           try {
-            console.log("Points config changed, recalculating all player points...");
-            await recalculateAllPlayerPointsFirestore(config, (processed, total) => {
-              console.log(`Recalculating points: ${processed}/${total} players processed`);
-            });
-            
-            console.log("Points recalculation completed");
+            await recalculateAllPlayerPointsFirestore(config);
           } catch (error) {
             console.error("Error during automatic points recalculation:", error);
           } finally {
@@ -424,9 +420,7 @@ class PointsRecalculationService {
     this.notifyCallbacks(true);
     
     try {
-      await recalculateAllPlayerPointsFirestore(pointsConfig, (processed, total) => {
-        console.log(`Manual recalculation: ${processed}/${total} players processed`);
-      });
+      await recalculateAllPlayerPointsFirestore(pointsConfig);
     } finally {
       this.isRecalculating = false;
       this.notifyCallbacks(false);
@@ -672,8 +666,6 @@ class RankUpdateService {
     const groupsToUpdate = Array.from(this.pendingGroupUpdates);
     this.pendingGroupUpdates.clear();
     
-    console.log(`Updating ranks for ${groupsToUpdate.length} leaderboard group(s)...`);
-    
     // Process groups in parallel (but limit concurrency to avoid overwhelming Firestore)
     const BATCH_SIZE = 5;
     for (let i = 0; i < groupsToUpdate.length; i += BATCH_SIZE) {
@@ -681,18 +673,13 @@ class RankUpdateService {
       await Promise.all(
         batch.map(async (groupKey) => {
           try {
-            const updated = await updateRanksForLeaderboardGroup(groupKey);
-            if (updated > 0) {
-              console.log(`Updated ranks for ${updated} runs in group ${groupKey}`);
-            }
+            await updateRanksForLeaderboardGroup(groupKey);
           } catch (error) {
             console.error(`Error updating ranks for group ${groupKey}:`, error);
           }
         })
       );
     }
-    
-    console.log("Rank updates completed");
   }
   
   /**

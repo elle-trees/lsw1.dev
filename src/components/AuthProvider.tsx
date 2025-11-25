@@ -2,7 +2,8 @@
 
 import React, { createContext, useContext, useEffect, useState, useRef } from "react";
 import { auth } from "@/lib/firebase";
-import { getPlayerByUid, createPlayer, startRealtimeAutoclaiming, stopRealtimeAutoclaiming } from "@/lib/db";
+import { getPlayerByUidFirestore as getPlayerByUid, createPlayerFirestore as createPlayer } from "@/lib/data/firestore/players";
+import { startRealtimeAutoclaiming, stopRealtimeAutoclaiming } from "@/lib/data/firestore/autoclaim-realtime";
 import { CustomUser, Player } from "@/types/database";
 import type { User } from "firebase/auth";
 

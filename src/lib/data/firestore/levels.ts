@@ -11,6 +11,7 @@ import {
 } from "firebase/firestore";
 import { Level } from "@/types/database";
 import { levelConverter } from "./converters";
+import { logger } from "@/lib/logger";
 
 export const getLevelsFirestore = async (): Promise<Level[]> => {
   if (!db) return [];
@@ -19,7 +20,7 @@ export const getLevelsFirestore = async (): Promise<Level[]> => {
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => doc.data());
   } catch (error) {
-    console.error("Error fetching levels:", error);
+    logger.error("Error fetching levels:", error);
     return [];
   }
 };
@@ -41,7 +42,7 @@ export const addLevelFirestore = async (name: string): Promise<string | null> =>
     await setDoc(newDocRef, newLevel);
     return newDocRef.id;
   } catch (error) {
-    console.error("Error adding level:", error);
+    logger.error("Error adding level:", error);
     return null;
   }
 };
@@ -53,7 +54,7 @@ export const updateLevelFirestore = async (id: string, name: string): Promise<bo
     await updateDoc(docRef, { name });
     return true;
   } catch (error) {
-    console.error("Error updating level:", error);
+    logger.error("Error updating level:", error);
     return false;
   }
 };
@@ -64,7 +65,7 @@ export const deleteLevelFirestore = async (id: string): Promise<boolean> => {
     await deleteDoc(doc(db, "levels", id));
     return true;
   } catch (error) {
-    console.error("Error deleting level:", error);
+    logger.error("Error deleting level:", error);
     return false;
   }
 };
@@ -79,7 +80,7 @@ export const updateLevelCategoryDisabledFirestore = async (levelId: string, cate
     });
     return true;
   } catch (error) {
-    console.error("Error updating level category disabled status:", error);
+    logger.error("Error updating level category disabled status:", error);
     return false;
   }
 };

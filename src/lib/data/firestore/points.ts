@@ -12,6 +12,7 @@ import {
 } from "firebase/firestore";
 import { PointsConfig } from "@/types/database";
 import { pointsConfigConverter } from "./converters";
+import { DEFAULT_POINTS_CONFIG } from "@/config";
 
 export const getPointsConfigFirestore = async (): Promise<PointsConfig | null> => {
   if (!db) return null;
@@ -25,19 +26,7 @@ export const getPointsConfigFirestore = async (): Promise<PointsConfig | null> =
     }
     
     // Return default config if none exists
-    return {
-      id: "default",
-      basePoints: 100,
-      rank1Bonus: 50,
-      rank2Bonus: 30,
-      rank3Bonus: 15,
-      coOpMultiplier: 0.5,
-      ilMultiplier: 1.0,
-      communityGoldsMultiplier: 1.0,
-      obsoleteMultiplier: 0.5,
-      applyRankBonusesToIL: false,
-      applyRankBonusesToCommunityGolds: false
-    };
+    return DEFAULT_POINTS_CONFIG;
   } catch (error) {
     console.error("Error fetching points config:", error);
     return null;
@@ -121,19 +110,7 @@ export const subscribeToPointsConfigFirestore = (
         callback(snapshot.docs[0].data());
       } else {
         // Return default config if none exists
-        callback({
-          id: "default",
-          basePoints: 100,
-          rank1Bonus: 50,
-          rank2Bonus: 30,
-          rank3Bonus: 15,
-          coOpMultiplier: 0.5,
-          ilMultiplier: 1.0,
-          communityGoldsMultiplier: 1.0,
-          obsoleteMultiplier: 0.5,
-          applyRankBonusesToIL: false,
-          applyRankBonusesToCommunityGolds: false
-        });
+        callback(DEFAULT_POINTS_CONFIG);
       }
     }, (error) => {
       console.error("Error in points config subscription:", error);

@@ -11,8 +11,8 @@ const ADMIN_UID = getAdminUid()
 onAuthStateChanged(auth, async (user) => {
   if (user && ADMIN_UID && user.uid === ADMIN_UID) {
     try {
-      const { setPlayerAdminStatus } = await import('./lib/db/players')
-      await setPlayerAdminStatus(ADMIN_UID, true)
+      const { setPlayerAdminStatusFirestore } = await import('./lib/data/firestore/players')
+      await setPlayerAdminStatusFirestore(ADMIN_UID, true)
     } catch (error) {
       // Log error but don't break flow - admin status will be set on next auth check
       console.warn('Failed to set admin status:', error);

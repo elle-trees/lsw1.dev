@@ -10,7 +10,11 @@ import { Settings, User, Trophy, CheckCircle, Upload, X, Sparkles, Gem, Users } 
 import { getCategoryName, getPlatformName, getLevelName } from "@/lib/dataValidation";
 import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
-import { updatePlayerProfile, getPlayerByUid, getUnclaimedRunsBySRCUsername, claimRun, getCategories, getPlatforms, getLevels, getCategoriesFromFirestore } from "@/lib/db";
+import { updatePlayerProfileFirestore as updatePlayerProfile, getPlayerByUidFirestore as getPlayerByUid } from "@/lib/data/firestore/players";
+import { getUnclaimedRunsBySRCUsernameFirestore as getUnclaimedRunsBySRCUsername, claimRunFirestore as claimRun } from "@/lib/data/firestore/src-imports";
+import { getCategoriesFirestore as getCategories, getCategoriesFirestore as getCategoriesFromFirestore } from "@/lib/data/firestore/categories";
+import { getPlatformsFirestore as getPlatforms } from "@/lib/data/firestore/platforms";
+import { getLevelsFirestore as getLevels } from "@/lib/data/firestore/levels";
 import { updateEmail, updatePassword, updateProfile } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useNavigate } from "@tanstack/react-router";
@@ -380,7 +384,7 @@ const UserSettings = () => {
     
     try {
       // Use autoClaimRunsBySRCUsername which claims all matching runs
-      const { autoClaimRunsBySRCUsername } = await import("@/lib/db");
+      const { autoClaimRunsBySRCUsernameFirestore: autoClaimRunsBySRCUsername } = await import("@/lib/data/firestore/src-imports");
       const claimedCount = await autoClaimRunsBySRCUsername(currentUser.uid, srcUsername);
       
       if (claimedCount > 0) {

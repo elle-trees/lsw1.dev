@@ -84,9 +84,6 @@ export const addLeaderboardEntryFirestore = async (entry: Omit<LeaderboardEntry,
       newEntry.importedFromSRC = true;
     }
 
-    console.log('Creating entry - importedFromSRC in entry?', 'importedFromSRC' in newEntry, 'Value:', newEntry.importedFromSRC);
-    console.log('Full entry keys:', Object.keys(newEntry));
-
     await setDoc(newDocRef, newEntry);
     
     // Auto-assign logic would go here. 
@@ -472,7 +469,7 @@ export const verifyRunWithTransactionFirestore = async (
     let points = calculatedPoints || 0;
     if (verified && !calculatedPoints && run.playerId && run.playerId !== "imported") {
       // Import calculation utilities
-      const { calculatePoints: calcPoints } = await import("@/lib/utils");
+      const { calculatePoints: calcPoints } = await import("@/lib/points-config");
       const { getPointsConfigFirestore } = await import("./points");
       const { getCategoriesFirestore } = await import("./categories");
       const { getPlatformsFirestore } = await import("./platforms");

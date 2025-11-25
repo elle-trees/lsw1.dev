@@ -43,7 +43,7 @@ export function App({ queryClient: providedQueryClient }: { queryClient?: QueryC
   useEffect(() => {
     (async () => {
       // Initialize points config subscription for real-time updates
-      const { initializePointsConfigSubscription } = await import('@/lib/utils')
+      const { initializePointsConfigSubscription } = await import('@/lib/points-config')
       initializePointsConfigSubscription()
 
       // Start the points recalculation service (listens for config changes)

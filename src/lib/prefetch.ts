@@ -143,7 +143,7 @@ export async function prefetchRouteData(
       await config.prefetchData(finalParams);
     } catch (error) {
       // Silent fail - prefetching should not break the app
-      console.debug("Prefetch failed for", path, error);
+      // Prefetch failures are expected and don't need logging
     }
   }
 }
@@ -170,14 +170,28 @@ export async function prefetchRouteAndData(
 }
 
 /**
+ * Helper function to prefetch static data (categories, platforms, levels)
+ * Shared between multiple prefetch functions
+ */
+async function prefetchStaticData(categoryType?: 'regular' | 'individual-level' | 'community-golds') {
+  const { getCategories, getPlatforms, getLevels } = await import("@/lib/data/firestore");
+  await Promise.all([
+    getCategories(categoryType || "regular").catch(() => null),
+    getPlatforms().catch(() => null),
+    getLevels().catch(() => null)
+  ]);
+}
+
+/**
  * Initialize route prefetch configurations
  * This should be called once when the app loads
  */
 export function initializeRoutePrefetches() {
   // Import data fetching functions lazily to avoid circular dependencies
   const prefetchIndex = async () => {
-    const [{ getRecentRuns, getAllVerifiedRuns }] = await Promise.all([
-      import("@/lib/db/runs")
+    const [{ getRecentRunsFirestore: getRecentRuns }, { getAllVerifiedRunsFirestore: getAllVerifiedRuns }] = await Promise.all([
+      import("@/lib/data/firestore/runs"),
+      import("@/lib/data/firestore/src-imports")
     ]);
     // Prefetch recent runs and stats
     await Promise.all([
@@ -187,39 +201,19 @@ export function initializeRoutePrefetches() {
   };
 
   const prefetchLeaderboards = async () => {
-    const [{ getCategories }, { getPlatforms }, { getLevels }] = await Promise.all([
-      import("@/lib/db/categories"),
-      import("@/lib/db"),
-      import("@/lib/db")
-    ]);
-    // Prefetch static data needed for leaderboards
-    await Promise.all([
-      getCategories("regular").catch(() => null),
-      getPlatforms().catch(() => null),
-      getLevels().catch(() => null)
-    ]);
+    await prefetchStaticData("regular");
   };
 
   const prefetchSubmitRun = async () => {
-    const [{ getCategories }, { getPlatforms }, { getLevels }] = await Promise.all([
-      import("@/lib/db/categories"),
-      import("@/lib/db"),
-      import("@/lib/db")
-    ]);
-    // Prefetch form data
-    await Promise.all([
-      getCategories("regular").catch(() => null),
-      getPlatforms().catch(() => null),
-      getLevels().catch(() => null)
-    ]);
+    await prefetchStaticData("regular");
   };
 
   const prefetchPlayer = async (params?: Record<string, string>) => {
     const playerId = params?.playerId;
     if (!playerId) return;
-    const [{ getPlayerByUid }, { getPlayerRuns }] = await Promise.all([
-      import("@/lib/db/players"),
-      import("@/lib/db/runs")
+    const [{ getPlayerByUidFirestore: getPlayerByUid }, { getPlayerRunsFirestore: getPlayerRuns }] = await Promise.all([
+      import("@/lib/data/firestore/players"),
+      import("@/lib/data/firestore/runs")
     ]);
     // Prefetch player data and their runs
     await Promise.all([
@@ -231,11 +225,7 @@ export function initializeRoutePrefetches() {
   const prefetchRun = async (params?: Record<string, string>) => {
     const runId = params?.runId;
     if (!runId) return;
-    const [{ getLeaderboardEntryById }, { getCategories }, { getPlatforms }] = await Promise.all([
-      import("@/lib/db/runs"),
-      import("@/lib/db/categories"),
-      import("@/lib/db")
-    ]);
+    const { getLeaderboardEntryById, getCategories, getPlatforms } = await import("@/lib/data/firestore");
     // Prefetch run data and related static data
     await Promise.all([
       getLeaderboardEntryById(runId).catch(() => null),
@@ -245,9 +235,7 @@ export function initializeRoutePrefetches() {
   };
 
   const prefetchPointsLeaderboard = async () => {
-    const [{ getPlayersByPoints }] = await Promise.all([
-      import("@/lib/db/players")
-    ]);
+    const { getPlayersByPoints } = await import("@/lib/data/firestore");
     await getPlayersByPoints().catch(() => null);
   };
 

@@ -9,6 +9,7 @@ import {
 } from "firebase/firestore";
 import { GameDetailsConfig } from "@/types/database";
 import { gameDetailsConfigConverter } from "./converters";
+import { DEFAULT_GAME_CONFIG } from "@/config";
 
 export const getGameDetailsConfigFirestore = async (): Promise<GameDetailsConfig | null> => {
   if (!db) return null;
@@ -22,31 +23,7 @@ export const getGameDetailsConfigFirestore = async (): Promise<GameDetailsConfig
     }
     
     // Return default config if none exists
-    return {
-      id: "default",
-      title: "LEGO Star Wars: The Video Game",
-      subtitle: "2005",
-      categories: ["LEGO Series", "Star Wars Series"],
-      platforms: [
-        { id: "gcn", label: "GCN", order: 1 },
-        { id: "ps2", label: "PS2", order: 2 },
-        { id: "xbox", label: "Xbox", order: 3 },
-        { id: "pc", label: "PC", order: 4 },
-      ],
-      discordUrl: "https://discord.gg/6A5MNqaK49",
-      headerLinks: [
-        { id: "leaderboards", label: "Leaderboards", route: "/leaderboards", icon: "Trophy", color: "#a6e3a1", order: 1 },
-        { id: "points", label: "Studs", route: "/points", icon: "LegoStud", color: "#fab387", order: 2 },
-        { id: "submit", label: "Submit Run", route: "/submit", icon: "Upload", color: "#eba0ac", order: 3 },
-        { id: "live", label: "Live", route: "/live", icon: "Radio", color: "#f38ba8", order: 4 },
-        { id: "downloads", label: "Downloads", route: "/downloads", icon: "Download", color: "#cba6f7", order: 5 },
-        { id: "stats", label: "Stats", route: "/stats", icon: "BarChart3", color: "#89b4fa", order: 6 },
-        { id: "admin", label: "Admin", route: "/admin", icon: "ShieldAlert", color: "#f2cdcd", order: 7, adminOnly: true },
-      ],
-      navItems: [],
-      visibleOnPages: ["/", "/leaderboards"],
-      enabled: true,
-    };
+    return DEFAULT_GAME_CONFIG;
   } catch (error) {
     console.error("Error fetching game details config:", error);
     return null;

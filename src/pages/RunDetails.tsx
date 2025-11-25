@@ -11,12 +11,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 import { ArrowLeft, User, Users, Calendar, CheckCircle, UserCircle, Trophy, Edit2, Save, X, Trash2 } from "lucide-react";
 import LegoStudIcon from "@/components/icons/LegoStudIcon";
-import { getLeaderboardEntryById, getPlayerByUid, getPlayerByDisplayName, getCategories, getCategoriesFromFirestore, getPlatforms, runTypes, updateLeaderboardEntry, deleteLeaderboardEntry } from "@/lib/db";
+import { getLeaderboardEntryById, getPlayerByUid, getPlayerByDisplayName, getCategories, getPlatforms, updateLeaderboardEntry, deleteLeaderboardEntry } from "@/lib/data/firestore";
+import { runTypes } from "@/lib/constants";
 import { LeaderboardEntry, Player } from "@/types/database";
 import { VideoEmbed } from "@/components/VideoEmbed";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/AuthProvider";
-import { formatDate, calculatePoints, formatTime } from "@/lib/utils";
+import { formatDate, formatTime } from "@/lib/utils";
+import { calculatePoints } from "@/lib/points-config";
 import { useTranslation } from "react-i18next";
 import { getSubcategoryTranslation } from "@/lib/i18n/entity-translations";
 
@@ -158,7 +160,7 @@ const RunDetails = ({ runId }: RunDetailsProps) => {
     const fetchSubcategories = async () => {
       if (run && run.leaderboardType === 'regular' && editFormData.category) {
         try {
-          const fetchedCategories = await getCategoriesFromFirestore('regular');
+          const fetchedCategories = await getCategories('regular');
           const category = fetchedCategories.find(c => c.id === editFormData.category);
           if (category && category.subcategories && category.subcategories.length > 0) {
             // Sort subcategories by order
@@ -191,7 +193,7 @@ const RunDetails = ({ runId }: RunDetailsProps) => {
     let isMounted = true;
     
     (async () => {
-      const { subscribeToLeaderboardEntry } = await import("@/lib/db/runs");
+      const { subscribeToLeaderboardEntryFirestore: subscribeToLeaderboardEntry } = await import("@/lib/data/firestore/runs");
       if (!isMounted) return;
       unsubscribe = subscribeToLeaderboardEntry(runId, (runData) => {
         if (!isMounted) return;

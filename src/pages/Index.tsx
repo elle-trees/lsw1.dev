@@ -4,7 +4,7 @@ import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, Clock, ExternalLink } from "lucide-react";
-import { subscribeToRecentRuns, subscribeToAllVerifiedRuns } from "@/lib/db";
+import { subscribeToRecentRunsFirestore as subscribeToRecentRuns, subscribeToAllVerifiedRunsFirestore as subscribeToAllVerifiedRuns } from "@/lib/data/firestore/runs";
 import { LeaderboardEntry } from "@/types/database";
 import type { Unsubscribe } from "firebase/firestore";
 import { RecentRuns } from "@/components/RecentRuns";

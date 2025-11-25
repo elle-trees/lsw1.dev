@@ -173,8 +173,6 @@ export const initAutoTranslate = (i18nInstance: typeof i18n) => {
     
     return translation;
   };
-  
-  console.log('Auto-translate initialized with react-auto-translate style Google Translate API');
 };
 
 /**

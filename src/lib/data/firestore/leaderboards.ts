@@ -16,6 +16,51 @@ import { LeaderboardEntry, Level, Player } from "@/types/database";
 import { leaderboardEntryConverter, playerConverter } from "./converters";
 import { normalizeCategoryId, normalizePlatformId, normalizeLevelId } from "@/lib/dataValidation";
 import { parseTimeToSeconds } from "@/lib/utils";
+import { logger } from "@/lib/logger";
+
+/**
+ * Build query constraints for leaderboard entries
+ * Shared between getLeaderboardEntriesFirestore and subscribeToLeaderboardEntriesFirestore
+ */
+function buildLeaderboardQueryConstraints(
+  categoryId?: string,
+  platformId?: string,
+  runType?: 'solo' | 'co-op',
+  leaderboardType?: 'regular' | 'individual-level' | 'community-golds',
+  levelId?: string,
+  fetchLimit: number = 500
+): QueryConstraint[] {
+  const normalizedCategoryId = categoryId && categoryId !== "all" ? normalizeCategoryId(categoryId) : undefined;
+  const normalizedPlatformId = platformId && platformId !== "all" ? normalizePlatformId(platformId) : undefined;
+  const normalizedLevelId = levelId && levelId !== "all" ? normalizeLevelId(levelId) : undefined;
+  
+  const constraints: QueryConstraint[] = [
+    where("verified", "==", true),
+  ];
+
+  if (leaderboardType) {
+    constraints.push(where("leaderboardType", "==", leaderboardType));
+  }
+
+  if (normalizedLevelId && (leaderboardType === 'individual-level' || leaderboardType === 'community-golds')) {
+    constraints.push(where("level", "==", normalizedLevelId));
+  }
+
+  if (normalizedCategoryId) {
+    constraints.push(where("category", "==", normalizedCategoryId));
+  }
+
+  if (normalizedPlatformId) {
+    constraints.push(where("platform", "==", normalizedPlatformId));
+  }
+
+  if (runType && (runType === "solo" || runType === "co-op")) {
+    constraints.push(where("runType", "==", runType));
+  }
+  
+  constraints.push(firestoreLimit(fetchLimit));
+  return constraints;
+}
 
 /**
  * Get leaderboard entries with optimized Firestore queries
@@ -32,43 +77,13 @@ export const getLeaderboardEntriesFirestore = async (
   if (!db) return [];
   
   try {
-    const normalizedCategoryId = categoryId && categoryId !== "all" ? normalizeCategoryId(categoryId) : undefined;
-    const normalizedPlatformId = platformId && platformId !== "all" ? normalizePlatformId(platformId) : undefined;
-    const normalizedLevelId = levelId && levelId !== "all" ? normalizeLevelId(levelId) : undefined;
-    
-    const constraints: QueryConstraint[] = [
-      where("verified", "==", true),
-    ];
-
-    if (leaderboardType) {
-      constraints.push(where("leaderboardType", "==", leaderboardType));
-    }
-
-    if (normalizedLevelId && (leaderboardType === 'individual-level' || leaderboardType === 'community-golds')) {
-      constraints.push(where("level", "==", normalizedLevelId));
-    }
-
-    if (normalizedCategoryId) {
-      constraints.push(where("category", "==", normalizedCategoryId));
-    }
-
-    if (normalizedPlatformId) {
-      constraints.push(where("platform", "==", normalizedPlatformId));
-    }
-
-    if (runType && (runType === "solo" || runType === "co-op")) {
-      constraints.push(where("runType", "==", runType));
-    }
-    
-    const fetchLimit = 500;
-    constraints.push(firestoreLimit(fetchLimit));
-    
-    // Fetch levels to check disabled categories
-    // Optimization: Only fetch if needed
-    // Note: selectedLevelData was declared but never used - removed for now
-    // if (normalizedLevelId) {
-    //   // Could fetch specific level here if needed
-    // }
+    const constraints = buildLeaderboardQueryConstraints(
+      categoryId,
+      platformId,
+      runType,
+      leaderboardType,
+      levelId
+    );
 
     const querySnapshot = await getDocs(query(collection(db, "leaderboardEntries").withConverter(leaderboardEntryConverter), ...constraints));
     
@@ -217,7 +232,7 @@ export const getLeaderboardEntriesFirestore = async (
 
     return entries;
   } catch (error) {
-    console.error("Error fetching leaderboard entries:", error);
+    logger.error("Error fetching leaderboard entries:", error);
     return [];
   }
 };
@@ -403,36 +418,13 @@ export const subscribeToLeaderboardEntriesFirestore = (
   if (!db) return null;
   
   try {
-    const normalizedCategoryId = categoryId && categoryId !== "all" ? normalizeCategoryId(categoryId) : undefined;
-    const normalizedPlatformId = platformId && platformId !== "all" ? normalizePlatformId(platformId) : undefined;
-    const normalizedLevelId = levelId && levelId !== "all" ? normalizeLevelId(levelId) : undefined;
-    
-    const constraints: QueryConstraint[] = [
-      where("verified", "==", true),
-    ];
-
-    if (leaderboardType) {
-      constraints.push(where("leaderboardType", "==", leaderboardType));
-    }
-
-    if (normalizedLevelId && (leaderboardType === 'individual-level' || leaderboardType === 'community-golds')) {
-      constraints.push(where("level", "==", normalizedLevelId));
-    }
-
-    if (normalizedCategoryId) {
-      constraints.push(where("category", "==", normalizedCategoryId));
-    }
-
-    if (normalizedPlatformId) {
-      constraints.push(where("platform", "==", normalizedPlatformId));
-    }
-
-    if (runType && (runType === "solo" || runType === "co-op")) {
-      constraints.push(where("runType", "==", runType));
-    }
-    
-    const fetchLimit = 500;
-    constraints.push(firestoreLimit(fetchLimit));
+    const constraints = buildLeaderboardQueryConstraints(
+      categoryId,
+      platformId,
+      runType,
+      leaderboardType,
+      levelId
+    );
     
     const q = query(collection(db, "leaderboardEntries").withConverter(leaderboardEntryConverter), ...constraints);
     
@@ -441,11 +433,11 @@ export const subscribeToLeaderboardEntriesFirestore = (
       const processed = await processLeaderboardEntries(entries, leaderboardType, subcategoryId, includeObsolete);
       callback(processed);
     }, (error) => {
-      console.error("Error in leaderboard subscription:", error);
+      logger.error("Error in leaderboard subscription:", error);
       callback([]);
     });
   } catch (error) {
-    console.error("Error setting up leaderboard subscription:", error);
+    logger.error("Error setting up leaderboard subscription:", error);
     return null;
   }
 };

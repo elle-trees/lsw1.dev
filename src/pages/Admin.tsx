@@ -23,12 +23,24 @@ type ImportResult = {
 };
 import { fetchCategoryVariables, getLSWGameId, fetchCategories as fetchSRCCategories, type SRCCategory } from "@/lib/speedruncom";
 import { useUploadThing } from "@/lib/uploadthing";
-import { LeaderboardEntry, DownloadEntry, Category, Level, Subcategory, PointsConfig, GameDetailsConfig, GameDetailsHeaderLink, Player } from "@/types/database";
+import { LeaderboardEntry, Category, Level, Subcategory, PointsConfig, GameDetailsConfig, GameDetailsHeaderLink, Player } from "@/types/database";
 import { useNavigate } from "@tanstack/react-router";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { formatTime } from "@/lib/utils";
+import { FadeIn } from "@/components/ui/fade-in";
+import { CardSkeleton } from "@/components/admin/CardSkeleton";
 import { getCategoryName, getPlatformName, getLevelName, normalizeCategoryId, normalizePlatformId, normalizeLevelId } from "@/lib/dataValidation";
-import { TranslationManager } from "@/components/TranslationManager";
+import { TranslationTab } from "./admin/components/TranslationTab";
+import { PlatformManagementTab } from "./admin/components/PlatformManagementTab";
+import { LevelManagementTab } from "./admin/components/LevelManagementTab";
+import { PointsConfigTab } from "./admin/components/PointsConfigTab";
+import { DownloadsTab } from "./admin/components/DownloadsTab";
+import { UsersTab } from "./admin/components/UsersTab";
+import { ToolsTab } from "./admin/components/ToolsTab";
+import { GameDetailsConfigTab } from "./admin/components/GameDetailsConfigTab";
+import { CategoriesTab } from "./admin/components/CategoriesTab";
+import { RunsTab } from "./admin/components/RunsTab";
+import { SRCToolsTab } from "./admin/components/SRCToolsTab";
 import { getCategoryTranslation, getLevelTranslation, getPlatformTranslation, getSubcategoryTranslation } from "@/lib/i18n/entity-translations";
 import { setAdminTranslation, getAllAdminTranslations } from "@/lib/data/firestore/translations";
 import { useTranslation } from "react-i18next";
@@ -74,30 +86,7 @@ const Admin = () => {
   const [importedRunsLevel, setImportedRunsLevel] = useState("__all__"); // "__all__" = All Levels
   const [importedRunsRunType, setImportedRunsRunType] = useState<"__all__" | "solo" | "co-op">("__all__"); // "__all__" = All Run Types
   const [importedRunsCategories, setImportedRunsCategories] = useState<{ id: string; name: string }[]>([]);
-  const [downloadEntries, setDownloadEntries] = useState<DownloadEntry[]>([]);
   const [pageLoading, setLoading] = useState(true);
-  const [newDownload, setNewDownload] = useState({
-    name: "",
-    description: "",
-    url: "",
-    fileUrl: "",
-    fileName: "", // Store the selected file name
-    category: "",
-    useFileUpload: false, // Toggle between URL and file upload
-  });
-  const [addingDownload, setAddingDownload] = useState(false);
-  const [reorderingDownload, setReorderingDownload] = useState<string | null>(null);
-  const [downloadCategories, setDownloadCategories] = useState<{ id: string; name: string }[]>([]);
-  const [newDownloadCategoryName, setNewDownloadCategoryName] = useState("");
-  const [editingDownloadCategory, setEditingDownloadCategory] = useState<{ id: string; name: string } | null>(null);
-  const [editingDownloadCategoryName, setEditingDownloadCategoryName] = useState("");
-  const [addingDownloadCategory, setAddingDownloadCategory] = useState(false);
-  const [updatingDownloadCategory, setUpdatingDownloadCategory] = useState(false);
-  const { startUpload, isUploading } = useUploadThing("downloadFile");
-  const { startUpload: startImageUpload, isUploading: isUploadingImage } = useUploadThing("profilePicture");
-  const [editingDownload, setEditingDownload] = useState<DownloadEntry | null>(null);
-  const [editingDownloadForm, setEditingDownloadForm] = useState<{ description: string; imageUrl?: string }>({ description: "" });
-  const [savingDownload, setSavingDownload] = useState(false);
   
   const [firestoreCategories, setFirestoreCategories] = useState<Category[]>([]);
   const [categoryLeaderboardType, setCategoryLeaderboardType] = useState<'regular' | 'individual-level' | 'community-golds'>('regular');
@@ -137,49 +126,12 @@ const Admin = () => {
   const [updatingLevel, setUpdatingLevel] = useState(false);
   const [reorderingLevel, setReorderingLevel] = useState<string | null>(null);
   
-  const [manualRunLeaderboardType, setManualRunLeaderboardType] = useState<'regular' | 'individual-level' | 'community-golds'>('regular');
   const [availableLevels, setAvailableLevels] = useState<{ id: string; name: string }[]>([]);
-  const [manualRun, setManualRun] = useState({
-    playerName: "",
-    playerUsername: "",
-    player2Name: "",
-    category: "",
-    level: "",
-    platform: "",
-    runType: "solo" as 'solo' | 'co-op',
-    time: "",
-    date: new Date().toISOString().split('T')[0],
-    videoUrl: "",
-    comment: "",
-    verified: true,
-    verifiedBy: "",
-  });
-  const [addingManualRun, setAddingManualRun] = useState(false);
   const [hasFetchedData, setHasFetchedData] = useState(false);
-  
-  const [adminUserInput, setAdminUserInput] = useState("");
-  const [adminSearchType, setAdminSearchType] = useState<"displayName" | "uid">("displayName");
-  const [settingAdmin, setSettingAdmin] = useState(false);
-  const [foundPlayer, setFoundPlayer] = useState<{ uid: string; displayName: string; email: string; isAdmin: boolean } | null>(null);
-  const [searchingPlayer, setSearchingPlayer] = useState(false);
   const [backfillingPoints, setBackfillingPoints] = useState(false);
   const [recalculatingTotalRuns, setRecalculatingTotalRuns] = useState(false);
   const [activeTab, setActiveTab] = useState("runs");
   
-  // User management state
-  const [allPlayers, setAllPlayers] = useState<Player[]>([]);
-  const [loadingPlayers, setLoadingPlayers] = useState(false);
-  const [playersPage, setPlayersPage] = useState(1);
-  const [playersSearchQuery, setPlayersSearchQuery] = useState("");
-  const [playersSortBy, setPlayersSortBy] = useState<'joinDate' | 'displayName' | 'totalPoints' | 'totalRuns'>('joinDate');
-  const [playersSortOrder, setPlayersSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
-  const [editingPlayerForm, setEditingPlayerForm] = useState<Partial<Player>>({});
-  const [savingPlayer, setSavingPlayer] = useState(false);
-  const [deletingPlayerId, setDeletingPlayerId] = useState<string | null>(null);
-  const [showDeletePlayerDialog, setShowDeletePlayerDialog] = useState(false);
-  const [playerToDelete, setPlayerToDelete] = useState<{ id: string; displayName: string } | null>(null);
-  const [deletePlayerRuns, setDeletePlayerRuns] = useState(false);
   
   // Points configuration state
   const [pointsConfig, setPointsConfig] = useState<PointsConfig | null>(null);
@@ -187,19 +139,6 @@ const Admin = () => {
   const [savingPointsConfig, setSavingPointsConfig] = useState(false);
   const [pointsConfigForm, setPointsConfigForm] = useState<Partial<PointsConfig>>({});
 
-  // Game details configuration state
-  const [gameDetailsConfig, setGameDetailsConfig] = useState<GameDetailsConfig | null>(null);
-  const [loadingGameDetailsConfig, setLoadingGameDetailsConfig] = useState(false);
-  const [savingGameDetailsConfig, setSavingGameDetailsConfig] = useState(false);
-  const [gameDetailsConfigForm, setGameDetailsConfigForm] = useState<Partial<GameDetailsConfig>>({});
-  
-  // Header links management state
-  const [newHeaderLink, setNewHeaderLink] = useState({ label: "", route: "", icon: "", color: "#cdd6f4", adminOnly: false });
-  const [editingHeaderLink, setEditingHeaderLink] = useState<GameDetailsHeaderLink | null>(null);
-  const [editingHeaderLinkForm, setEditingHeaderLinkForm] = useState({ label: "", route: "", icon: "", color: "#cdd6f4", adminOnly: false });
-  const [addingHeaderLink, setAddingHeaderLink] = useState(false);
-  const [updatingHeaderLink, setUpdatingHeaderLink] = useState(false);
-  const [reorderingHeaderLink, setReorderingHeaderLink] = useState<string | null>(null);
 
   // Translation management state
   const { t } = useTranslation();
@@ -220,7 +159,7 @@ const Admin = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const { getCategories } = await import("@/lib/db/categories");
+        const { getCategoriesFirestore: getCategories } = await import("@/lib/data/firestore/categories");
         const categoriesData = await getCategories(importedRunsLeaderboardType);
         setImportedRunsCategories(categoriesData);
         // Reset to "All Categories" when switching types
@@ -240,7 +179,7 @@ const Admin = () => {
       const fetchImportedRuns = async () => {
         setLoadingImportedRuns(true);
         try {
-        const { getImportedSRCRuns } = await import("@/lib/db/src-imports");
+        const { getImportedSRCRunsFirestore: getImportedSRCRuns } = await import("@/lib/data/firestore/src-imports");
           const importedData = await getImportedSRCRuns();
           setImportedSRCRuns(importedData);
         } catch (_error) {
@@ -261,7 +200,7 @@ const Admin = () => {
       const loadPointsConfig = async () => {
         setLoadingPointsConfig(true);
         try {
-        const { getPointsConfig } = await import("@/lib/db/config");
+        const { getPointsConfigFirestore: getPointsConfig } = await import("@/lib/data/firestore");
           const config = await getPointsConfig();
           setPointsConfig(config);
           setPointsConfigForm(config);
@@ -279,56 +218,23 @@ const Admin = () => {
     }
   }, [activeTab, toast]);
 
-  // Load game details config when switching to game-details tab
-  useEffect(() => {
-    if (activeTab === "game-details") {
-      const loadGameDetailsConfig = async () => {
-        setLoadingGameDetailsConfig(true);
-        try {
-        const { getGameDetailsConfig } = await import("@/lib/db/config");
-          const config = await getGameDetailsConfig();
-          setGameDetailsConfig(config);
-          setGameDetailsConfigForm(config || {
-            id: "default",
-            title: "LEGO Star Wars: The Video Game",
-            subtitle: "2005",
-            categories: [],
-            platforms: [],
-            headerLinks: [],
-            navItems: [],
-            visibleOnPages: [],
-            enabled: true,
-          });
-        } catch (error) {
-          toast({
-            title: "Error",
-            description: "Failed to load game details configuration.",
-            variant: "destructive",
-          });
-        } finally {
-          setLoadingGameDetailsConfig(false);
-        }
-      };
-      loadGameDetailsConfig();
-    }
-  }, [activeTab, toast]);
 
   const handleSavePointsConfig = async () => {
     if (!pointsConfig) return;
     
     setSavingPointsConfig(true);
     try {
-        const { updatePointsConfig } = await import("@/lib/db/config");
+        const { updatePointsConfigFirestore: updatePointsConfig } = await import("@/lib/data/firestore");
       const success = await updatePointsConfig(pointsConfigForm as PointsConfig);
       if (success) {
         // Reload config to get updated values
-        const { getPointsConfig } = await import("@/lib/db/config");
+        const { getPointsConfigFirestore: getPointsConfig } = await import("@/lib/data/firestore");
         const updatedConfig = await getPointsConfig();
         setPointsConfig(updatedConfig);
         setPointsConfigForm(updatedConfig);
         
         // Clear cache so new config is used immediately
-        const { clearPointsConfigCache } = await import("@/lib/utils");
+        const { clearPointsConfigCache } = await import("@/lib/points-config");
         clearPointsConfigCache();
         
         toast({
@@ -350,254 +256,6 @@ const Admin = () => {
   };
 
   // Header links management handlers
-  const handleAddHeaderLink = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newHeaderLink.label.trim() || !newHeaderLink.route.trim()) {
-      toast({
-        title: "Error",
-        description: "Label and route are required.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setAddingHeaderLink(true);
-    try {
-      const currentLinks = gameDetailsConfigForm.headerLinks ?? gameDetailsConfig?.headerLinks ?? [];
-      const newLink: GameDetailsHeaderLink = {
-        id: newHeaderLink.label.toLowerCase().replace(/\s+/g, "-"),
-        label: newHeaderLink.label.trim(),
-        route: newHeaderLink.route.trim(),
-        icon: newHeaderLink.icon || undefined,
-        color: newHeaderLink.color || undefined,
-        adminOnly: newHeaderLink.adminOnly,
-        order: currentLinks.length + 1,
-      };
-      
-      const updatedLinks = [...currentLinks, newLink];
-      setGameDetailsConfigForm({ ...gameDetailsConfigForm, headerLinks: updatedLinks });
-      setNewHeaderLink({ label: "", route: "", icon: "", color: "#cdd6f4", adminOnly: false });
-      
-      toast({
-        title: "Header Link Added",
-        description: "New header link has been added. Don't forget to save the configuration.",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to add header link.",
-        variant: "destructive",
-      });
-    } finally {
-      setAddingHeaderLink(false);
-    }
-  };
-  
-  const handleStartEditHeaderLink = (link: GameDetailsHeaderLink) => {
-    setEditingHeaderLink(link);
-    setEditingHeaderLinkForm({
-      label: link.label,
-      route: link.route,
-      icon: link.icon || "",
-      color: link.color || "#cdd6f4",
-      adminOnly: link.adminOnly || false,
-    });
-  };
-  
-  const handleCancelEditHeaderLink = () => {
-    setEditingHeaderLink(null);
-    setEditingHeaderLinkForm({ label: "", route: "", icon: "", color: "#cdd6f4", adminOnly: false });
-  };
-  
-  const handleSaveEditHeaderLink = async () => {
-    if (!editingHeaderLink || !editingHeaderLinkForm.label.trim() || !editingHeaderLinkForm.route.trim()) {
-      toast({
-        title: "Error",
-        description: "Label and route are required.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setUpdatingHeaderLink(true);
-    try {
-      const currentLinks = gameDetailsConfigForm.headerLinks ?? gameDetailsConfig?.headerLinks ?? [];
-      const updatedLinks = currentLinks.map(link => 
-        link.id === editingHeaderLink.id
-          ? {
-              ...link,
-              label: editingHeaderLinkForm.label.trim(),
-              route: editingHeaderLinkForm.route.trim(),
-              icon: editingHeaderLinkForm.icon || undefined,
-              color: editingHeaderLinkForm.color || undefined,
-              adminOnly: editingHeaderLinkForm.adminOnly,
-            }
-          : link
-      );
-      
-      setGameDetailsConfigForm({ ...gameDetailsConfigForm, headerLinks: updatedLinks });
-      handleCancelEditHeaderLink();
-      
-      toast({
-        title: "Header Link Updated",
-        description: "Header link has been updated. Don't forget to save the configuration.",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update header link.",
-        variant: "destructive",
-      });
-    } finally {
-      setUpdatingHeaderLink(false);
-    }
-  };
-  
-  const handleDeleteHeaderLink = (linkId: string) => {
-    if (!window.confirm("Are you sure you want to delete this header link?")) {
-      return;
-    }
-    
-    try {
-      const currentLinks = gameDetailsConfigForm.headerLinks ?? gameDetailsConfig?.headerLinks ?? [];
-      const updatedLinks = currentLinks.filter(link => link.id !== linkId);
-      // Reorder remaining links
-      const reorderedLinks = updatedLinks.map((link, index) => ({
-        ...link,
-        order: index + 1,
-      }));
-      
-      setGameDetailsConfigForm({ ...gameDetailsConfigForm, headerLinks: reorderedLinks });
-      
-      toast({
-        title: "Header Link Deleted",
-        description: "Header link has been removed. Don't forget to save the configuration.",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to delete header link.",
-        variant: "destructive",
-      });
-    }
-  };
-  
-  const handleMoveHeaderLinkUp = (linkId: string) => {
-    setReorderingHeaderLink(linkId);
-    try {
-      const currentLinks = [...(gameDetailsConfigForm.headerLinks ?? gameDetailsConfig?.headerLinks ?? [])];
-      const index = currentLinks.findIndex(link => link.id === linkId);
-      
-      if (index <= 0) {
-        setReorderingHeaderLink(null);
-        return;
-      }
-      
-      // Swap with previous
-      [currentLinks[index - 1], currentLinks[index]] = [currentLinks[index], currentLinks[index - 1]];
-      
-      // Update orders
-      const reorderedLinks = currentLinks.map((link, idx) => ({
-        ...link,
-        order: idx + 1,
-      }));
-      
-      setGameDetailsConfigForm({ ...gameDetailsConfigForm, headerLinks: reorderedLinks });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to move header link.",
-        variant: "destructive",
-      });
-    } finally {
-      setReorderingHeaderLink(null);
-    }
-  };
-  
-  const handleMoveHeaderLinkDown = (linkId: string) => {
-    setReorderingHeaderLink(linkId);
-    try {
-      const currentLinks = [...(gameDetailsConfigForm.headerLinks ?? gameDetailsConfig?.headerLinks ?? [])];
-      const index = currentLinks.findIndex(link => link.id === linkId);
-      
-      if (index < 0 || index >= currentLinks.length - 1) {
-        setReorderingHeaderLink(null);
-        return;
-      }
-      
-      // Swap with next
-      [currentLinks[index], currentLinks[index + 1]] = [currentLinks[index + 1], currentLinks[index]];
-      
-      // Update orders
-      const reorderedLinks = currentLinks.map((link, idx) => ({
-        ...link,
-        order: idx + 1,
-      }));
-      
-      setGameDetailsConfigForm({ ...gameDetailsConfigForm, headerLinks: reorderedLinks });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to move header link.",
-        variant: "destructive",
-      });
-    } finally {
-      setReorderingHeaderLink(null);
-    }
-  };
-
-  const handleSaveGameDetailsConfig = async () => {
-    if (!gameDetailsConfig) return;
-    
-    setSavingGameDetailsConfig(true);
-    try {
-      // Merge form data with existing config, ensuring all required fields are present
-      // For optional fields, convert empty strings to undefined
-      const getOptionalField = (formValue: string | undefined, configValue: string | undefined): string | undefined => {
-        const value = formValue ?? configValue;
-        return value === "" ? undefined : value;
-      };
-      
-      const configToSave: GameDetailsConfig = {
-        id: gameDetailsConfig.id,
-        title: gameDetailsConfigForm.title ?? gameDetailsConfig.title ?? "",
-        subtitle: getOptionalField(gameDetailsConfigForm.subtitle, gameDetailsConfig.subtitle),
-        coverImageUrl: getOptionalField(gameDetailsConfigForm.coverImageUrl, gameDetailsConfig.coverImageUrl),
-        categories: gameDetailsConfigForm.categories ?? gameDetailsConfig.categories ?? [],
-        platforms: gameDetailsConfigForm.platforms ?? gameDetailsConfig.platforms ?? [],
-        discordUrl: getOptionalField(gameDetailsConfigForm.discordUrl, gameDetailsConfig.discordUrl),
-        speedrunComUrl: getOptionalField(gameDetailsConfigForm.speedrunComUrl, gameDetailsConfig.speedrunComUrl),
-        headerLinks: gameDetailsConfigForm.headerLinks ?? gameDetailsConfig.headerLinks ?? [],
-        navItems: gameDetailsConfigForm.navItems ?? gameDetailsConfig.navItems ?? [],
-        visibleOnPages: gameDetailsConfigForm.visibleOnPages ?? gameDetailsConfig.visibleOnPages ?? [],
-        enabled: gameDetailsConfigForm.enabled ?? gameDetailsConfig.enabled ?? true,
-      };
-        const { updateGameDetailsConfig } = await import("@/lib/db/config");
-      const success = await updateGameDetailsConfig(configToSave);
-      if (success) {
-        // Reload config to get updated values
-        const { getGameDetailsConfig } = await import("@/lib/db/config");
-        const updatedConfig = await getGameDetailsConfig();
-        setGameDetailsConfig(updatedConfig);
-        setGameDetailsConfigForm(updatedConfig || gameDetailsConfigForm);
-        
-        toast({
-          title: "Success",
-          description: "Game details configuration saved successfully.",
-        });
-      } else {
-        throw new Error("Failed to save configuration");
-      }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to save game details configuration.",
-        variant: "destructive",
-      });
-    } finally {
-      setSavingGameDetailsConfig(false);
-    }
-  };
 
   // Fetch categories for level management when levelLeaderboardType changes
   useEffect(() => {
@@ -605,7 +263,7 @@ const Admin = () => {
       try {
         // For community-golds, use community-golds categories (now configurable)
         // For individual-level, use individual-level categories
-        const { getCategoriesFromFirestore } = await import("@/lib/db/categories");
+        const { getCategoriesFirestore: getCategories } = await import("@/lib/data/firestore/categories");
         const categoriesData = await getCategoriesFromFirestore(levelLeaderboardType);
         setFirestoreCategories(categoriesData);
       } catch (_error) {
@@ -645,7 +303,7 @@ const Admin = () => {
         try {
           // Dynamic import at call site
 
-          const { getCategoriesFromFirestore } = await import("@/lib/db/categories");
+          const { getCategoriesFirestore: getCategories } = await import("@/lib/data/firestore/categories");
           const categories = await getCategoriesFromFirestore('regular');
           const category = categories.find(c => c.id === editingImportedRunForm.category);
           if (category && category.subcategories && category.subcategories.length > 0) {
@@ -701,7 +359,7 @@ const Admin = () => {
   // Note: fetchImportedRunsCategories was declared but never used - removed for now
   // const fetchImportedRunsCategories = async (leaderboardType: 'regular' | 'individual-level') => {
   //   try {
-  //     const { getCategories } = await import("@/lib/db/categories");
+  //     const { getCategoriesFirestore: getCategories } = await import("@/lib/data/firestore/categories");
   //     const categoriesData = await getCategories(leaderboardType);
   //     setImportedRunsCategories(categoriesData);
   //   } catch (_error) {
@@ -709,34 +367,12 @@ const Admin = () => {
   //   }
   // };
 
-  const fetchDownloadCategories = useCallback(async () => {
-    try {
-      // Dynamic import at call site
-
-      const { getDownloadCategories } = await import("@/lib/db/downloads");
-      const categoriesData = await getDownloadCategories();
-      setDownloadCategories(categoriesData);
-      // Update newDownload category if empty
-      setNewDownload(prev => {
-        if (categoriesData.length > 0 && !prev.category) {
-          return { ...prev, category: categoriesData[0].id };
-        }
-        return prev;
-      });
-    } catch (_error) {
-      toast({
-        title: "Error",
-        description: "Failed to load download categories.",
-        variant: "destructive",
-      });
-    }
-  }, [toast]);
 
   const fetchLevels = useCallback(async () => {
     try {
       // Dynamic import at call site
 
-      const { getLevels } = await import("@/lib/db/categories");
+      const { getLevelsFirestore: getLevels } = await import("@/lib/data/firestore/categories");
       const levelsData = await getLevels();
       setAvailableLevels(levelsData);
     } catch (_error) {
@@ -753,7 +389,7 @@ const Admin = () => {
       const type = leaderboardType || categoryLeaderboardType;
       // Dynamic import at call site
 
-      const { getCategoriesFromFirestore } = await import("@/lib/db/categories");
+      const { getCategoriesFirestore: getCategories } = await import("@/lib/data/firestore/categories");
       const categoriesData = await getCategoriesFromFirestore(type);
       setFirestoreCategories(categoriesData);
     } catch (_error) {
@@ -764,12 +400,6 @@ const Admin = () => {
       });
     }
   }, [categoryLeaderboardType, toast]);
-
-  useEffect(() => {
-    if (firestorePlatforms.length > 0 && !manualRun.platform) {
-      setManualRun(prev => ({ ...prev, platform: firestorePlatforms[0].id }));
-    }
-  }, [firestorePlatforms, manualRun.platform]);
 
   useEffect(() => {
     if (editingImportedRun) {
@@ -905,27 +535,19 @@ const Admin = () => {
     }
   }, [verifyingRun, firestoreCategories, firestorePlatforms, availableLevels, fetchCategories]);
 
-  useEffect(() => {
-    // Fetch categories when leaderboard type changes for manual run
-    // For community-golds, use community-golds categories (now configurable)
-    const categoryType = manualRunLeaderboardType;
-    fetchCategories(categoryType);
-    setManualRun(prev => ({ ...prev, category: "", level: "" })); // Reset category and level when type changes
-  }, [manualRunLeaderboardType, fetchCategories]);
-
   const fetchAllData = useCallback(async () => {
     if (hasFetchedData) return;
     setLoading(true);
     try {
       const [srcImportsModule, downloadsModule, categoriesModule] = await Promise.all([
-        import("@/lib/db/src-imports"),
-        import("@/lib/db/downloads"),
-        import("@/lib/db/categories")
+        import("@/lib/data/firestore/src-imports"),
+        import("@/lib/data/firestore/downloads"),
+        import("@/lib/data/firestore/categories")
       ]);
       const [importedData, downloadData, categoriesData] = await Promise.all([
-        srcImportsModule.getImportedSRCRuns(),
-        downloadsModule.getDownloadEntries(),
-        categoriesModule.getCategoriesFromFirestore('regular')
+        srcImportsModule.getImportedSRCRunsFirestore(),
+        downloadsModule.getDownloadEntriesFirestore(),
+        categoriesModule.getCategoriesFirestore('regular')
       ]);
       setImportedSRCRuns(importedData);
       setDownloadEntries(downloadData);
@@ -945,8 +567,8 @@ const Admin = () => {
   // Helper function to refresh imported runs (unverified runs are now real-time)
   const refreshAllRunData = async () => {
     try {
-      const srcImportsModule = await import("@/lib/db/src-imports");
-      const importedData = await srcImportsModule.getImportedSRCRuns();
+      const srcImportsModule = await import("@/lib/data/firestore/src-imports");
+      const importedData = await srcImportsModule.getImportedSRCRunsFirestore();
       setImportedSRCRuns(importedData);
     } catch (error) {
       // Error handled silently
@@ -961,7 +583,7 @@ const Admin = () => {
     let isMounted = true;
     
     (async () => {
-      const { subscribeToUnverifiedRuns } = await import("@/lib/db/runs");
+      const { subscribeToUnverifiedRunsFirestore } = await import("@/lib/data/firestore/runs");
       if (!isMounted) return;
       unsubscribe = subscribeToUnverifiedRuns((runs) => {
         if (!isMounted) return;
@@ -987,7 +609,7 @@ const Admin = () => {
 
   const fetchPlatforms = useCallback(async () => {
     try {
-      const { getPlatformsFromFirestore } = await import("@/lib/db/categories");
+      const { getPlatformsFirestore: getPlatforms } = await import("@/lib/data/firestore/categories");
       const platformsData = await getPlatformsFromFirestore();
       setFirestorePlatforms(platformsData);
     } catch (_error) {
@@ -1017,11 +639,10 @@ const Admin = () => {
     fetchPlatforms();
     fetchCategories('regular'); // Load regular categories by default
     fetchLevels();
-    fetchDownloadCategories();
     // Load initial categories for imported runs filter
     const initImportedRunsCategories = async () => {
       try {
-        const { getCategories } = await import("@/lib/db/categories");
+        const { getCategoriesFirestore: getCategories } = await import("@/lib/data/firestore/categories");
         const categoriesData = await getCategories('regular');
         setImportedRunsCategories(categoriesData);
         // Start with "All Categories" selected
@@ -1034,7 +655,7 @@ const Admin = () => {
     // Load initial categories for level management (should match levelLeaderboardType initial state)
     const initLevelCategories = async () => {
       try {
-        const { getCategories } = await import("@/lib/db/categories");
+        const { getCategoriesFirestore: getCategories } = await import("@/lib/data/firestore/categories");
         const categoriesData = await getCategories('individual-level');
         setFirestoreCategories(categoriesData);
       } catch (_error) {
@@ -1042,13 +663,13 @@ const Admin = () => {
       }
     };
     initLevelCategories();
-  }, [fetchPlatforms, fetchCategories, fetchLevels, fetchDownloadCategories]);
+  }, [fetchPlatforms, fetchCategories, fetchLevels]);
 
   const fetchUnverifiedRuns = async () => {
     try {
       // Dynamic import at call site
 
-      const { getUnverifiedLeaderboardEntries } = await import("@/lib/db/runs");
+      const { getUnverifiedLeaderboardEntriesFirestore: getUnverifiedLeaderboardEntries } = await import("@/lib/data/firestore/runs");
       const data = await getUnverifiedLeaderboardEntries();
       // Only include manually submitted runs in unverified runs tab
       // Imported runs stay in their own tab
@@ -1058,7 +679,7 @@ const Admin = () => {
       try {
         // Dynamic import at call site
 
-        const { getImportedSRCRuns } = await import("@/lib/db/src-imports");
+        const { getImportedSRCRunsFirestore: getImportedSRCRuns } = await import("@/lib/data/firestore/src-imports");
         const importedData = await getImportedSRCRuns();
         setImportedSRCRuns(importedData);
         setImportedPage(1); // Reset to first page when data changes
@@ -1078,21 +699,6 @@ const Admin = () => {
     }
   };
 
-  const fetchDownloadEntries = async () => {
-    try {
-      // Dynamic import at call site
-
-      const { getDownloadEntries } = await import("@/lib/db/downloads");
-      const data = await getDownloadEntries();
-      setDownloadEntries(data);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to load download entries.",
-        variant: "destructive",
-      });
-    }
-  };
 
   useEffect(() => {
     if (!authLoading) {
@@ -1203,7 +809,7 @@ const Admin = () => {
 
       // Update run data if needed (including player assignment), then verify
       if (Object.keys(updateData).length > 0) {
-        const { updateLeaderboardEntry } = await import("@/lib/db/runs");
+        const { updateLeaderboardEntryFirestore } = await import("@/lib/data/firestore/runs");
         await updateLeaderboardEntry(runId, updateData);
       }
 
@@ -1254,7 +860,7 @@ const Admin = () => {
     try {
       // Dynamic import at call site
 
-      const { deleteLeaderboardEntry } = await import("@/lib/db/runs");
+      const { deleteLeaderboardEntryFirestore } = await import("@/lib/data/firestore/runs");
       const success = await deleteLeaderboardEntry(runId);
       if (success) {
         toast({
@@ -1346,7 +952,7 @@ const Admin = () => {
       // Dynamic import at call site
 
 
-      const { updateLeaderboardEntry } = await import("@/lib/db/runs");
+      const { updateLeaderboardEntryFirestore } = await import("@/lib/data/firestore/runs");
       const success = await updateLeaderboardEntry(editingImportedRun.id, updateData);
       if (success) {
         toast({
@@ -1477,7 +1083,7 @@ const Admin = () => {
       setSrcCategoriesWithVars(categoriesWithVars);
       
       // Fetch ALL categories (regular and IL) for linking
-      const { getCategoriesFromFirestore } = await import("@/lib/db/categories");
+      const { getCategoriesFirestore: getCategories } = await import("@/lib/data/firestore/categories");
       const [regularCats, ilCats] = await Promise.all([
         getCategoriesFromFirestore('regular'),
         getCategoriesFromFirestore('individual-level')
@@ -1494,6 +1100,74 @@ const Admin = () => {
     }
   };
 
+  // Handler for linking a category to an SRC category
+  const handleLinkCategory = async (categoryId: string, srcCategoryId: string) => {
+    setUpdatingCategory(true);
+    try {
+      const targetCategory = allCategoriesForSRCLinking.find(c => c.id === categoryId);
+      if (!targetCategory) return;
+      const subcategories = targetCategory.subcategories || [];
+      const { updateCategoryFirestore } = await import("@/lib/data/firestore/categories");
+      await updateCategoryFirestore(categoryId, targetCategory.name, subcategories, srcCategoryId);
+      
+      // Find the SRC category name for the toast
+      const srcCategory = srcCategoriesWithVars.find(c => c.id === srcCategoryId);
+      toast({
+        title: "Linked",
+        description: `Category "${targetCategory.name}" has been linked to SRC category "${srcCategory?.name || srcCategoryId}".`,
+      });
+      
+      // Refresh categories for the current leaderboard type
+      await fetchCategories(categoryLeaderboardType);
+      // Refresh all categories for SRC linking
+      await fetchSRCCategoriesWithVariables();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to link category.",
+        variant: "destructive",
+      });
+    } finally {
+      setUpdatingCategory(false);
+    }
+  };
+
+  // Handler for unlinking a category from an SRC category
+  const handleUnlinkCategory = async (categoryId: string) => {
+    const linkedCategory = allCategoriesForSRCLinking.find(c => c.id === categoryId);
+    if (!linkedCategory) return;
+    
+    if (!window.confirm(`Unlink "${linkedCategory.name}" from this SRC category?`)) return;
+    
+    setUpdatingCategory(true);
+    try {
+      const currentCategory = allCategoriesForSRCLinking.find(c => c.id === categoryId);
+      const subcategories = currentCategory?.subcategories || [];
+      const { updateCategoryFirestore } = await import("@/lib/data/firestore/categories");
+      await updateCategoryFirestore(categoryId, linkedCategory.name, subcategories, null);
+      toast({
+        title: "Unlinked",
+        description: `Category "${linkedCategory.name}" has been unlinked from SRC category.`,
+      });
+      // Refresh categories for the current leaderboard type
+      await fetchCategories(categoryLeaderboardType);
+      // Refresh all categories for SRC linking
+      await fetchSRCCategoriesWithVariables();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to unlink category.",
+        variant: "destructive",
+      });
+    } finally {
+      setUpdatingCategory(false);
+    }
+  };
+
+  // Handler for editing an imported run
+  const handleEditImportedRun = (run: LeaderboardEntry) => {
+    setEditingImportedRun(run);
+  };
 
   const handleClearImportedRuns = async () => {
     if (!window.confirm("Are you sure you want to delete all imported runs from speedrun.com? This action cannot be undone.")) {
@@ -1504,7 +1178,7 @@ const Admin = () => {
     try {
       // Dynamic import at call site
 
-      const { deleteAllImportedSRCRuns } = await import("@/lib/db/src-imports");
+      const { deleteAllImportedSRCRunsFirestore } = await import("@/lib/data/firestore/src-imports");
       const result = await deleteAllImportedSRCRuns();
       
       if (result.errors.length > 0) {
@@ -1615,8 +1289,8 @@ const Admin = () => {
       // Dynamic import to avoid circular dependency
       const { batchVerifyRuns } = await import("@/lib/data/runFieldService");
       const [runsModule, categoriesModule] = await Promise.all([
-        import("@/lib/db/runs"),
-        import("@/lib/db/categories")
+        import("@/lib/data/firestore/runs"),
+        import("@/lib/data/firestore/categories")
       ]);
       // Use optimized batch verification service
       const result = await batchVerifyRuns(
@@ -1680,8 +1354,8 @@ const Admin = () => {
 
     setAutoclaiming(true);
     try {
-      const { runAutoclaimingForAllUsers } = await import("@/lib/db");
-      const result = await runAutoclaimingForAllUsers();
+      const { runAutoclaimingForAllUsersFirestore } = await import("@/lib/data/firestore/src-imports");
+      const result = await runAutoclaimingForAllUsersFirestore();
       
       if (result.errors.length > 0) {
         toast({
@@ -1698,7 +1372,7 @@ const Admin = () => {
         const fetchImportedRuns = async () => {
           setLoadingImportedRuns(true);
           try {
-            const { getImportedSRCRuns } = await import("@/lib/db/src-imports");
+            const { getImportedSRCRunsFirestore: getImportedSRCRuns } = await import("@/lib/data/firestore/src-imports");
             const runs = await getImportedSRCRuns(1000);
             setImportedSRCRuns(runs);
           } catch (error) {
@@ -1746,10 +1420,8 @@ const Admin = () => {
 
     setBackfillingSrcPlayerName(true);
     try {
-      const { backfillSrcPlayerNameForRuns } = await import("@/lib/db/src-imports");
-      const result = await backfillSrcPlayerNameForRuns((processed, updated) => {
-        console.log(`Backfilling srcPlayerName: ${processed} processed, ${updated} updated`);
-      });
+      const { backfillSrcPlayerNameForRunsFirestore } = await import("@/lib/data/firestore/src-imports");
+      const result = await backfillSrcPlayerNameForRuns();
       
       if (result.errors.length > 0) {
         toast({
@@ -1766,7 +1438,7 @@ const Admin = () => {
         const fetchImportedRuns = async () => {
           setLoadingImportedRuns(true);
           try {
-            const { getImportedSRCRuns } = await import("@/lib/db/src-imports");
+            const { getImportedSRCRunsFirestore: getImportedSRCRuns } = await import("@/lib/data/firestore/src-imports");
             const runs = await getImportedSRCRuns(1000);
             setImportedSRCRuns(runs);
           } catch (error) {
@@ -1856,8 +1528,8 @@ const Admin = () => {
       // Dynamic import to avoid circular dependency
       const { batchVerifyRuns } = await import("@/lib/data/runFieldService");
       const [runsModule, categoriesModule] = await Promise.all([
-        import("@/lib/db/runs"),
-        import("@/lib/db/categories")
+        import("@/lib/data/firestore/runs"),
+        import("@/lib/data/firestore/categories")
       ]);
       // Use optimized batch verification service
       const result = await batchVerifyRuns(
@@ -1941,7 +1613,7 @@ const Admin = () => {
         try {
           // Dynamic import at call site
 
-          const { deleteLeaderboardEntry } = await import("@/lib/db/runs");
+          const { deleteLeaderboardEntryFirestore } = await import("@/lib/data/firestore/runs");
           const success = await deleteLeaderboardEntry(run.id);
           if (success) {
             deletedCount++;
@@ -1990,346 +1662,6 @@ const Admin = () => {
     }
   };
 
-  const handleAddDownload = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!currentUser?.uid) {
-      toast({
-        title: "Error",
-        description: "You must be logged in as an admin to add downloads.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    // Validate based on upload type
-    if (!newDownload.name || !newDownload.description || !newDownload.category) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in name, description, and category.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (newDownload.useFileUpload && !newDownload.fileUrl) {
-      toast({
-        title: "Missing File",
-        description: "Please upload a file or provide a URL.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (!newDownload.useFileUpload && !newDownload.url) {
-      toast({
-        title: "Missing URL",
-        description: "Please provide a URL or upload a file.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setAddingDownload(true);
-    try {
-      const downloadEntry: Omit<DownloadEntry, 'id' | 'dateAdded' | 'order'> = {
-        name: newDownload.name,
-        description: newDownload.description,
-        category: newDownload.category,
-        addedBy: currentUser.uid,
-        ...(newDownload.useFileUpload && newDownload.fileUrl
-          ? { fileUrl: newDownload.fileUrl } 
-          : newDownload.url
-          ? { url: newDownload.url }
-          : {}
-        ),
-      };
-      
-      // Dynamic import at call site
-
-      
-      const { addDownloadEntry } = await import("@/lib/db/downloads");
-      const success = await addDownloadEntry(downloadEntry);
-      if (success) {
-        toast({
-          title: "Download Added",
-          description: "New download entry has been added.",
-        });
-        setNewDownload({ 
-          name: "", 
-          description: "", 
-          url: "", 
-          fileUrl: "",
-          fileName: "",
-          category: downloadCategories[0].id,
-          useFileUpload: false,
-        });
-        fetchDownloadEntries();
-      } else {
-        throw new Error("Failed to add download entry.");
-      }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to add download.",
-        variant: "destructive",
-      });
-    } finally {
-      setAddingDownload(false);
-    }
-  };
-
-  const handleEditDownload = (download: DownloadEntry) => {
-    setEditingDownload(download);
-    setEditingDownloadForm({
-      description: download.description,
-      imageUrl: download.imageUrl || "",
-    });
-  };
-
-  const handleSaveDownload = async () => {
-    if (!editingDownload) return;
-    if (!editingDownloadForm.description.trim()) {
-      toast({
-        title: "Missing Description",
-        description: "Please provide a description.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setSavingDownload(true);
-    try {
-      const { updateDownloadEntry } = await import("@/lib/db/downloads");
-      const updates: Partial<DownloadEntry> & { imageUrl?: string | undefined } = {
-        description: editingDownloadForm.description,
-      };
-      // Handle imageUrl: include it if it's set, or explicitly set to undefined to remove it
-      if (editingDownloadForm.imageUrl && editingDownloadForm.imageUrl.trim()) {
-        updates.imageUrl = editingDownloadForm.imageUrl;
-      } else if (editingDownload.imageUrl) {
-        // If there was an image before and now it's empty/removed, set to undefined to delete it
-        updates.imageUrl = undefined;
-      }
-      const success = await updateDownloadEntry(editingDownload.id, updates);
-      if (success) {
-        toast({
-          title: "Download Updated",
-          description: "The download entry has been updated.",
-        });
-        setEditingDownload(null);
-        setEditingDownloadForm({ description: "" });
-        fetchDownloadEntries();
-      } else {
-        throw new Error("Failed to update download entry.");
-      }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update download.",
-        variant: "destructive",
-      });
-    } finally {
-      setSavingDownload(false);
-    }
-  };
-
-  const handleDeleteDownload = async (downloadId: string) => {
-    if (!window.confirm("Are you sure you want to delete this download entry?")) {
-      return;
-    }
-    try {
-      // Dynamic import at call site
-
-      const { deleteDownloadEntry } = await import("@/lib/db/downloads");
-      const success = await deleteDownloadEntry(downloadId);
-      if (success) {
-        toast({
-          title: "Download Deleted",
-          description: "The download entry has been removed.",
-        });
-        fetchDownloadEntries();
-      } else {
-        throw new Error("Failed to delete download entry.");
-      }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to delete download.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleMoveDownloadUp = async (downloadId: string) => {
-    if (reorderingDownload) return;
-    setReorderingDownload(downloadId);
-    try {
-      // Dynamic import at call site
-
-      const { moveDownloadUp } = await import("@/lib/db/downloads");
-      const success = await moveDownloadUp(downloadId);
-      if (success) {
-        await fetchDownloadEntries();
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to move download up. It may already be at the top.",
-          variant: "destructive",
-        });
-      }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to reorder download.",
-        variant: "destructive",
-      });
-    } finally {
-      setReorderingDownload(null);
-    }
-  };
-
-  const handleMoveDownloadDown = async (downloadId: string) => {
-    if (reorderingDownload) return;
-    setReorderingDownload(downloadId);
-    try {
-      // Dynamic import at call site
-
-      const { moveDownloadDown } = await import("@/lib/db/downloads");
-      const success = await moveDownloadDown(downloadId);
-      if (success) {
-        await fetchDownloadEntries();
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to move download down. It may already be at the bottom.",
-          variant: "destructive",
-        });
-      }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to reorder download.",
-        variant: "destructive",
-      });
-    } finally {
-      setReorderingDownload(null);
-    }
-  };
-
-  // Download category management handlers
-  const handleAddDownloadCategory = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newDownloadCategoryName.trim()) {
-      toast({
-        title: "Error",
-        description: "Category name cannot be empty.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setAddingDownloadCategory(true);
-    try {
-      const { addDownloadCategory } = await import("@/lib/db/downloads");
-      const result = await addDownloadCategory(newDownloadCategoryName.trim());
-      if (result) {
-        toast({
-          title: "Category Added",
-          description: "New download category has been added.",
-        });
-        setNewDownloadCategoryName("");
-        await fetchDownloadCategories();
-      } else {
-        throw new Error("Failed to add category.");
-      }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to add download category.",
-        variant: "destructive",
-      });
-    } finally {
-      setAddingDownloadCategory(false);
-    }
-  };
-
-  const handleStartEditDownloadCategory = (category: { id: string; name: string }) => {
-    setEditingDownloadCategory(category);
-    setEditingDownloadCategoryName(category.name);
-  };
-
-  const handleCancelEditDownloadCategory = () => {
-    setEditingDownloadCategory(null);
-    setEditingDownloadCategoryName("");
-  };
-
-  const handleSaveEditDownloadCategory = async () => {
-    if (!editingDownloadCategory || !editingDownloadCategoryName.trim()) {
-      return;
-    }
-    
-    setUpdatingDownloadCategory(true);
-    try {
-      const { updateDownloadCategory } = await import("@/lib/db/downloads");
-      const success = await updateDownloadCategory(editingDownloadCategory.id, editingDownloadCategoryName.trim());
-      if (success) {
-        toast({
-          title: "Category Updated",
-          description: "Download category has been updated.",
-        });
-        setEditingDownloadCategory(null);
-        setEditingDownloadCategoryName("");
-        await fetchDownloadCategories();
-      } else {
-        throw new Error("Failed to update category.");
-      }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update download category.",
-        variant: "destructive",
-      });
-    } finally {
-      setUpdatingDownloadCategory(false);
-    }
-  };
-
-  const handleDeleteDownloadCategory = async (categoryId: string) => {
-    // Check if any downloads use this category
-    const downloadsUsingCategory = downloadEntries.filter(d => d.category === categoryId);
-    if (downloadsUsingCategory.length > 0) {
-      toast({
-        title: "Cannot Delete Category",
-        description: `This category is being used by ${downloadsUsingCategory.length} download(s). Please reassign or delete those downloads first.`,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!window.confirm("Are you sure you want to delete this download category?")) {
-      return;
-    }
-    try {
-      const { deleteDownloadCategory } = await import("@/lib/db/downloads");
-      const success = await deleteDownloadCategory(categoryId);
-      if (success) {
-        toast({
-          title: "Category Deleted",
-          description: "Download category has been removed.",
-        });
-        await fetchDownloadCategories();
-      } else {
-        throw new Error("Failed to delete category.");
-      }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to delete download category.",
-        variant: "destructive",
-      });
-    }
-  };
-  
   // Category management handlers
   const handleAddCategory = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -2346,7 +1678,7 @@ const Admin = () => {
     try {
       // Dynamic import at call site
 
-      const { addCategory } = await import("@/lib/db/categories");
+      const { addCategoryFirestore } = await import("@/lib/data/firestore/categories");
       const result = await addCategory(newCategoryName.trim(), categoryLeaderboardType);
       if (result) {
         toast({
@@ -2385,15 +1717,21 @@ const Admin = () => {
   const handleStartEditTranslation = (
     type: 'category' | 'subcategory' | 'level' | 'platform',
     id: string,
-    originalName: string
+    originalName: string,
+    language?: string,
+    value?: string
   ) => {
-    const translationKey = `entities.${type}.${id}`;
-    const currentTranslation = adminTranslations[selectedTranslationLanguage]?.[translationKey] || 
-                               i18n.t(translationKey, { lng: selectedTranslationLanguage });
-    const value = currentTranslation && currentTranslation !== translationKey ? currentTranslation : '';
+    const translationKey = type === 'category' && id.startsWith('downloadCategory.')
+      ? `entities.${id}`
+      : `entities.${type}.${id}`;
+    const lang = language || selectedTranslationLanguage;
+    const currentTranslation = value !== undefined 
+      ? value
+      : (adminTranslations[lang]?.[translationKey] || i18n.t(translationKey, { lng: lang }));
+    const translationValue = currentTranslation && currentTranslation !== translationKey ? currentTranslation : '';
     
-    setEditingEntityTranslation({ type, id, originalName, language: selectedTranslationLanguage });
-    setEditingTranslationValue(value);
+    setEditingEntityTranslation({ type, id, originalName, language: lang });
+    setEditingTranslationValue(translationValue);
   };
 
   const handleSaveTranslation = async () => {
@@ -2476,7 +1814,7 @@ const Admin = () => {
       // Dynamic import at call site
 
       
-      const { updateCategory } = await import("@/lib/db/categories");
+      const { updateCategoryFirestore } = await import("@/lib/data/firestore/categories");
       const success = await updateCategory(editingCategory.id, editingCategoryName.trim(), subcategories, srcCategoryId);
       if (success) {
         toast({
@@ -2515,7 +1853,7 @@ const Admin = () => {
     try {
       // Dynamic import at call site
 
-      const { deleteCategory } = await import("@/lib/db/categories");
+      const { deleteCategoryFirestore } = await import("@/lib/data/firestore/categories");
       const success = await deleteCategory(categoryId);
       if (success) {
         toast({
@@ -2540,7 +1878,7 @@ const Admin = () => {
     try {
       // Dynamic import at call site
 
-      const { moveCategoryUp } = await import("@/lib/db/categories");
+      const { moveCategoryUpFirestore } = await import("@/lib/data/firestore/categories");
       const success = await moveCategoryUp(categoryId);
       if (success) {
         await fetchCategories(categoryLeaderboardType);
@@ -2567,7 +1905,7 @@ const Admin = () => {
     try {
       // Dynamic import at call site
 
-      const { moveCategoryDown } = await import("@/lib/db/categories");
+      const { moveCategoryDownFirestore } = await import("@/lib/data/firestore/categories");
       const success = await moveCategoryDown(categoryId);
       if (success) {
         await fetchCategories(categoryLeaderboardType);
@@ -2668,7 +2006,7 @@ const Admin = () => {
       const updatedSubcategories = [...existingSubcategories, newSubcategory];
       // Dynamic import at call site
 
-      const { updateCategory } = await import("@/lib/db/categories");
+      const { updateCategoryFirestore } = await import("@/lib/data/firestore/categories");
       const success = await updateCategory(selectedCategoryForSubcategories.id, selectedCategoryForSubcategories.name, updatedSubcategories);
       
       if (success) {
@@ -2681,7 +2019,7 @@ const Admin = () => {
         // Refresh selected category
         // Dynamic import at call site
 
-        const { getCategoriesFromFirestore } = await import("@/lib/db/categories");
+        const { getCategoriesFirestore: getCategories } = await import("@/lib/data/firestore/categories");
         const updated = await getCategoriesFromFirestore(categoryLeaderboardType);
         const refreshed = updated.find(c => c.id === selectedCategoryForSubcategories.id) as Category | undefined;
         if (refreshed) {
@@ -2735,7 +2073,7 @@ const Admin = () => {
       // Dynamic import at call site
 
       
-      const { updateCategory } = await import("@/lib/db/categories");
+      const { updateCategoryFirestore } = await import("@/lib/data/firestore/categories");
       const success = await updateCategory(selectedCategoryForSubcategories.id, selectedCategoryForSubcategories.name, updatedSubcategories);
       
       if (success) {
@@ -2749,7 +2087,7 @@ const Admin = () => {
         // Refresh selected category
         // Dynamic import at call site
 
-        const { getCategoriesFromFirestore } = await import("@/lib/db/categories");
+        const { getCategoriesFirestore: getCategories } = await import("@/lib/data/firestore/categories");
         const updated = await getCategoriesFromFirestore(categoryLeaderboardType);
         const refreshed = updated.find(c => c.id === selectedCategoryForSubcategories.id) as Category | undefined;
         if (refreshed) {
@@ -2784,7 +2122,7 @@ const Admin = () => {
       // Dynamic import at call site
 
       
-      const { updateCategory } = await import("@/lib/db/categories");
+      const { updateCategoryFirestore } = await import("@/lib/data/firestore/categories");
       const success = await updateCategory(selectedCategoryForSubcategories.id, selectedCategoryForSubcategories.name, updatedSubcategories);
       
       if (success) {
@@ -2796,7 +2134,7 @@ const Admin = () => {
         // Refresh selected category
         // Dynamic import at call site
 
-        const { getCategoriesFromFirestore } = await import("@/lib/db/categories");
+        const { getCategoriesFirestore: getCategories } = await import("@/lib/data/firestore/categories");
         const updated = await getCategoriesFromFirestore(categoryLeaderboardType);
         const refreshed = updated.find(c => c.id === selectedCategoryForSubcategories.id) as Category | undefined;
         if (refreshed) {
@@ -2837,7 +2175,7 @@ const Admin = () => {
       // Dynamic import at call site
 
       
-      const { updateCategory } = await import("@/lib/db/categories");
+      const { updateCategoryFirestore } = await import("@/lib/data/firestore/categories");
       const success = await updateCategory(selectedCategoryForSubcategories.id, selectedCategoryForSubcategories.name, updatedSubcategories);
       
       if (success) {
@@ -2845,7 +2183,7 @@ const Admin = () => {
         // Refresh selected category
         // Dynamic import at call site
 
-        const { getCategoriesFromFirestore } = await import("@/lib/db/categories");
+        const { getCategoriesFirestore: getCategories } = await import("@/lib/data/firestore/categories");
         const updated = await getCategoriesFromFirestore(categoryLeaderboardType);
         const refreshed = updated.find(c => c.id === selectedCategoryForSubcategories.id) as Category | undefined;
         if (refreshed) {
@@ -2888,7 +2226,7 @@ const Admin = () => {
       // Dynamic import at call site
 
       
-      const { updateCategory } = await import("@/lib/db/categories");
+      const { updateCategoryFirestore } = await import("@/lib/data/firestore/categories");
       const success = await updateCategory(selectedCategoryForSubcategories.id, selectedCategoryForSubcategories.name, updatedSubcategories);
       
       if (success) {
@@ -2896,7 +2234,7 @@ const Admin = () => {
         // Refresh selected category
         // Dynamic import at call site
 
-        const { getCategoriesFromFirestore } = await import("@/lib/db/categories");
+        const { getCategoriesFirestore: getCategories } = await import("@/lib/data/firestore/categories");
         const updated = await getCategoriesFromFirestore(categoryLeaderboardType);
         const refreshed = updated.find(c => c.id === selectedCategoryForSubcategories.id) as Category | undefined;
         if (refreshed) {
@@ -2923,7 +2261,7 @@ const Admin = () => {
     try {
       // Dynamic import at call site
 
-      const { updateCategory } = await import("@/lib/db/categories");
+      const { updateCategoryFirestore } = await import("@/lib/data/firestore/categories");
       const success = await updateCategory(
         selectedCategoryForSubcategories.id,
         selectedCategoryForSubcategories.name,
@@ -2941,7 +2279,7 @@ const Admin = () => {
         // Refresh selected category
         // Dynamic import at call site
 
-        const { getCategoriesFromFirestore } = await import("@/lib/db/categories");
+        const { getCategoriesFirestore: getCategories } = await import("@/lib/data/firestore/categories");
         const updated = await getCategoriesFromFirestore(categoryLeaderboardType);
         const refreshed = updated.find(c => c.id === selectedCategoryForSubcategories.id) as Category | undefined;
         if (refreshed) {
@@ -3016,7 +2354,7 @@ const Admin = () => {
       const updatedSubcategories = [...existingSubcategories, ...newSubcategories];
       // Dynamic import at call site
 
-      const { updateCategory } = await import("@/lib/db/categories");
+      const { updateCategoryFirestore } = await import("@/lib/data/firestore/categories");
       const success = await updateCategory(selectedCategoryForSubcategories.id, selectedCategoryForSubcategories.name, updatedSubcategories);
       
       if (success) {
@@ -3028,7 +2366,7 @@ const Admin = () => {
         // Refresh selected category
         // Dynamic import at call site
 
-        const { getCategoriesFromFirestore } = await import("@/lib/db/categories");
+        const { getCategoriesFirestore: getCategories } = await import("@/lib/data/firestore/categories");
         const updated = await getCategoriesFromFirestore(categoryLeaderboardType);
         const refreshed = updated.find(c => c.id === selectedCategoryForSubcategories.id) as Category | undefined;
         if (refreshed) {
@@ -3057,7 +2395,7 @@ const Admin = () => {
     try {
       // Dynamic import at call site
 
-      const { addPlatform } = await import("@/lib/db/categories");
+      const { addPlatformFirestore } = await import("@/lib/data/firestore/categories");
       const platformId = await addPlatform(newPlatformName.trim());
       if (platformId) {
         toast({
@@ -3099,7 +2437,7 @@ const Admin = () => {
     try {
       // Dynamic import at call site
 
-      const { updatePlatform } = await import("@/lib/db/categories");
+      const { updatePlatformFirestore } = await import("@/lib/data/firestore/categories");
       const success = await updatePlatform(editingPlatform.id, editingPlatformName.trim());
       if (success) {
         toast({
@@ -3130,7 +2468,7 @@ const Admin = () => {
     try {
       // Dynamic import at call site
 
-      const { deletePlatform } = await import("@/lib/db/categories");
+      const { deletePlatformFirestore } = await import("@/lib/data/firestore/categories");
       const success = await deletePlatform(platformId);
       if (success) {
         toast({
@@ -3155,7 +2493,7 @@ const Admin = () => {
     try {
       // Dynamic import at call site
 
-      const { movePlatformUp } = await import("@/lib/db/categories");
+      const { movePlatformUpFirestore } = await import("@/lib/data/firestore/categories");
       const success = await movePlatformUp(platformId);
       if (success) {
         await fetchPlatforms();
@@ -3182,7 +2520,7 @@ const Admin = () => {
     try {
       // Dynamic import at call site
 
-      const { movePlatformDown } = await import("@/lib/db/categories");
+      const { movePlatformDownFirestore } = await import("@/lib/data/firestore/categories");
       const success = await movePlatformDown(platformId);
       if (success) {
         await fetchPlatforms();
@@ -3213,7 +2551,7 @@ const Admin = () => {
     try {
       // Dynamic import at call site
 
-      const { addLevel } = await import("@/lib/db/categories");
+      const { addLevelFirestore } = await import("@/lib/data/firestore/categories");
       const levelId = await addLevel(newLevelName.trim());
       if (levelId) {
         toast({
@@ -3255,7 +2593,7 @@ const Admin = () => {
     try {
       // Dynamic import at call site
 
-      const { updateLevel } = await import("@/lib/db/categories");
+      const { updateLevelFirestore } = await import("@/lib/data/firestore/categories");
       const success = await updateLevel(editingLevel.id, editingLevelName.trim());
       if (success) {
         toast({
@@ -3286,7 +2624,7 @@ const Admin = () => {
     try {
       // Dynamic import at call site
 
-      const { deleteLevel } = await import("@/lib/db/categories");
+      const { deleteLevelFirestore } = await import("@/lib/data/firestore/categories");
       const success = await deleteLevel(levelId);
       if (success) {
         toast({
@@ -3311,7 +2649,7 @@ const Admin = () => {
     try {
       // Dynamic import at call site
 
-      const { moveLevelUp } = await import("@/lib/db/categories");
+      const { moveLevelUpFirestore } = await import("@/lib/data/firestore/categories");
       const success = await moveLevelUp(levelId);
       if (success) {
         await fetchLevels();
@@ -3338,7 +2676,7 @@ const Admin = () => {
     try {
       // Dynamic import at call site
 
-      const { moveLevelDown } = await import("@/lib/db/categories");
+      const { moveLevelDownFirestore } = await import("@/lib/data/firestore/categories");
       const success = await moveLevelDown(levelId);
       if (success) {
         await fetchLevels();
@@ -3361,372 +2699,24 @@ const Admin = () => {
   };
   
   // Manual run input handler
-  const handleSearchPlayer = async () => {
-    if (!adminUserInput.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter a display name or UID.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setSearchingPlayer(true);
-    setFoundPlayer(null);
-
-    try {
-      let player = null;
-      if (adminSearchType === "displayName") {
-        const { getPlayerByDisplayName } = await import("@/lib/db/players");
-        player = await getPlayerByDisplayName(adminUserInput.trim());
-      } else {
-        const { getPlayerByUid } = await import("@/lib/db/players");
-        player = await getPlayerByUid(adminUserInput.trim());
-      }
-
-      if (player) {
-        setFoundPlayer({
-          uid: player.uid,
-          displayName: player.displayName || "",
-          email: player.email || "",
-          isAdmin: Boolean(player.isAdmin),
-        });
-      } else {
-        toast({
-          title: "Player Not Found",
-          description: `No player found with ${adminSearchType === "displayName" ? "display name" : "UID"}: ${adminUserInput.trim()}`,
-          variant: "destructive",
-        });
-      }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to search for player.",
-        variant: "destructive",
-      });
-    } finally {
-      setSearchingPlayer(false);
-    }
-  };
-
-  const handleSetAdminStatus = async (uid: string, isAdmin: boolean) => {
-    setSettingAdmin(true);
-    try {
-      // Dynamic import at call site
-
-      const { setPlayerAdminStatus } = await import("@/lib/db/players");
-      const success = await setPlayerAdminStatus(uid, isAdmin);
-      if (success) {
-        toast({
-          title: "Success",
-          description: `Admin status ${isAdmin ? "granted" : "revoked"} successfully.`,
-        });
-        // Update found player state
-        if (foundPlayer && foundPlayer.uid === uid) {
-          setFoundPlayer({ ...foundPlayer, isAdmin });
-        }
-        // Refresh players list if on users tab
-        if (activeTab === "users") {
-          fetchPlayers();
-        }
-      } else {
-        throw new Error("Failed to update admin status.");
-      }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update admin status.",
-        variant: "destructive",
-      });
-    } finally {
-      setSettingAdmin(false);
-    }
-  };
-
-  // User management functions
-  const fetchPlayers = useCallback(async () => {
-    setLoadingPlayers(true);
-    try {
-      // Dynamic import at call site
-
-      const { getAllPlayers } = await import("@/lib/db/players");
-      const players = await getAllPlayers(playersSortBy, playersSortOrder);
-      setAllPlayers(players);
-    } catch (_error) {
-      toast({
-        title: "Error",
-        description: "Failed to load users.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingPlayers(false);
-    }
-  }, [playersSortBy, playersSortOrder, toast]);
-
-  useEffect(() => {
-    if (activeTab === "users") {
-      fetchPlayers();
-    }
-  }, [activeTab, playersSortBy, playersSortOrder, fetchPlayers]);
-
-
-  const handleEditPlayer = (player: Player) => {
-    setEditingPlayer(player);
-    setEditingPlayerForm({
-      displayName: player.displayName || "",
-      email: player.email || "",
-      isAdmin: player.isAdmin || false,
-      nameColor: player.nameColor || "#cba6f7",
-      bio: player.bio || "",
-      pronouns: player.pronouns || "",
-      twitchUsername: player.twitchUsername || "",
-      srcUsername: player.srcUsername || "",
-    });
-  };
-
-  const handleSavePlayer = async () => {
-    if (!editingPlayer) return;
-    
-    setSavingPlayer(true);
-    try {
-      // Dynamic import at call site
-
-      const { updatePlayer } = await import("@/lib/db/players");
-      const success = await updatePlayer(editingPlayer.id, editingPlayerForm);
-      if (success) {
-        toast({
-          title: "Success",
-          description: "User updated successfully.",
-        });
-        setEditingPlayer(null);
-        setEditingPlayerForm({});
-        fetchPlayers();
-      } else {
-        throw new Error("Failed to update user.");
-      }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update user.",
-        variant: "destructive",
-      });
-    } finally {
-      setSavingPlayer(false);
-    }
-  };
-
-  const handleDeletePlayerClick = (player: Player) => {
-    setPlayerToDelete({ id: player.id, displayName: player.displayName || "Unknown" });
-    setShowDeletePlayerDialog(true);
-  };
-
-  const handleDeletePlayer = async () => {
-    if (!playerToDelete) return;
-    
-    setDeletingPlayerId(playerToDelete.id);
-    try {
-      // Dynamic import at call site
-
-      const { deletePlayer } = await import("@/lib/db/players");
-      const result = await deletePlayer(playerToDelete.id, deletePlayerRuns);
-      if (result.success) {
-        toast({
-          title: "User Deleted",
-          description: `User deleted successfully.${result.deletedRuns ? ` ${result.deletedRuns} runs were also deleted.` : ""}`,
-        });
-        setShowDeletePlayerDialog(false);
-        setPlayerToDelete(null);
-        setDeletePlayerRuns(false);
-        fetchPlayers();
-      } else {
-        throw new Error(result.error || "Failed to delete user.");
-      }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to delete user.",
-        variant: "destructive",
-      });
-    } finally {
-      setDeletingPlayerId(null);
-    }
-  };
-
-  // Filter and paginate players
-  const filteredPlayers = allPlayers.filter(player => {
-    if (!playersSearchQuery.trim()) return true;
-    const query = playersSearchQuery.toLowerCase();
-    return (
-      player.displayName?.toLowerCase().includes(query) ||
-      player.email?.toLowerCase().includes(query) ||
-      player.uid?.toLowerCase().includes(query) ||
-      player.twitchUsername?.toLowerCase().includes(query) ||
-      player.srcUsername?.toLowerCase().includes(query)
-    );
-  });
-
-  const paginatedPlayers = filteredPlayers.slice(
-    (playersPage - 1) * itemsPerPage,
-    playersPage * itemsPerPage
-  );
-
-  const handleAddManualRun = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!currentUser?.uid) return;
-    
-    if (!manualRun.playerName || !manualRun.category || !manualRun.platform || !manualRun.time || !manualRun.date) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // For ILs and Community Golds, level is required
-    if ((manualRunLeaderboardType === 'individual-level' || manualRunLeaderboardType === 'community-golds') && !manualRun.level) {
-      toast({
-        title: "Missing Information",
-        description: "Please select a level.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (manualRun.runType === 'co-op' && !manualRun.player2Name) {
-      toast({
-        title: "Missing Information",
-        description: "Please enter Player 2 name for co-op runs.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setAddingManualRun(true);
-    try {
-      // Look up the player by display name (if provided) or by playerName
-      let playerId: string | null = null;
-      
-      // Try to find player by display name first (if provided)
-      if (manualRun.playerUsername.trim()) {
-        // Dynamic import at call site
-
-        const { getPlayerByDisplayName } = await import("@/lib/db/players");
-        const player = await getPlayerByDisplayName(manualRun.playerUsername.trim());
-        if (player) {
-          playerId = player.uid;
-          // Use the player's displayName from database if found
-          if (player.displayName && player.displayName !== manualRun.playerName) {
-            toast({
-              title: "Player Found",
-              description: `Using player account: ${player.displayName}`,
-            });
-          }
-        }
-      }
-      
-      // If not found by display name, try to find by playerName
-      if (!playerId && manualRun.playerName.trim()) {
-        // Dynamic import at call site
-
-        const { getPlayerByDisplayName } = await import("@/lib/db/players");
-        const player = await getPlayerByDisplayName(manualRun.playerName.trim());
-        if (player) {
-          playerId = player.uid;
-        }
-      }
-      
-      // If player still not found, use empty string for unclaimed runs
-      // This ensures runs for non-existent players don't get assigned to admin's account
-      if (!playerId) {
-        playerId = ""; // Empty string indicates unclaimed run
-        
-        toast({
-          title: "Player Not Found",
-          description: `Player "${manualRun.playerName}" does not have an account. Run will be submitted but won't be linked to any player profile until claimed.`,
-          variant: "default",
-        });
-      }
-      
-      const entry: any = {
-        playerId: playerId,
-        playerName: manualRun.playerName,
-        category: manualRun.category,
-        platform: manualRun.platform,
-        runType: manualRun.runType,
-        leaderboardType: manualRunLeaderboardType,
-        time: manualRun.time,
-        date: manualRun.date,
-        verified: manualRun.verified,
-      };
-      
-      // Only include optional fields if they have values
-      if (manualRun.runType === 'co-op' && manualRun.player2Name && manualRun.player2Name.trim()) {
-        entry.player2Name = manualRun.player2Name.trim();
-      }
-      if ((manualRunLeaderboardType === 'individual-level' || manualRunLeaderboardType === 'community-golds') && manualRun.level) {
-        entry.level = manualRun.level;
-      }
-      if (manualRun.videoUrl && manualRun.videoUrl.trim()) {
-        entry.videoUrl = manualRun.videoUrl.trim();
-      }
-      if (manualRun.comment && manualRun.comment.trim()) {
-        entry.comment = manualRun.comment.trim();
-      }
-      if (manualRun.verified) {
-        // Use provided verifier or default to current admin
-        if (manualRun.verifiedBy && manualRun.verifiedBy.trim()) {
-          entry.verifiedBy = manualRun.verifiedBy.trim();
-        } else if (currentUser) {
-          entry.verifiedBy = currentUser.displayName || currentUser.email || currentUser.uid;
-        }
-      }
-      
-      // Dynamic import at call site
-
-      
-      const { addLeaderboardEntry } = await import("@/lib/db/runs");
-      const result = await addLeaderboardEntry(entry);
-      if (result) {
-        toast({
-          title: "Run Added",
-          description: "Manual run has been added successfully.",
-        });
-                        setManualRun({
-                          playerName: "",
-                          playerUsername: "",
-                          player2Name: "",
-                          category: "",
-                          level: "",
-                          platform: firestorePlatforms[0]?.id || "",
-                          runType: "solo",
-                          time: "",
-                          date: new Date().toISOString().split('T')[0],
-                          videoUrl: "",
-                          comment: "",
-                          verified: true,
-                          verifiedBy: "",
-                        });
-                        setManualRunLeaderboardType('regular');
-        fetchUnverifiedRuns();
-      } else {
-        throw new Error("Failed to add run.");
-      }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to add manual run.",
-        variant: "destructive",
-      });
-    } finally {
-      setAddingManualRun(false);
-    }
-  };
 
   if (authLoading || pageLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[hsl(240,21%,15%)] to-[hsl(235,19%,13%)] text-[hsl(220,17%,92%)] flex items-center justify-center">
-        <LoadingSpinner size="md" />
+      <div className="min-h-screen bg-[#1e1e2e] text-ctp-text py-4 sm:py-6 overflow-x-hidden">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 w-full">
+          <FadeIn className="space-y-4">
+            {/* Tab skeleton */}
+            <div className="mb-6">
+              <div className="flex gap-2 overflow-x-auto pb-2">
+                {Array.from({ length: 11 }).map((_, i) => (
+                  <div key={i} className="h-10 w-32 bg-[hsl(240,21%,15%)] rounded animate-pulse flex-shrink-0" />
+                ))}
+              </div>
+            </div>
+            {/* Content skeleton */}
+            <CardSkeleton lines={5} />
+          </FadeIn>
+        </div>
       </div>
     );
   }
@@ -3738,8 +2728,8 @@ const Admin = () => {
   return (
     <div className="min-h-screen bg-[#1e1e2e] text-ctp-text py-4 sm:py-6 overflow-x-hidden">
       <div className="max-w-7xl mx-auto px-2 sm:px-4 w-full">
-
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <FadeIn>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <AnimatedTabsList className="flex w-full mb-6 p-0.5 gap-1 overflow-x-auto overflow-y-hidden scrollbar-hide relative" style={{ minWidth: 'max-content' }} indicatorClassName="h-0.5 bg-[#f9e2af]">
             <AnimatedTabsTrigger 
               value="runs" 
@@ -3810,1736 +2800,79 @@ const Admin = () => {
           </AnimatedTabsList>
 
           {/* Tools Section */}
-          <AnimatedTabsContent value="tools" className="space-y-4 animate-fade-in">
-            {/* Manual Run Input Section */}
-            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
-              <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
-                <CardTitle className="flex items-center gap-2 text-xl text-[#f2cdcd]">
-                  <span>
-                    Manually Add Run
-                  </span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <form onSubmit={handleAddManualRun} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="manualPlayerName">Player 1 Name *</Label>
-                      <Input
-                        id="manualPlayerName"
-                        type="text"
-                        value={manualRun.playerName}
-                        onChange={(e) => setManualRun({ ...manualRun, playerName: e.target.value })}
-                        placeholder="Player name"
-                        required
-                        className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                      />
-                </div>
-                    <div>
-                      <Label htmlFor="manualPlayerUsername">Player Username (Optional)</Label>
-                      <Input
-                        id="manualPlayerUsername"
-                        type="text"
-                        value={manualRun.playerUsername}
-                        onChange={(e) => setManualRun({ ...manualRun, playerUsername: e.target.value })}
-                        placeholder="Enter username to link run to account"
-                        className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                      />
-                      <p className="text-sm text-[hsl(222,15%,60%)] mt-1">
-                        If provided, the run will be linked to this player's account. If not found, the run will still be added with the provided player name.
-                      </p>
-              </div>
-            </div>
-                  {manualRun.runType === 'co-op' && (
-                    <div>
-                      <Label htmlFor="manualPlayer2Name">Player 2 Name *</Label>
-                      <Input
-                        id="manualPlayer2Name"
-                        type="text"
-                        value={manualRun.player2Name}
-                        onChange={(e) => setManualRun({ ...manualRun, player2Name: e.target.value })}
-                        placeholder="Second player name"
-                        required={manualRun.runType === 'co-op'}
-                        className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                      />
-                    </div>
-                  )}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="manualTime">Completion Time *</Label>
-                      <Input
-                        id="manualTime"
-                        type="text"
-                        value={manualRun.time}
-                        onChange={(e) => setManualRun({ ...manualRun, time: e.target.value })}
-                        placeholder="HH:MM:SS"
-                        required
-                        className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="manualDate">Date *</Label>
-                      <Input
-                        id="manualDate"
-                        type="date"
-                        value={manualRun.date}
-                        onChange={(e) => setManualRun({ ...manualRun, date: e.target.value })}
-                        required
-                        className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Leaderboard Type Buttons */}
-                  <div>
-                    <Label className="text-sm font-semibold mb-2 block">Leaderboard Type *</Label>
-                    <Tabs 
-                      value={manualRunLeaderboardType} 
-                      onValueChange={(value) => {
-                        setManualRunLeaderboardType(value as 'regular' | 'individual-level' | 'community-golds');
-                        setManualRun(prev => ({ ...prev, category: "", level: "" }));
-                      }}
-                      className="w-full"
-                    >
-                      <AnimatedTabsList 
-                        className="grid w-full grid-cols-3 p-1 gap-2 h-auto"
-                        indicatorClassName="h-0.5 bg-[#f9e2af]"
-                      >
-                        <AnimatedTabsTrigger 
-                          value="regular"
-                          className="h-auto py-1.5 sm:py-2 px-2 sm:px-3 transition-all duration-300 font-medium text-xs sm:text-sm whitespace-nowrap data-[state=active]:text-[#f9e2af]"
-                        >
-                          <Trophy className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1 sm:mr-1.5" />
-                          <span className="hidden min-[375px]:inline">Full Game</span>
-                          <span className="min-[375px]:hidden">Game</span>
-                        </AnimatedTabsTrigger>
-                        <AnimatedTabsTrigger 
-                          value="individual-level"
-                          className="h-auto py-1.5 sm:py-2 px-2 sm:px-3 transition-all duration-300 font-medium text-xs sm:text-sm whitespace-nowrap data-[state=active]:text-[#f9e2af]"
-                        >
-                          <Star className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1 sm:mr-1.5" />
-                          <span className="hidden sm:inline">Individual Levels</span>
-                          <span className="sm:hidden">ILs</span>
-                        </AnimatedTabsTrigger>
-                        <AnimatedTabsTrigger 
-                          value="community-golds"
-                          className="h-auto py-1.5 sm:py-2 px-2 sm:px-3 transition-all duration-300 font-medium text-xs sm:text-sm whitespace-nowrap data-[state=active]:text-[#f9e2af]"
-                        >
-                          <Gem className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1 sm:mr-1.5" />
-                          <span className="hidden sm:inline">Community Golds</span>
-                          <span className="sm:hidden">Golds</span>
-                        </AnimatedTabsTrigger>
-                      </AnimatedTabsList>
-                    </Tabs>
-                  </div>
-
-                  {/* Category Selection - Tabs */}
-                  {firestoreCategories.length > 0 && (
-                    <div>
-                      <Label className="text-sm font-semibold mb-2 block">
-                        {manualRunLeaderboardType === 'individual-level' ? 'Category Type *' : 
-                         manualRunLeaderboardType === 'community-golds' ? 'Full Game Category *' : 
-                         'Category *'}
-                      </Label>
-                      <Tabs value={manualRun.category} onValueChange={(value) => setManualRun({ ...manualRun, category: value })} className="w-full">
-                        <AnimatedTabsList className="flex w-full p-0.5 gap-1 overflow-x-auto overflow-y-visible scrollbar-hide relative" style={{ minWidth: 'max-content' }} indicatorClassName="h-0.5 bg-[#94e2d5]">
-                          {firestoreCategories.map((category, index) => {
-                            return (
-                              <AnimatedTabsTrigger
-                                key={category.id}
-                                value={category.id}
-                                className="py-2 px-3 text-sm transition-all duration-300 font-medium data-[state=active]:text-[#94e2d5]"
-                                style={{ animationDelay: `${index * 50}ms` }}
-                              >
-                                {category.name}
-                              </AnimatedTabsTrigger>
-                            );
-                          })}
-                        </AnimatedTabsList>
-                      </Tabs>
-                    </div>
-                  )}
-
-                  {/* Level Selection for ILs and Community Golds */}
-                  {(manualRunLeaderboardType === 'individual-level' || manualRunLeaderboardType === 'community-golds') && (
-                    <div>
-                      <Label htmlFor="manualLevel">Level *</Label>
-                      <Select
-                        value={manualRun.level}
-                        onValueChange={(value) => setManualRun({ ...manualRun, level: value })}
-                      >
-                        <SelectTrigger className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]">
-                          <SelectValue placeholder="Select level" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableLevels.map((level) => (
-                            <SelectItem key={level.id} value={level.id}>
-                              {level.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="manualPlatform">Platform *</Label>
-                      <Select
-                        value={manualRun.platform}
-                        onValueChange={(value) => setManualRun({ ...manualRun, platform: value })}
-                      >
-                        <SelectTrigger className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]">
-                          <SelectValue placeholder="Select platform" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {firestorePlatforms.map((platform) => (
-                            <SelectItem key={platform.id} value={platform.id}>
-                              {platform.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="manualRunType">Run Type *</Label>
-                      <Select
-                        value={manualRun.runType}
-                        onValueChange={(value) => setManualRun({ ...manualRun, runType: value as 'solo' | 'co-op' })}
-                      >
-                        <SelectTrigger className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]">
-                          <SelectValue placeholder="Select run type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="solo">Solo</SelectItem>
-                          <SelectItem value="co-op">Co-op</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="manualVideoUrl">Video URL (Optional)</Label>
-                    <Input
-                      id="manualVideoUrl"
-                      type="url"
-                      value={manualRun.videoUrl}
-                      onChange={(e) => setManualRun({ ...manualRun, videoUrl: e.target.value })}
-                      placeholder="https://youtube.com/watch?v=..."
-                      className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="manualComment">Comment (Optional)</Label>
-                    <Textarea
-                      id="manualComment"
-                      value={manualRun.comment}
-                      onChange={(e) => setManualRun({ ...manualRun, comment: e.target.value })}
-                      placeholder="Add a comment about the run..."
-                      className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                      rows={3}
-                    />
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="manualVerified"
-                      checked={manualRun.verified}
-                      onChange={(e) => setManualRun({ ...manualRun, verified: e.target.checked })}
-                      className="w-4 h-4 rounded-none border-[hsl(235,13%,30%)] bg-[hsl(240,21%,15%)]"
-                    />
-                    <Label htmlFor="manualVerified" className="cursor-pointer">
-                      Mark as verified
-                    </Label>
-                  </div>
-
-                  {manualRun.verified && (
-                    <div>
-                      <Label htmlFor="manualVerifiedBy">Verifier (Optional)</Label>
-                      <Input
-                        id="manualVerifiedBy"
-                        type="text"
-                        value={manualRun.verifiedBy}
-                        onChange={(e) => setManualRun({ ...manualRun, verifiedBy: e.target.value })}
-                        placeholder="Enter verifier name or UID (defaults to current admin if empty)"
-                        className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                      />
-                      <p className="text-sm text-[hsl(222,15%,60%)] mt-1">
-                        Leave empty to use your admin account as the verifier. Enter a name or UID to specify a different verifier.
-                      </p>
-                    </div>
-                  )}
-
-                  <Button
-                    type="submit"
-                    disabled={addingManualRun}
-                    className="w-full bg-gradient-to-r from-[#cba6f7] via-[#f5c2e7] to-[#cba6f7] hover:from-[#f5c2e7] hover:via-[#cba6f7] hover:to-[#f5c2e7] text-[hsl(240,21%,15%)] font-bold flex items-center gap-2 transition-all duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-[#cba6f7]/50 animate-gradient bg-[length:200%_auto]"
-                  >
-                    <PlusCircle className="h-4 w-4" />
-                    {addingManualRun ? "Adding..." : "Add Run"}
-                  </Button>
-                </form>
-          </CardContent>
-        </Card>
-
-            {/* Admin Management Section */}
-            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
-              <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
-                <CardTitle className="flex items-center gap-2 text-xl text-[#f2cdcd]">
-                  <span>
-                    Manage Admin Status
-                  </span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6 space-y-6">
-                <div className="space-y-4">
-                  <div className="flex gap-4 items-end">
-                    <div className="flex-1">
-                      <Label htmlFor="adminSearchType">Search By</Label>
-                      <Select value={adminSearchType} onValueChange={(value: "displayName" | "uid") => {
-                        setAdminSearchType(value);
-                        setFoundPlayer(null);
-                        setAdminUserInput("");
-                      }}>
-                        <SelectTrigger className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="displayName">Display Name</SelectItem>
-                          <SelectItem value="uid">UID</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="flex-1">
-                      <Label htmlFor="adminUserInput">{adminSearchType === "displayName" ? "Display Name" : "UID"}</Label>
-                      <Input
-                        id="adminUserInput"
-                        value={adminUserInput}
-                        onChange={(e) => setAdminUserInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            handleSearchPlayer();
-                          }
-                        }}
-                        placeholder={adminSearchType === "displayName" ? "Enter display name" : "Enter UID"}
-                        className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                      />
-                    </div>
-                    <Button
-                      onClick={handleSearchPlayer}
-                      disabled={searchingPlayer || !adminUserInput.trim()}
-                      className="bg-gradient-to-r from-[#cba6f7] to-[#b4a0e2] hover:from-[#b4a0e2] hover:to-[#cba6f7] text-[hsl(240,21%,15%)] font-bold transition-all duration-300 hover:scale-105 hover:shadow-lg"
-                    >
-                      {searchingPlayer ? "Searching..." : "Search"}
-                    </Button>
-                  </div>
-
-                  {foundPlayer && (
-                    <div className="bg-gradient-to-br from-[hsl(235,19%,13%)] to-[hsl(235,19%,11%)] border border-[hsl(235,13%,30%)] rounded-none p-5 space-y-4 shadow-lg transition-all duration-300 animate-fade-in hover:border-[#cba6f7]/50 hover:shadow-xl hover:shadow-[#cba6f7]/10">
-                      <div>
-                        <h4 className="font-semibold mb-3 text-lg flex items-center gap-2">
-                          <div className="p-1 rounded-none bg-gradient-to-br from-[#cba6f7] to-[#b4a0e2]">
-                            <CheckCircle className="h-4 w-4 text-[hsl(240,21%,15%)]" />
-                          </div>
-                          <span className="bg-gradient-to-r from-[#cba6f7] to-[#f38ba8] bg-clip-text text-transparent">
-                            Player Found
-                          </span>
-                        </h4>
-                        <div className="space-y-1 text-sm">
-                          <p><span className="text-[hsl(222,15%,60%)]">UID:</span> <code className="text-[#cba6f7]">{foundPlayer.uid}</code></p>
-                          <p><span className="text-[hsl(222,15%,60%)]">Display Name:</span> {foundPlayer.displayName || "Not set"}</p>
-                          <p><span className="text-[hsl(222,15%,60%)]">Email:</span> {foundPlayer.email || "Not set"}</p>
-                          <p>
-                            <span className="text-[hsl(222,15%,60%)]">Admin Status:</span>{" "}
-                            <Badge variant={foundPlayer.isAdmin ? "default" : "secondary"}>
-                              {foundPlayer.isAdmin ? "Admin" : "Not Admin"}
-                            </Badge>
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={() => handleSetAdminStatus(foundPlayer.uid, true)}
-                          disabled={settingAdmin || foundPlayer.isAdmin}
-                          className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-600 text-white flex items-center gap-2 transition-all duration-300 hover:scale-105 hover:shadow-lg"
-                        >
-                          <UserPlus className="h-4 w-4" />
-                          Grant Admin
-                        </Button>
-                        <Button
-                          onClick={() => handleSetAdminStatus(foundPlayer.uid, false)}
-                          disabled={settingAdmin || !foundPlayer.isAdmin}
-                          variant="destructive"
-                          className="flex items-center gap-2 transition-all duration-300 hover:scale-105 hover:shadow-lg"
-                        >
-                          <UserMinus className="h-4 w-4" />
-                          Revoke Admin
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+          <AnimatedTabsContent value="tools" className="space-y-4">
+            <FadeIn key="tools" direction="fade">
+              <ToolsTab 
+                firestorePlatforms={firestorePlatforms}
+                firestoreCategories={firestoreCategories}
+                availableLevels={availableLevels}
+                fetchUnverifiedRuns={fetchUnverifiedRuns}
+              />
+            </FadeIn>
           </AnimatedTabsContent>
 
           {/* Game Details Configuration Section */}
-          <AnimatedTabsContent value="game-details" className="space-y-4 animate-fade-in">
-            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
-              <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
-                <CardTitle className="flex items-center gap-2 text-xl text-[#94e2d5]">
-                  <Gamepad2 className="h-5 w-5" />
-                  Game Details Configuration
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6">
-                {loadingGameDetailsConfig ? (
-                  <div className="py-12">
-                    <LoadingSpinner size="sm" />
-                  </div>
-                ) : gameDetailsConfig ? (
-                  <div className="space-y-6">
-                    {/* Enable/Disable */}
-                    <div className="flex items-center justify-between p-4 bg-[hsl(240,21%,15%)] border border-[hsl(235,13%,30%)] rounded-none">
-                      <div className="space-y-0.5">
-                        <Label htmlFor="enabled" className="text-base">
-                          Enable Game Details Component
-                        </Label>
-                        <p className="text-sm text-[hsl(222,15%,60%)]">
-                          Show or hide the game details component on configured pages.
-                        </p>
-                      </div>
-                      <Switch
-                        id="enabled"
-                        checked={gameDetailsConfigForm.enabled ?? gameDetailsConfig.enabled ?? true}
-                        onCheckedChange={(checked) => setGameDetailsConfigForm({ ...gameDetailsConfigForm, enabled: checked })}
-                      />
-                    </div>
-
-                    {/* Title and Subtitle */}
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="title" className="text-base font-semibold">
-                          Game Title
-                        </Label>
-                        <Input
-                          id="title"
-                          type="text"
-                          value={gameDetailsConfigForm.title ?? gameDetailsConfig.title ?? ""}
-                          onChange={(e) => setGameDetailsConfigForm({ ...gameDetailsConfigForm, title: e.target.value })}
-                          className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="subtitle" className="text-base font-semibold">
-                          Subtitle (Optional)
-                        </Label>
-                        <Input
-                          id="subtitle"
-                          type="text"
-                          placeholder="e.g., 2005"
-                          value={gameDetailsConfigForm.subtitle ?? gameDetailsConfig.subtitle ?? ""}
-                          onChange={(e) => setGameDetailsConfigForm({ ...gameDetailsConfigForm, subtitle: e.target.value })}
-                          className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="coverImageUrl" className="text-base font-semibold">
-                          Cover Image URL (Optional)
-                        </Label>
-                        <Input
-                          id="coverImageUrl"
-                          type="url"
-                          placeholder="https://example.com/image.jpg"
-                          value={gameDetailsConfigForm.coverImageUrl ?? gameDetailsConfig.coverImageUrl ?? ""}
-                          onChange={(e) => setGameDetailsConfigForm({ ...gameDetailsConfigForm, coverImageUrl: e.target.value })}
-                          className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Categories */}
-                    <div className="space-y-2">
-                      <Label className="text-base font-semibold">Categories</Label>
-                      <p className="text-sm text-[hsl(222,15%,60%)] mb-2">
-                        Enter categories separated by commas (e.g., "LEGO Series, Star Wars Series")
-                      </p>
-                      <Input
-                        type="text"
-                        placeholder="LEGO Series, Star Wars Series"
-                        value={(gameDetailsConfigForm.categories ?? gameDetailsConfig.categories ?? []).join(", ")}
-                        onChange={(e) => {
-                          const categories = e.target.value.split(",").map(c => c.trim()).filter(c => c.length > 0);
-                          setGameDetailsConfigForm({ ...gameDetailsConfigForm, categories });
-                        }}
-                        className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                      />
-                    </div>
-
-                    {/* Platforms */}
-                    <div className="space-y-2">
-                      <Label className="text-base font-semibold">Platforms</Label>
-                      <p className="text-sm text-[hsl(222,15%,60%)] mb-2">
-                        Configure platform buttons. Enter platform labels separated by commas (e.g., "GCN, PS2, Xbox, PC")
-                      </p>
-                      <Input
-                        type="text"
-                        placeholder="GCN, PS2, Xbox, PC"
-                        value={(gameDetailsConfigForm.platforms ?? gameDetailsConfig.platforms ?? []).map(p => p.label).join(", ")}
-                        onChange={(e) => {
-                          const labels = e.target.value.split(",").map(l => l.trim()).filter(l => l.length > 0);
-                          const platforms = labels.map((label, index) => ({
-                            id: label.toLowerCase().replace(/\s+/g, "-"),
-                            label,
-                            order: index + 1,
-                          }));
-                          setGameDetailsConfigForm({ ...gameDetailsConfigForm, platforms });
-                        }}
-                        className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                      />
-                    </div>
-
-                    {/* Discord URL */}
-                    <div className="space-y-2">
-                      <Label htmlFor="discordUrl" className="text-base font-semibold">
-                        Discord URL (Optional)
-                      </Label>
-                      <Input
-                        id="discordUrl"
-                        type="url"
-                        placeholder="https://discord.gg/..."
-                        value={gameDetailsConfigForm.discordUrl ?? gameDetailsConfig.discordUrl ?? ""}
-                        onChange={(e) => setGameDetailsConfigForm({ ...gameDetailsConfigForm, discordUrl: e.target.value })}
-                        className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                      />
-                    </div>
-
-                    {/* Speedrun.com URL */}
-                    <div className="space-y-2">
-                      <Label htmlFor="speedrunComUrl" className="text-base font-semibold">
-                        Speedrun.com URL (Optional)
-                      </Label>
-                      <Input
-                        id="speedrunComUrl"
-                        type="url"
-                        placeholder="https://www.speedrun.com/..."
-                        value={gameDetailsConfigForm.speedrunComUrl ?? gameDetailsConfig.speedrunComUrl ?? ""}
-                        onChange={(e) => setGameDetailsConfigForm({ ...gameDetailsConfigForm, speedrunComUrl: e.target.value })}
-                        className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                      />
-                    </div>
-
-                    {/* Header Links */}
-                    <div className="space-y-4">
-                      <Label className="text-base font-semibold">Header Navigation Links</Label>
-                      <p className="text-sm text-[hsl(222,15%,60%)] mb-4">
-                        Configure header navigation links shown in the game details card below platforms and Discord.
-                      </p>
-                      
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                        {/* Add New Header Link Form */}
-                        <div>
-                          <h3 className="text-base font-semibold mb-3">Add New Header Link</h3>
-                          <form onSubmit={handleAddHeaderLink} className="space-y-3">
-                            <div>
-                              <Label htmlFor="headerLinkLabel" className="text-sm">Label</Label>
-                              <Input
-                                id="headerLinkLabel"
-                                type="text"
-                                value={newHeaderLink.label}
-                                onChange={(e) => setNewHeaderLink({ ...newHeaderLink, label: e.target.value })}
-                                placeholder="e.g., Leaderboards"
-                                required
-                                className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] h-9 text-sm"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="headerLinkRoute" className="text-sm">Route</Label>
-                              <Input
-                                id="headerLinkRoute"
-                                type="text"
-                                value={newHeaderLink.route}
-                                onChange={(e) => setNewHeaderLink({ ...newHeaderLink, route: e.target.value })}
-                                placeholder="e.g., /leaderboards"
-                                required
-                                className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] h-9 text-sm"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="headerLinkIcon" className="text-sm">Icon (Optional)</Label>
-                              <Select
-                                value={newHeaderLink.icon || "none"}
-                                onValueChange={(value) => setNewHeaderLink({ ...newHeaderLink, icon: value === "none" ? "" : value })}
-                              >
-                                <SelectTrigger className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] h-9 text-sm">
-                                  <SelectValue placeholder="Select icon" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="none">None</SelectItem>
-                                  <SelectItem value="Trophy">Trophy</SelectItem>
-                                  <SelectItem value="LegoStud">LegoStud</SelectItem>
-                                  <SelectItem value="Upload">Upload</SelectItem>
-                                  <SelectItem value="Radio">Radio</SelectItem>
-                                  <SelectItem value="Download">Download</SelectItem>
-                                  <SelectItem value="BarChart3">BarChart3</SelectItem>
-                                  <SelectItem value="ShieldAlert">ShieldAlert</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div>
-                              <Label htmlFor="headerLinkColor" className="text-sm">Color (Optional)</Label>
-                              <Input
-                                id="headerLinkColor"
-                                type="text"
-                                value={newHeaderLink.color}
-                                onChange={(e) => setNewHeaderLink({ ...newHeaderLink, color: e.target.value })}
-                                placeholder="#cdd6f4"
-                                className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] h-9 text-sm"
-                              />
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <input
-                                type="checkbox"
-                                id="headerLinkAdminOnly"
-                                checked={newHeaderLink.adminOnly}
-                                onChange={(e) => setNewHeaderLink({ ...newHeaderLink, adminOnly: e.target.checked })}
-                                className="rounded-none"
-                              />
-                              <Label htmlFor="headerLinkAdminOnly" className="text-sm cursor-pointer">
-                                Admin Only
-                              </Label>
-                            </div>
-                            <Button
-                              type="submit"
-                              disabled={addingHeaderLink}
-                              size="sm"
-                              className="bg-gradient-to-r from-[#94e2d5] to-[#7dd3c7] hover:from-[#7dd3c7] hover:to-[#94e2d5] text-[hsl(240,21%,15%)] font-bold flex items-center gap-2 transition-all duration-300 hover:scale-105 hover:shadow-lg"
-                            >
-                              <PlusCircle className="h-3 w-3" />
-                              {addingHeaderLink ? "Adding..." : "Add Header Link"}
-                            </Button>
-                          </form>
-                        </div>
-                        
-                        {/* Existing Header Links */}
-                        <div>
-                          <h3 className="text-base font-semibold mb-3">Existing Header Links</h3>
-                          {(!gameDetailsConfigForm.headerLinks && !gameDetailsConfig?.headerLinks) || 
-                           (gameDetailsConfigForm.headerLinks ?? gameDetailsConfig?.headerLinks ?? []).length === 0 ? (
-                            <p className="text-[hsl(222,15%,60%)] text-center py-4 text-sm">No header links found. Add your first link!</p>
-                          ) : (
-                            <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
-                              <Table>
-                                <TableHeader>
-                                  <TableRow className="border-b border-[hsl(235,13%,30%)] hover:bg-transparent">
-                                    <TableHead className="py-2 px-3 text-left text-xs">Order</TableHead>
-                                    <TableHead className="py-2 px-3 text-left text-xs">Label</TableHead>
-                                    <TableHead className="py-2 px-3 text-left text-xs">Route</TableHead>
-                                    <TableHead className="py-2 px-3 text-left text-xs">Icon</TableHead>
-                                    <TableHead className="py-2 px-3 text-left text-xs">Color</TableHead>
-                                    <TableHead className="py-2 px-3 text-center text-xs">Admin</TableHead>
-                                    <TableHead className="py-2 px-3 text-center text-xs">Actions</TableHead>
-                                  </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                  {[...(gameDetailsConfigForm.headerLinks ?? gameDetailsConfig?.headerLinks ?? [])]
-                                    .sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity))
-                                    .map((link, index) => (
-                                    <TableRow key={link.id} className="border-b border-[hsl(235,13%,30%)] hover:bg-[hsl(235,19%,13%)] transition-all duration-200 hover:shadow-sm">
-                                      <TableCell className="py-2 px-3 text-sm">
-                                        <div className="flex items-center gap-1">
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => handleMoveHeaderLinkUp(link.id)}
-                                            disabled={reorderingHeaderLink === link.id || index === 0}
-                                            className="text-purple-500 hover:bg-purple-900/20 disabled:opacity-50 h-6 w-6 p-0 transition-all duration-200 hover:scale-110"
-                                            title="Move up"
-                                          >
-                                            <ArrowUp className="h-3 w-3" />
-                                          </Button>
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => handleMoveHeaderLinkDown(link.id)}
-                                            disabled={reorderingHeaderLink === link.id || index === (gameDetailsConfigForm.headerLinks ?? gameDetailsConfig?.headerLinks ?? []).length - 1}
-                                            className="text-purple-500 hover:bg-purple-900/20 disabled:opacity-50 h-6 w-6 p-0 transition-all duration-200 hover:scale-110"
-                                            title="Move down"
-                                          >
-                                            <ArrowDown className="h-3 w-3" />
-                                          </Button>
-                                        </div>
-                                      </TableCell>
-                                      <TableCell className="py-2 px-3 font-medium text-sm">
-                                        {editingHeaderLink?.id === link.id ? (
-                                          <Input
-                                            value={editingHeaderLinkForm.label}
-                                            onChange={(e) => setEditingHeaderLinkForm({ ...editingHeaderLinkForm, label: e.target.value })}
-                                            className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] h-8 text-sm w-24"
-                                            autoFocus
-                                          />
-                                        ) : (
-                                          link.label
-                                        )}
-                                      </TableCell>
-                                      <TableCell className="py-2 px-3 text-sm">
-                                        {editingHeaderLink?.id === link.id ? (
-                                          <Input
-                                            value={editingHeaderLinkForm.route}
-                                            onChange={(e) => setEditingHeaderLinkForm({ ...editingHeaderLinkForm, route: e.target.value })}
-                                            className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] h-8 text-sm w-24"
-                                          />
-                                        ) : (
-                                          <span className="text-[hsl(222,15%,60%)]">{link.route}</span>
-                                        )}
-                                      </TableCell>
-                                      <TableCell className="py-2 px-3 text-sm">
-                                        {editingHeaderLink?.id === link.id ? (
-                                          <Select
-                                            value={editingHeaderLinkForm.icon || "none"}
-                                            onValueChange={(value) => setEditingHeaderLinkForm({ ...editingHeaderLinkForm, icon: value === "none" ? "" : value })}
-                                          >
-                                            <SelectTrigger className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] h-8 text-xs w-28">
-                                              <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                              <SelectItem value="none">None</SelectItem>
-                                              <SelectItem value="Trophy">Trophy</SelectItem>
-                                              <SelectItem value="LegoStud">LegoStud</SelectItem>
-                                              <SelectItem value="Upload">Upload</SelectItem>
-                                              <SelectItem value="Radio">Radio</SelectItem>
-                                              <SelectItem value="Download">Download</SelectItem>
-                                              <SelectItem value="BarChart3">BarChart3</SelectItem>
-                                              <SelectItem value="ShieldAlert">ShieldAlert</SelectItem>
-                                            </SelectContent>
-                                          </Select>
-                                        ) : (
-                                          <span className="text-[hsl(222,15%,60%)]">{link.icon || "—"}</span>
-                                        )}
-                                      </TableCell>
-                                      <TableCell className="py-2 px-3 text-sm">
-                                        {editingHeaderLink?.id === link.id ? (
-                                          <Input
-                                            value={editingHeaderLinkForm.color}
-                                            onChange={(e) => setEditingHeaderLinkForm({ ...editingHeaderLinkForm, color: e.target.value })}
-                                            className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] h-8 text-sm w-24"
-                                          />
-                                        ) : (
-                                          <div className="flex items-center gap-2">
-                                            <span className="text-[hsl(222,15%,60%)]">{link.color || "—"}</span>
-                                            {link.color && (
-                                              <div className="w-4 h-4 rounded-none border border-ctp-surface1" style={{ backgroundColor: link.color }}></div>
-                                            )}
-                                          </div>
-                                        )}
-                                      </TableCell>
-                                      <TableCell className="py-2 px-3 text-center text-sm">
-                                        {editingHeaderLink?.id === link.id ? (
-                                          <input
-                                            type="checkbox"
-                                            checked={editingHeaderLinkForm.adminOnly}
-                                            onChange={(e) => setEditingHeaderLinkForm({ ...editingHeaderLinkForm, adminOnly: e.target.checked })}
-                                            className="rounded-none"
-                                          />
-                                        ) : (
-                                          <span className="text-[hsl(222,15%,60%)]">{link.adminOnly ? "Yes" : "No"}</span>
-                                        )}
-                                      </TableCell>
-                                      <TableCell className="py-2 px-3 text-center space-x-1">
-                                        {editingHeaderLink?.id === link.id ? (
-                                          <>
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              onClick={handleSaveEditHeaderLink}
-                                              disabled={updatingHeaderLink}
-                                              className="text-green-500 hover:bg-green-900/20"
-                                            >
-                                              Save
-                                            </Button>
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              onClick={handleCancelEditHeaderLink}
-                                              disabled={updatingHeaderLink}
-                                              className="text-gray-500 hover:bg-gray-900/20"
-                                            >
-                                              Cancel
-                                            </Button>
-                                          </>
-                                        ) : (
-                                          <>
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              onClick={() => handleStartEditHeaderLink(link)}
-                                              className="text-blue-500 hover:bg-blue-900/20 h-7 w-7 p-0 transition-all duration-200 hover:scale-110"
-                                            >
-                                              <Edit2 className="h-3 w-3" />
-                                            </Button>
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              onClick={() => handleDeleteHeaderLink(link.id)}
-                                              className="text-red-500 hover:bg-red-900/20 h-7 w-7 p-0 transition-all duration-200 hover:scale-110"
-                                            >
-                                              <Trash2 className="h-3 w-3" />
-                                            </Button>
-                                          </>
-                                        )}
-                                      </TableCell>
-                                    </TableRow>
-                                  ))}
-                                </TableBody>
-                              </Table>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Visible Pages */}
-                    <div className="space-y-2">
-                      <Label className="text-base font-semibold">Visible On Pages</Label>
-                      <p className="text-sm text-[hsl(222,15%,60%)] mb-2">
-                        Enter page routes separated by commas where the component should be visible (e.g., "/, /leaderboards, /stats")
-                      </p>
-                      <Input
-                        type="text"
-                        placeholder="/, /leaderboards, /stats"
-                        value={(gameDetailsConfigForm.visibleOnPages ?? gameDetailsConfig.visibleOnPages ?? []).join(", ")}
-                        onChange={(e) => {
-                          const pages = e.target.value.split(",").map(p => p.trim()).filter(p => p.length > 0);
-                          setGameDetailsConfigForm({ ...gameDetailsConfigForm, visibleOnPages: pages });
-                        }}
-                        className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                      />
-                    </div>
-
-                    {/* Save Button */}
-                    <div className="flex justify-end pt-4 border-t border-[hsl(235,13%,30%)]">
-                      <Button
-                        onClick={handleSaveGameDetailsConfig}
-                        disabled={savingGameDetailsConfig}
-                        className="bg-gradient-to-r from-[#94e2d5] to-[#7dd3c7] hover:from-[#7dd3c7] hover:to-[#94e2d5] text-[hsl(240,21%,15%)] font-bold flex items-center gap-2 transition-all duration-300 hover:scale-105 hover:shadow-lg"
-                      >
-                        {savingGameDetailsConfig ? (
-                          <>
-                            <LoadingSpinner size="sm" />
-                            Saving...
-                          </>
-                        ) : (
-                          <>
-                            <Save className="h-4 w-4" />
-                            Save Configuration
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-12 text-[hsl(222,15%,60%)]">
-                    Failed to load game details configuration.
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+          <AnimatedTabsContent value="game-details" className="space-y-4">
+            <FadeIn key="game-details" direction="fade">
+              <GameDetailsConfigTab activeTab={activeTab} />
+            </FadeIn>
           </AnimatedTabsContent>
 
         {/* SRC Tools Section */}
-          <AnimatedTabsContent value="src" className="space-y-4 animate-fade-in">
-            {/* Import Runs from SRC */}
-            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
-              <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2 text-xl text-[#f2cdcd]">
-                    <Upload className="h-5 w-5" />
-                    <span>Import Runs from Speedrun.com</span>
-                  </CardTitle>
-                  {importedSRCRuns.filter(r => !r.verified).length > 0 && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleClearImportedRuns}
-                      disabled={clearingImportedRuns}
-                      className="bg-red-900/20 border-red-700/50 text-red-400 hover:bg-red-900/30 hover:border-red-600 transition-all duration-300"
-                    >
-                      {clearingImportedRuns ? (
-                        <>
-                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                          Clearing...
-                        </>
-                      ) : (
-                        <>
-                          <X className="h-4 w-4 mr-2" />
-                          Clear All Imported
-                        </>
-                      )}
-                    </Button>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Import Section */}
-                <div className="space-y-4 pb-6 pt-2 border-b border-[hsl(235,13%,30%)]">
-                  <p className="text-[hsl(222,15%,60%)]">
-                    Import runs from speedrun.com that aren't on the leaderboards. 
-                    Runs will be added as unverified and can be edited or rejected.
-                  </p>
-                  <div className="flex gap-3 flex-wrap">
-                    <Button
-                      onClick={handleImportFromSRC}
-                      disabled={importingRuns}
-                      className="bg-gradient-to-r from-[#cba6f7] to-[#b4a0e2] hover:from-[#b4a0e2] hover:to-[#cba6f7] text-[hsl(240,21%,15%)] font-bold transition-all duration-300 hover:scale-105 hover:shadow-lg"
-                    >
-                      {importingRuns ? (
-                        <>
-                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                          Importing...
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="h-4 w-4 mr-2" />
-                          Import Runs
-                        </>
-                      )}
-                    </Button>
-                    {importedSRCRuns.filter(r => r.verified !== true).length > 0 && (
-                      <>
-                        <Button
-                          onClick={handleBatchVerify}
-                          disabled={batchVerifying || batchVerifyingAll || importingRuns}
-                          className="bg-gradient-to-r from-[#94e2d5] to-[#74c7b0] hover:from-[#74c7b0] hover:to-[#94e2d5] text-[hsl(240,21%,15%)] font-bold transition-all duration-300 hover:scale-105 hover:shadow-lg"
-                        >
-                          {batchVerifying ? (
-                            <>
-                              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                              Verifying...
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle className="h-4 w-4 mr-2" />
-                              Batch Verify 10 Most Recent
-                            </>
-                          )}
-                        </Button>
-                        <Button
-                          onClick={handleBatchVerifyAll}
-                          disabled={batchVerifying || batchVerifyingAll || importingRuns}
-                          className="bg-gradient-to-r from-[#a6e3a1] to-[#86c77a] hover:from-[#86c77a] hover:to-[#a6e3a1] text-[hsl(240,21%,15%)] font-bold transition-all duration-300 hover:scale-105 hover:shadow-lg"
-                        >
-                          {batchVerifyingAll ? (
-                            <>
-                              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                              Verifying All...
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle className="h-4 w-4 mr-2" />
-                              Batch Verify All in Tab
-                            </>
-                          )}
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                  {importingRuns && importProgress.total > 0 && (
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm text-[hsl(222,15%,60%)]">
-                        <span>Progress: {importProgress.imported + importProgress.skipped} / {importProgress.total}</span>
-                        <span>Imported: {importProgress.imported} | Skipped: {importProgress.skipped}</span>
-                      </div>
-                      <div className="w-full bg-[hsl(235,19%,13%)] rounded-full h-2">
-                        <div
-                          className="bg-gradient-to-r from-[#cba6f7] to-[#b4a0e2] h-2 rounded-full transition-all duration-300"
-                          style={{
-                            width: `${((importProgress.imported + importProgress.skipped) / importProgress.total) * 100}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Backfill srcPlayerName Section */}
-                <div className="space-y-4 pb-6 pt-2 border-b border-[hsl(235,13%,30%)]">
-                  <p className="text-[hsl(222,15%,60%)]">
-                    Backfill the srcPlayerName field for older imported runs that don't have it set. 
-                    This uses the playerName field as a fallback and normalizes it for autoclaiming. 
-                    Run this before autoclaiming if you have older imports.
-                  </p>
-                  <Button
-                    onClick={handleBackfillSrcPlayerName}
-                    disabled={backfillingSrcPlayerName || importingRuns}
-                    className="bg-gradient-to-r from-[#89b4fa] to-[#74c7ec] hover:from-[#74c7ec] hover:to-[#89b4fa] text-[hsl(240,21%,15%)] font-bold transition-all duration-300 hover:scale-105 hover:shadow-lg"
-                  >
-                    {backfillingSrcPlayerName ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        Backfilling...
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Backfill srcPlayerName for All Runs
-                      </>
-                    )}
-                  </Button>
-                </div>
-
-                {/* Autoclaiming Section */}
-                <div className="space-y-4 pb-6 pt-2 border-b border-[hsl(235,13%,30%)]">
-                  <p className="text-[hsl(222,15%,60%)]">
-                    Automatically claim imported runs (both verified and unverified) for players who have set their SRC username. 
-                    This will match runs based on the player name from speedrun.com. Make sure to run the backfill above first if you have older imports.
-                  </p>
-                  <Button
-                    onClick={handleAutoclaimRuns}
-                    disabled={autoclaiming || importingRuns || backfillingSrcPlayerName}
-                    className="bg-gradient-to-r from-[#f9e2af] to-[#e6d19a] hover:from-[#e6d19a] hover:to-[#f9e2af] text-[hsl(240,21%,15%)] font-bold transition-all duration-300 hover:scale-105 hover:shadow-lg"
-                  >
-                    {autoclaiming ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        Autoclaiming...
-                      </>
-                    ) : (
-                      <>
-                        <UserCheck className="h-4 w-4 mr-2" />
-                        Trigger Autoclaiming for All Players
-                      </>
-                    )}
-                  </Button>
-                </div>
-
-                {/* Imported Runs List - Same content as before */}
-                {(() => {
-                  // Filter unverified imported runs
-                  let unverifiedImported = importedSRCRuns.filter(r => r.verified !== true);
-                  
-                  // Apply leaderboardType filter
-                  unverifiedImported = unverifiedImported.filter(run => {
-                    const runLeaderboardType = run.leaderboardType || 'regular';
-                    return runLeaderboardType === importedRunsLeaderboardType;
-                  });
-                  
-                  // Apply category filter (only if a category is selected)
-                  if (importedRunsCategory && importedRunsCategory !== '__all__') {
-                    unverifiedImported = unverifiedImported.filter(run => {
-                      const runCategory = normalizeCategoryId(run.category);
-                      return runCategory === importedRunsCategory;
-                    });
-                  }
-                  
-                  // Apply platform filter (only if a platform is selected)
-                  if (importedRunsPlatform && importedRunsPlatform !== '__all__') {
-                    unverifiedImported = unverifiedImported.filter(run => {
-                      const runPlatform = normalizePlatformId(run.platform);
-                      return runPlatform === importedRunsPlatform;
-                    });
-                  }
-                  
-                  // Apply level filter for ILs (only if a level is selected)
-                  if (importedRunsLeaderboardType === 'individual-level' && importedRunsLevel && importedRunsLevel !== '__all__') {
-                    unverifiedImported = unverifiedImported.filter(run => {
-                      const runLevel = normalizeLevelId(run.level);
-                      return runLevel === importedRunsLevel;
-                    });
-                  }
-                  
-                  // Apply run type filter (solo/co-op)
-                  if (importedRunsRunType && importedRunsRunType !== '__all__') {
-                    unverifiedImported = unverifiedImported.filter(run => {
-                      const runRunType = run.runType || 'solo';
-                      return runRunType === importedRunsRunType;
-                    });
-                  }
-                  
-                  // Sort by date (most recent first) - ensure sorting is maintained after filtering
-                  unverifiedImported.sort((a, b) => {
-                    // Handle missing dates
-                    if (!a.date && !b.date) return 0;
-                    if (!a.date) return 1; // Missing date goes to end
-                    if (!b.date) return -1; // Missing date goes to end
-                    
-                    // Compare dates (YYYY-MM-DD format)
-                    // Most recent first = descending order
-                    return b.date.localeCompare(a.date);
-                  });
-                  
-                  // Calculate counts for tabs (before category/platform/level filters)
-                  const baseUnverified = importedSRCRuns.filter(r => r.verified !== true);
-                  const fullGameCount = baseUnverified.filter(r => (r.leaderboardType || 'regular') === 'regular').length;
-                  const ilCount = baseUnverified.filter(r => r.leaderboardType === 'individual-level').length;
-                  
-                  return (
-                    <>
-                      {/* Buttons for Full Game vs Individual Level - Always show buttons */}
-                      <Tabs 
-                        value={importedRunsLeaderboardType} 
-                        onValueChange={(value) => setImportedRunsLeaderboardType(value as 'regular' | 'individual-level')}
-                        className="w-full max-w-md mb-6"
-                      >
-                        <AnimatedTabsList 
-                          className="grid w-full grid-cols-2 p-0.5 gap-1 bg-[hsl(240,21%,15%)] rounded-none border border-[hsl(235,13%,30%)] h-auto"
-                          indicatorColor="hsl(240,21%,20%)"
-                        >
-                          <AnimatedTabsTrigger 
-                            value="regular"
-                            className="transition-all duration-200 data-[state=active]:bg-[hsl(240,21%,20%)] data-[state=active]:text-[hsl(220,17%,92%)] data-[state=active]:hover:bg-[hsl(240,21%,25%)] data-[state=inactive]:bg-[hsl(240,21%,15%)] data-[state=inactive]:text-[hsl(222,15%,60%)] data-[state=inactive]:hover:bg-[hsl(240,21%,18%)]"
-                          >
-                            Full Game ({fullGameCount})
-                          </AnimatedTabsTrigger>
-                          <AnimatedTabsTrigger 
-                            value="individual-level"
-                            className="transition-all duration-200 data-[state=active]:bg-[hsl(240,21%,20%)] data-[state=active]:text-[hsl(220,17%,92%)] data-[state=active]:hover:bg-[hsl(240,21%,25%)] data-[state=inactive]:bg-[hsl(240,21%,15%)] data-[state=inactive]:text-[hsl(222,15%,60%)] data-[state=inactive]:hover:bg-[hsl(240,21%,18%)]"
-                          >
-                            Individual Levels ({ilCount})
-                          </AnimatedTabsTrigger>
-                        </AnimatedTabsList>
-                      </Tabs>
-                      
-                      {/* Filters - Always show so users can adjust when results are empty */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                        <div>
-                          <Label htmlFor="imported-category-filter" className="text-[hsl(222,15%,60%)] mb-2 block">Category</Label>
-                          <Select
-                            value={importedRunsCategory}
-                            onValueChange={(value) => {
-                              setImportedRunsCategory(value);
-                              setImportedPage(1);
-                            }}
-                          >
-                            <SelectTrigger id="imported-category-filter" className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]">
-                              <SelectValue placeholder="All Categories" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="__all__">All Categories</SelectItem>
-                              {importedRunsCategories.map((cat) => (
-                                <SelectItem key={cat.id} value={cat.id}>
-                                  {cat.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label htmlFor="imported-platform-filter" className="text-[hsl(222,15%,60%)] mb-2 block">Platform</Label>
-                          <Select
-                            value={importedRunsPlatform}
-                            onValueChange={(value) => {
-                              setImportedRunsPlatform(value);
-                              setImportedPage(1);
-                            }}
-                          >
-                            <SelectTrigger id="imported-platform-filter" className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]">
-                              <SelectValue placeholder="All Platforms" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="__all__">All Platforms</SelectItem>
-                              {firestorePlatforms.map((platform) => (
-                                <SelectItem key={platform.id} value={platform.id}>
-                                  {platform.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        {importedRunsLeaderboardType === 'individual-level' && (
-                          <div>
-                            <Label htmlFor="imported-level-filter" className="text-[hsl(222,15%,60%)] mb-2 block">Level</Label>
-                            <Select
-                              value={importedRunsLevel}
-                              onValueChange={(value) => {
-                                setImportedRunsLevel(value);
-                                setImportedPage(1);
-                              }}
-                            >
-                              <SelectTrigger id="imported-level-filter" className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]">
-                                <SelectValue placeholder="All Levels" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="__all__">All Levels</SelectItem>
-                                {availableLevels.map((level) => (
-                                  <SelectItem key={level.id} value={level.id}>
-                                    {level.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        )}
-                        <div>
-                          <Label htmlFor="imported-runtype-filter" className="text-[hsl(222,15%,60%)] mb-2 block">Run Type</Label>
-                          <Select
-                            value={importedRunsRunType}
-                            onValueChange={(value) => {
-                              setImportedRunsRunType(value as "__all__" | "solo" | "co-op");
-                              setImportedPage(1);
-                            }}
-                          >
-                            <SelectTrigger id="imported-runtype-filter" className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]">
-                              <SelectValue placeholder="All Run Types" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="__all__">All Run Types</SelectItem>
-                              <SelectItem value="solo">Solo</SelectItem>
-                              <SelectItem value="co-op">Co-op</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      
-                      {/* Imported Runs Table */}
-                      {loadingImportedRuns ? (
-                        <div className="overflow-x-auto">
-                          <Table>
-                            <TableHeader>
-                              <TableRow className="border-b border-[hsl(235,13%,30%)] hover:bg-transparent">
-                                <TableHead className="py-3 px-4 text-left">Player(s)</TableHead>
-                                <TableHead className="py-3 px-4 text-left">Category</TableHead>
-                                <TableHead className="py-3 px-4 text-left">Platform</TableHead>
-                                <TableHead className="py-3 px-4 text-left">Level</TableHead>
-                                <TableHead className="py-3 px-4 text-left">Time</TableHead>
-                                <TableHead className="py-3 px-4 text-left">Date</TableHead>
-                                <TableHead className="py-3 px-4 text-left">Type</TableHead>
-                                <TableHead className="py-3 px-4 text-left">SRC Link</TableHead>
-                                <TableHead className="py-3 px-4 text-left">Issues</TableHead>
-                                <TableHead className="py-3 px-4 text-center">Actions</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {Array.from({ length: 5 }).map((_, index) => (
-                                <TableRow key={index} className="border-b border-[hsl(235,13%,30%)]">
-                                  <TableCell className="py-3 px-4">
-                                    <div className="h-4 bg-[hsl(240,21%,18%)] rounded-none animate-pulse w-24"></div>
-                                  </TableCell>
-                                  <TableCell className="py-3 px-4">
-                                    <div className="h-4 bg-[hsl(240,21%,18%)] rounded-none animate-pulse w-32"></div>
-                                  </TableCell>
-                                  <TableCell className="py-3 px-4">
-                                    <div className="h-4 bg-[hsl(240,21%,18%)] rounded-none animate-pulse w-20"></div>
-                                  </TableCell>
-                                  <TableCell className="py-3 px-4">
-                                    <div className="h-4 bg-[hsl(240,21%,18%)] rounded-none animate-pulse w-28"></div>
-                                  </TableCell>
-                                  <TableCell className="py-3 px-4">
-                                    <div className="h-4 bg-[hsl(240,21%,18%)] rounded-none animate-pulse w-16"></div>
-                                  </TableCell>
-                                  <TableCell className="py-3 px-4">
-                                    <div className="h-4 bg-[hsl(240,21%,18%)] rounded-none animate-pulse w-20"></div>
-                                  </TableCell>
-                                  <TableCell className="py-3 px-4">
-                                    <div className="h-4 bg-[hsl(240,21%,18%)] rounded-none animate-pulse w-12"></div>
-                                  </TableCell>
-                                  <TableCell className="py-3 px-4">
-                                    <div className="h-4 bg-[hsl(240,21%,18%)] rounded-none animate-pulse w-20"></div>
-                                  </TableCell>
-                                  <TableCell className="py-3 px-4">
-                                    <div className="h-4 bg-[hsl(240,21%,18%)] rounded-none animate-pulse w-16"></div>
-                                  </TableCell>
-                                  <TableCell className="py-3 px-4 text-center">
-                                    <div className="h-8 bg-[hsl(240,21%,18%)] rounded-none animate-pulse w-20 mx-auto"></div>
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </div>
-                      ) : unverifiedImported.length === 0 ? (
-                        <p className="text-[hsl(222,15%,60%)] text-center py-8">No unverified imported runs found for the selected filters.</p>
-                      ) : (
-                        <>
-                          <div className="overflow-x-auto">
-                            <Table>
-                              <TableHeader>
-                                <TableRow className="border-b border-[hsl(235,13%,30%)] hover:bg-transparent">
-                                  <TableHead className="py-3 px-4 text-left">Player(s)</TableHead>
-                                  <TableHead className="py-3 px-4 text-left">Category</TableHead>
-                                  <TableHead className="py-3 px-4 text-left">Platform</TableHead>
-                                  <TableHead className="py-3 px-4 text-left">Level</TableHead>
-                                  <TableHead className="py-3 px-4 text-left">Time</TableHead>
-                                  <TableHead className="py-3 px-4 text-left">Date</TableHead>
-                                  <TableHead className="py-3 px-4 text-left">Type</TableHead>
-                                  <TableHead className="py-3 px-4 text-left">SRC Link</TableHead>
-                                  <TableHead className="py-3 px-4 text-left">Issues</TableHead>
-                                  <TableHead className="py-3 px-4 text-center">Actions</TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {unverifiedImported.slice((importedPage - 1) * itemsPerPage, importedPage * itemsPerPage).map((run) => {
-                                  const categoryExists = firestoreCategories.some(c => c.id === run.category);
-                                  const platformExists = firestorePlatforms.some(p => p.id === run.platform);
-                                  const levelExists = run.level ? availableLevels.some(l => l.id === run.level) : true;
-                                  const isImportedWithSRCFallback = run.importedFromSRC && (run.srcCategoryName || run.srcPlatformName || run.srcLevelName);
-                                  const issues: string[] = [];
-                                  // For imported runs, only flag as invalid if no category ID AND no SRC fallback name
-                                  if (!run.category || (!categoryExists && run.category && run.category.trim() !== "")) {
-                                    if (!isImportedWithSRCFallback || !run.srcCategoryName) {
-                                      issues.push("Invalid/Missing Category");
-                                    }
-                                  }
-                                  // For imported runs, only flag as invalid if no platform ID AND no SRC fallback name
-                                  if (!run.platform || (!platformExists && run.platform && run.platform.trim() !== "")) {
-                                    if (!isImportedWithSRCFallback || !run.srcPlatformName) {
-                                      issues.push("Invalid/Missing Platform");
-                                    }
-                                  }
-                                  if ((run.leaderboardType === 'individual-level' || run.leaderboardType === 'community-golds') && (!run.level || !levelExists)) {
-                                    if (!isImportedWithSRCFallback || !run.srcLevelName) {
-                                      issues.push("Invalid/Missing Level");
-                                    }
-                                  }
-                                  
-                                  // Check subcategory validity (only for regular leaderboard type)
-                                  if (run.leaderboardType === 'regular' && run.category && categoryExists) {
-                                    const selectedCategory = firestoreCategories.find(c => c.id === run.category);
-                                    if (selectedCategory) {
-                                      const subcategories = selectedCategory.subcategories || [];
-                                      if (run.subcategory && run.subcategory.trim() !== '') {
-                                        // Run has a subcategory - check if it exists in the category's subcategories
-                                        const subcategoryExists = subcategories.some(s => s.id === run.subcategory);
-                                        if (!subcategoryExists) {
-                                          issues.push("Invalid Subcategory");
-                                        }
-                                      } else if (run.srcSubcategory && run.srcSubcategory.trim() !== '') {
-                                        // Run has SRC subcategory but no local subcategory ID - this is a mismatch
-                                        // Check if there's a matching subcategory by name
-                                        const matchingSubcategory = subcategories.find(s => 
-                                          s.name.toLowerCase().trim() === run.srcSubcategory.toLowerCase().trim()
-                                        );
-                                        if (!matchingSubcategory && subcategories.length > 0) {
-                                          // There are subcategories but none match the SRC subcategory
-                                          issues.push("Subcategory Mismatch");
-                                        }
-                                      }
-                                    }
-                                  }
-                                  
-                                  return (
-                                    <TableRow key={run.id} className="border-b border-[hsl(235,13%,30%)] hover:bg-[hsl(235,19%,13%)] transition-all duration-200 hover:shadow-md">
-                                      <TableCell className="py-3 px-4 font-medium">
-                                        <span style={{ color: run.nameColor || 'inherit' }}>{run.playerName}</span>
-                                        {run.player2Name && (
-                                          <>
-                                            <span className="text-muted-foreground"> & </span>
-                                            <span style={{ color: run.player2Color || 'inherit' }}>{run.player2Name}</span>
-                                          </>
-                                        )}
-                                      </TableCell>
-                                      <TableCell className="py-3 px-4">{
-                                        getCategoryName(run.category, firestoreCategories, run.srcCategoryName)
-                                      }</TableCell>
-                                      <TableCell className="py-3 px-4">{
-                                        getPlatformName(run.platform, firestorePlatforms, run.srcPlatformName)
-                                      }</TableCell>
-                                      <TableCell className="py-3 px-4">{
-                                        run.level ? getLevelName(run.level, availableLevels, run.srcLevelName) : "—"
-                                      }</TableCell>
-                                      <TableCell className="py-3 px-4 font-mono">{formatTime(run.time || '00:00:00')}</TableCell>
-                                      <TableCell className="py-3 px-4">{run.date}</TableCell>
-                                      <TableCell className="py-3 px-4">{run.runType.charAt(0).toUpperCase() + run.runType.slice(1)}</TableCell>
-                                      <TableCell className="py-3 px-4">
-                                        {run.srcRunId ? (
-                                          <a 
-                                            href={`https://www.speedrun.com/run/${run.srcRunId}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-[#cba6f7] hover:underline flex items-center gap-1"
-                                          >
-                                            View on SRC <ExternalLink className="h-4 w-4" />
-                                          </a>
-                                        ) : (
-                                          <span className="text-muted-foreground text-xs">—</span>
-                                        )}
-                                      </TableCell>
-                                      <TableCell className="py-3 px-4">
-                                        {issues.length > 0 ? (
-                                          <div className="flex flex-wrap gap-1">
-                                            {issues.map((issue, idx) => (
-                                              <Badge 
-                                                key={idx} 
-                                                variant="destructive" 
-                                                className="text-xs bg-yellow-600/20 text-yellow-400 border-yellow-600/50 hover:bg-yellow-600/30"
-                                              >
-                                                <AlertTriangle className="h-3 w-3 mr-1" />
-                                                {issue}
-                                              </Badge>
-                                            ))}
-                                          </div>
-                                        ) : (
-                                          <span className="text-muted-foreground text-xs">—</span>
-                                        )}
-                                      </TableCell>
-                                      <TableCell className="py-3 px-4 text-center space-x-2">
-                                        <Button 
-                                          variant="ghost" 
-                                          size="sm" 
-                                          onClick={() => {
-                                            setEditingImportedRun(run);
-                                            setEditingImportedRunForm({
-                                              playerName: run.playerName,
-                                              player2Name: run.player2Name,
-                                              category: run.category,
-                                              subcategory: run.subcategory,
-                                              platform: run.platform,
-                                              level: run.level,
-                                              runType: run.runType,
-                                              leaderboardType: run.leaderboardType,
-                                              time: run.time,
-                                              date: run.date,
-                                              videoUrl: run.videoUrl,
-                                              comment: run.comment,
-                                            });
-                                          }}
-                                          className="text-blue-500 hover:bg-blue-900/20 transition-all duration-300 hover:scale-110 hover:shadow-md"
-                                        >
-                                          <Edit2 className="h-4 w-4" />
-                                        </Button>
-                                        <Button 
-                                          variant="ghost" 
-                                          size="sm" 
-                                          onClick={() => handleReject(run.id)}
-                                          className="text-red-500 hover:bg-red-900/20 transition-all duration-300 hover:scale-110 hover:shadow-md"
-                                        >
-                                          <XCircle className="h-4 w-4" />
-                                        </Button>
-                                      </TableCell>
-                                    </TableRow>
-                                  );
-                                })}
-                              </TableBody>
-                            </Table>
-                          </div>
-                          {unverifiedImported.length > itemsPerPage && (
-                            <Pagination
-                              currentPage={importedPage}
-                              totalPages={Math.ceil(unverifiedImported.length / itemsPerPage)}
-                              onPageChange={setImportedPage}
-                              itemsPerPage={itemsPerPage}
-                              totalItems={unverifiedImported.length}
-                            />
-                          )}
-                        </>
-                      )}
-                    </>
-                  );
-                })()}
-              </CardContent>
-            </Card>
-
-            {/* SRC Categories Reference Card */}
-            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
-              <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2 text-xl text-[#f2cdcd]">
-                    <FolderTree className="h-5 w-5" />
-                    <span>SRC Categories Reference</span>
-                  </CardTitle>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={fetchSRCCategoriesWithVariables}
-                    disabled={loadingSRCCategories}
-                    className="border-[hsl(235,13%,30%)] hover:bg-[hsl(235,19%,13%)]"
-                  >
-                    <RefreshCw className={`h-4 w-4 mr-2 ${loadingSRCCategories ? 'animate-spin' : ''}`} />
-                    {loadingSRCCategories ? 'Loading...' : 'Load Categories'}
-                  </Button>
-                </div>
-                <p className="text-sm text-[hsl(222,15%,60%)] mt-2">
-                  View all Speedrun.com categories with their IDs and variables for reference.
-                </p>
-              </CardHeader>
-              <CardContent className="pt-6">
-                {loadingSRCCategories ? (
-                  <div className="text-center py-8">
-                    <LoadingSpinner />
-                  </div>
-                ) : srcCategoriesWithVars.length === 0 ? (
-                  <p className="text-[hsl(222,15%,60%)] text-center py-8">
-                    Click "Load Categories" to fetch SRC categories and their variables.
-                  </p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="border-b border-[hsl(235,13%,30%)] hover:bg-transparent">
-                          <TableHead className="py-3 px-4 text-left">Category Name</TableHead>
-                          <TableHead className="py-3 px-4 text-left">Category ID</TableHead>
-                          <TableHead className="py-3 px-4 text-left">Type</TableHead>
-                          <TableHead className="py-3 px-4 text-left">Variables</TableHead>
-                          <TableHead className="py-3 px-4 text-left">Link to Category</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {srcCategoriesWithVars.map((category) => {
-                          // Find if this SRC category is already linked to any local category
-                          const linkedCategory = allCategoriesForSRCLinking.find(c => c.srcCategoryId === category.id);
-                          const expectedLeaderboardType = category.type === 'per-game' ? 'regular' : 'individual-level';
-                          const matchingCategories = allCategoriesForSRCLinking.filter(c => {
-                            const catType = c.leaderboardType || 'regular';
-                            return catType === expectedLeaderboardType;
-                          });
-                          
-                          return (
-                          <TableRow key={category.id} className="border-b border-[hsl(235,13%,30%)] hover:bg-[hsl(235,19%,13%)] transition-all duration-200">
-                            <TableCell className="py-3 px-4 font-medium">{category.name}</TableCell>
-                            <TableCell className="py-3 px-4">
-                              <code className="text-[#cba6f7] text-sm">{category.id}</code>
-                            </TableCell>
-                            <TableCell className="py-3 px-4">
-                              <Badge variant="outline" className="text-xs">
-                                {category.type === 'per-game' ? 'Full Game' : 'Per Level'}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="py-3 px-4">
-                              {category.variablesData && category.variablesData.length > 0 ? (
-                                <div className="space-y-2">
-                                  {category.variablesData.map((variable) => (
-                                    <div key={variable.id} className="bg-[hsl(240,21%,15%)] rounded-none p-2 border border-[hsl(235,13%,30%)]">
-                                      <div className="font-medium text-sm mb-1">{variable.name}</div>
-                                      <div className="text-xs text-[hsl(222,15%,60%)] mb-1">
-                                        Variable ID: <code className="text-[#cba6f7]">{variable.id}</code>
-                                      </div>
-                                      {variable.values?.values && Object.keys(variable.values.values).length > 0 && (
-                                        <div className="mt-2">
-                                          <div className="text-xs font-medium text-[hsl(222,15%,60%)] mb-1">Values:</div>
-                                          <div className="flex flex-wrap gap-1">
-                                            {Object.entries(variable.values.values).map(([valueId, valueData]) => (
-                                              <Badge key={valueId} variant="secondary" className="text-xs">
-                                                <span className="font-medium">{valueData.label}</span>
-                                                <span className="ml-1 text-[hsl(222,15%,60%)]">({valueId})</span>
-                                              </Badge>
-                                            ))}
-                                          </div>
-                                        </div>
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                <span className="text-muted-foreground text-sm">No variables</span>
-                              )}
-                            </TableCell>
-                            <TableCell className="py-3 px-4">
-                              {linkedCategory ? (
-                                <div className="flex flex-col gap-2">
-                                  <Badge variant="default" className="bg-green-600/20 text-green-400 border-green-600/50 text-xs w-fit">
-                                    Linked to: {linkedCategory.name}
-                                  </Badge>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={async () => {
-                                      if (!window.confirm(`Unlink "${linkedCategory.name}" from this SRC category?`)) return;
-                                      setUpdatingCategory(true);
-                                      try {
-                                        const currentCategory = allCategoriesForSRCLinking.find(c => c.id === linkedCategory.id);
-                                        const subcategories = currentCategory?.subcategories || [];
-                                        const { updateCategory } = await import("@/lib/db/categories");
-        await updateCategory(linkedCategory.id, linkedCategory.name, subcategories, null);
-                                        toast({
-                                          title: "Unlinked",
-                                          description: `Category "${linkedCategory.name}" has been unlinked from SRC category.`,
-                                        });
-                                        // Refresh categories for the current leaderboard type
-                                        await fetchCategories(categoryLeaderboardType);
-                                        // Refresh all categories for SRC linking
-                                        await fetchSRCCategoriesWithVariables();
-                                      } catch (error: any) {
-                                        toast({
-                                          title: "Error",
-                                          description: error.message || "Failed to unlink category.",
-                                          variant: "destructive",
-                                        });
-                                      } finally {
-                                        setUpdatingCategory(false);
-                                      }
-                                    }}
-                                    disabled={updatingCategory}
-                                    className="text-red-500 hover:bg-red-900/20 text-xs h-6"
-                                  >
-                                    Unlink
-                                  </Button>
-                                </div>
-                              ) : (
-                                <Select
-                                  value=""
-                                  onValueChange={async (categoryId) => {
-                                    if (!categoryId) return;
-                                    setUpdatingCategory(true);
-                                    try {
-                                      const targetCategory = allCategoriesForSRCLinking.find(c => c.id === categoryId);
-                                      if (!targetCategory) return;
-                                      const subcategories = targetCategory.subcategories || [];
-                                      const { updateCategory } = await import("@/lib/db/categories");
-        await updateCategory(categoryId, targetCategory.name, subcategories, category.id);
-                                      toast({
-                                        title: "Linked",
-                                        description: `Category "${targetCategory.name}" has been linked to SRC category "${category.name}".`,
-                                      });
-                                      // Refresh categories for the current leaderboard type
-                                      await fetchCategories(categoryLeaderboardType);
-                                      // Refresh all categories for SRC linking
-                                      await fetchSRCCategoriesWithVariables();
-                                    } catch (error: any) {
-                                      toast({
-                                        title: "Error",
-                                        description: error.message || "Failed to link category.",
-                                        variant: "destructive",
-                                      });
-                                    } finally {
-                                      setUpdatingCategory(false);
-                                    }
-                                  }}
-                                  disabled={updatingCategory || matchingCategories.length === 0}
-                                >
-                                  <SelectTrigger className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] h-8 text-xs">
-                                    <SelectValue placeholder="Link to category..." />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {matchingCategories.map((cat) => (
-                                      <SelectItem key={cat.id} value={cat.id}>
-                                        {cat.name}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
+          <AnimatedTabsContent value="src" className="space-y-4">
+            <FadeIn key="src" direction="fade">
+            <SRCToolsTab
+              importedSRCRuns={importedSRCRuns}
+              firestoreCategories={firestoreCategories}
+              firestorePlatforms={firestorePlatforms}
+              availableLevels={availableLevels}
+              importedRunsCategories={importedRunsCategories}
+              srcCategoriesWithVars={srcCategoriesWithVars}
+              allCategoriesForSRCLinking={allCategoriesForSRCLinking}
+              importingRuns={importingRuns}
+              loadingImportedRuns={loadingImportedRuns}
+              clearingImportedRuns={clearingImportedRuns}
+              batchVerifying={batchVerifying}
+              batchVerifyingAll={batchVerifyingAll}
+              autoclaiming={autoclaiming}
+              backfillingSrcPlayerName={backfillingSrcPlayerName}
+              loadingSRCCategories={loadingSRCCategories}
+              updatingCategory={updatingCategory}
+              importProgress={importProgress}
+              onImportFromSRC={handleImportFromSRC}
+              onClearImportedRuns={handleClearImportedRuns}
+              onBatchVerify={handleBatchVerify}
+              onBatchVerifyAll={handleBatchVerifyAll}
+              onAutoclaimRuns={handleAutoclaimRuns}
+              onBackfillSrcPlayerName={handleBackfillSrcPlayerName}
+              onFetchSRCCategoriesWithVariables={fetchSRCCategoriesWithVariables}
+              onEditRun={handleEditImportedRun}
+              onReject={handleReject}
+              onLinkCategory={handleLinkCategory}
+              onUnlinkCategory={handleUnlinkCategory}
+              onFetchCategories={fetchCategories}
+              categoryLeaderboardType={categoryLeaderboardType}
+            />
+            </FadeIn>
           </AnimatedTabsContent>
 
         {/* Unverified Runs Section */}
-          <AnimatedTabsContent value="runs" className="space-y-4 animate-fade-in">
-            {/* Regular Unverified Runs */}
-            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
-              <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
-                <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2 text-xl text-[#f2cdcd]">
-                  <span>
-                    Unverified Runs
-                  </span>
-                    {unverifiedRuns.length > 0 && (
-                      <Badge variant="secondary" className="ml-2">
-                        {unverifiedRuns.length}
-                      </Badge>
-                    )}
-                </CardTitle>
-                  {unverifiedRuns.length > 0 && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowConfirmClearUnverifiedDialog(true)}
-                      disabled={clearingUnverifiedRuns}
-                      className="border-red-500/50 text-red-500 hover:bg-red-500/10 hover:border-red-500"
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      {clearingUnverifiedRuns ? "Clearing..." : "Clear All"}
-                    </Button>
-                  )}
-                </div>
-          </CardHeader>
-          <CardContent>
-            {unverifiedRuns.length === 0 ? (
-              <p className="text-[hsl(222,15%,60%)] text-center py-8">No runs awaiting verification.</p>
-            ) : (
-              <>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-b border-[hsl(235,13%,30%)] hover:bg-transparent">
-                      <TableHead className="py-3 px-4 text-left">Player(s)</TableHead>
-                      <TableHead className="py-3 px-4 text-left">Category</TableHead>
-                      <TableHead className="py-3 px-4 text-left">Time</TableHead>
-                      <TableHead className="py-3 px-4 text-left">Platform</TableHead>
-                      <TableHead className="py-3 px-4 text-left">Type</TableHead>
-                      <TableHead className="py-3 px-4 text-left">Video</TableHead>
-                      <TableHead className="py-3 px-4 text-center">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                      {unverifiedRuns.slice((unverifiedPage - 1) * itemsPerPage, unverifiedPage * itemsPerPage).map((run) => (
-                      <TableRow key={run.id} className="border-b border-[hsl(235,13%,30%)] hover:bg-[hsl(235,19%,13%)] transition-all duration-200 hover:shadow-md">
-                        <TableCell className="py-3 px-4 font-medium">
-                          <span style={{ color: run.nameColor || 'inherit' }}>{run.playerName}</span>
-                          {run.player2Name && (
-                            <>
-                              <span className="text-muted-foreground"> & </span>
-                              <span style={{ color: run.player2Color || 'inherit' }}>{run.player2Name}</span>
-                            </>
-                          )}
-                        </TableCell>
-                        <TableCell className="py-3 px-4">{
-                          getCategoryName(run.category, firestoreCategories)
-                        }</TableCell>
-                        <TableCell className="py-3 px-4 font-mono">{formatTime(run.time || '00:00:00')}</TableCell>
-                        <TableCell className="py-3 px-4">{
-                          getPlatformName(run.platform, firestorePlatforms)
-                        }</TableCell>
-                        <TableCell className="py-3 px-4">{run.runType.charAt(0).toUpperCase() + run.runType.slice(1)}</TableCell>
-                        <TableCell className="py-3 px-4">
-                          {run.videoUrl && (
-                            <a href={run.videoUrl} target="_blank" rel="noopener noreferrer" className="text-[#cba6f7] hover:underline flex items-center gap-1">
-                              Watch <ExternalLink className="h-4 w-4" />
-                            </a>
-                          )}
-                        </TableCell>
-                        <TableCell className="py-3 px-4 text-center space-x-2">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={() => handleVerify(run.id)}
-                            className="text-green-500 hover:bg-green-900/20 transition-all duration-300 hover:scale-110 hover:shadow-md"
-                          >
-                            <CheckCircle className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={() => handleReject(run.id)}
-                            className="text-red-500 hover:bg-red-900/20 transition-all duration-300 hover:scale-110 hover:shadow-md"
-                          >
-                            <XCircle className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-                {unverifiedRuns.length > itemsPerPage && (
-                  <Pagination
-                    currentPage={unverifiedPage}
-                    totalPages={Math.ceil(unverifiedRuns.length / itemsPerPage)}
-                    onPageChange={setUnverifiedPage}
-                    itemsPerPage={itemsPerPage}
-                    totalItems={unverifiedRuns.length}
-                  />
-                )}
-              </>
-            )}
-          </CardContent>
-        </Card>
-
+          <AnimatedTabsContent value="runs" className="space-y-4">
+            <FadeIn key="runs" direction="fade">
+              <RunsTab
+                firestoreCategories={firestoreCategories}
+                firestorePlatforms={firestorePlatforms}
+                onVerify={handleVerify}
+                onReject={handleReject}
+              />
+            </FadeIn>
           </AnimatedTabsContent>
 
           {/* Translations Section */}
-          <AnimatedTabsContent value="translations" className="space-y-4 animate-fade-in">
-            <TranslationManager />
+          <AnimatedTabsContent value="translations" className="space-y-4">
+            <FadeIn key="translations" direction="fade">
+              <TranslationTab />
+            </FadeIn>
           </AnimatedTabsContent>
 
         {/* Confirm Clear Unverified Runs Dialog */}
@@ -5786,2584 +3119,59 @@ const Admin = () => {
 
         {/* Category Management Section */}
           <AnimatedTabsContent value="categories" className="space-y-4 animate-fade-in">
-            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
-              <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
-                <CardTitle className="flex items-center gap-2 text-xl text-[#f2cdcd]">
-                  <span>
-              Manage Categories
-                  </span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4">
-            <Tabs 
-              value={categoryLeaderboardType} 
-              onValueChange={(value) => {
-                const type = value as 'regular' | 'individual-level' | 'community-golds';
-                setCategoryLeaderboardType(type);
-                fetchCategories(type);
-                if (type !== 'regular') {
-                  setSelectedCategoryForSubcategories(null);
-                  setCategoryManagementTab('categories');
-                }
-              }}
-              className="w-full mb-4"
-            >
-              <AnimatedTabsList 
-                className="grid w-full grid-cols-3 p-1 gap-2 h-auto"
-                indicatorClassName="h-0.5 bg-[#94e2d5]"
-              >
-                <AnimatedTabsTrigger 
-                  value="regular"
-                  className="py-2 px-3 text-sm transition-all duration-300 font-medium data-[state=active]:text-[#94e2d5]"
-                >
-                  <Trophy className="h-4 w-4 mr-2" />
-                  Full Game
-                </AnimatedTabsTrigger>
-                <AnimatedTabsTrigger 
-                  value="individual-level"
-                  className="py-2 px-3 text-sm transition-all duration-300 font-medium data-[state=active]:text-[#94e2d5]"
-                >
-                  <Star className="h-4 w-4 mr-2" />
-                  Individual Level
-                </AnimatedTabsTrigger>
-                <AnimatedTabsTrigger 
-                  value="community-golds"
-                  className="py-2 px-3 text-sm transition-all duration-300 font-medium data-[state=active]:text-[#94e2d5]"
-                >
-                  <Gem className="h-4 w-4 mr-2" />
-                  Community Golds
-                </AnimatedTabsTrigger>
-              </AnimatedTabsList>
-            </Tabs>
-
-            <div className="mt-0">
-                {/* Inner tabs for Categories vs Subcategories (only show subcategories for regular) */}
-                {categoryLeaderboardType === 'regular' ? (
-                  <Tabs value={categoryManagementTab} onValueChange={(value) => setCategoryManagementTab(value as 'categories' | 'subcategories')} className="mb-4">
-                    <AnimatedTabsList className="grid w-full grid-cols-2 rounded-none p-0.5 gap-1 mb-4" indicatorClassName="h-0.5 bg-[#cba6f7]">
-                      <AnimatedTabsTrigger 
-                        value="categories" 
-                        className="transition-all duration-300 font-medium py-2 px-3 text-sm data-[state=active]:text-[#cba6f7]"
-                      >
-                        Categories
-                      </AnimatedTabsTrigger>
-                      <AnimatedTabsTrigger 
-                        value="subcategories" 
-                        className="transition-all duration-300 font-medium py-2 px-3 text-sm data-[state=active]:text-[#cba6f7]"
-                      >
-                        Subcategories
-                      </AnimatedTabsTrigger>
-                    </AnimatedTabsList>
-
-                    <AnimatedTabsContent value="categories" className="mt-0">
-                <div className="mb-4 flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <Languages className="h-4 w-4 text-[hsl(222,15%,60%)]" />
-                    <Label htmlFor="translation-language" className="text-sm">Translation Language:</Label>
-                    <Select
-                      value={selectedTranslationLanguage}
-                      onValueChange={setSelectedTranslationLanguage}
-                    >
-                      <SelectTrigger id="translation-language" className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] h-8 text-sm w-32">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="en">English</SelectItem>
-                        <SelectItem value="es">Español</SelectItem>
-                        <SelectItem value="pt-BR">Português</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div>
-                    <h3 className="text-base font-semibold mb-3">Add New Category</h3>
-                    <form onSubmit={handleAddCategory} className="space-y-3">
-                      <div>
-                        <Label htmlFor="categoryName" className="text-sm">Category Name</Label>
-                <Input
-                  id="categoryName"
-                  type="text"
-                  value={newCategoryName}
-                  onChange={(e) => setNewCategoryName(e.target.value)}
-                  placeholder="e.g., 100% Glitchless"
-                  required
-                          className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] h-9 text-sm"
-                />
-              </div>
-              <Button 
-                type="submit" 
-                disabled={addingCategory}
-                        size="sm"
-                        className="bg-gradient-to-r from-[#cba6f7] to-[#b4a0e2] hover:from-[#b4a0e2] hover:to-[#cba6f7] text-[hsl(240,21%,15%)] font-bold flex items-center gap-2 transition-all duration-300 hover:scale-105 hover:shadow-lg"
-              >
-                        <PlusCircle className="h-3 w-3" />
-                {addingCategory ? "Adding..." : "Add Category"}
-              </Button>
-            </form>
-                  </div>
-                  <div>
-                    <h3 className="text-base font-semibold mb-3">Existing Categories</h3>
-            {firestoreCategories.length === 0 ? (
-                      <p className="text-[hsl(222,15%,60%)] text-center py-4 text-sm">No categories found. Add your first category!</p>
-            ) : (
-                      <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-b border-[hsl(235,13%,30%)] hover:bg-transparent">
-                              <TableHead className="py-2 px-3 text-left text-xs">Name</TableHead>
-                              <TableHead className="py-2 px-3 text-left text-xs">SRC Category ID</TableHead>
-                              <TableHead className="py-2 px-3 text-center text-xs">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {firestoreCategories.map((category, index) => {
-                      const translatedName = getCategoryTranslation(category.id, category.name);
-                      const hasTranslation = translatedName !== category.name;
-                      return (
-                              <TableRow key={category.id} className="border-b border-[hsl(235,13%,30%)] hover:bg-[hsl(235,19%,13%)] transition-all duration-200 hover:shadow-sm">
-                                <TableCell className="py-2 px-3 font-medium text-sm">
-                          {editingCategory?.id === category.id ? (
-                            <Input
-                              value={editingCategoryName}
-                              onChange={(e) => setEditingCategoryName(e.target.value)}
-                                      className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] h-8 text-sm"
-                              autoFocus
-                            />
-                          ) : (
-                            <div className="flex flex-col gap-1">
-                              <span>{translatedName}</span>
-                              {hasTranslation && (
-                                <span className="text-xs text-[hsl(222,15%,60%)]">Original: {category.name}</span>
-                              )}
-                            </div>
-                          )}
-                        </TableCell>
-                                <TableCell className="py-2 px-3 text-sm">
-                          {editingCategory?.id === category.id ? (
-                            <Input
-                              value={editingCategorySrcId}
-                              onChange={(e) => setEditingCategorySrcId(e.target.value)}
-                              placeholder="e.g., 9kj3k0x8"
-                                      className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] h-8 text-sm"
-                            />
-                          ) : (
-                            <span className="text-[hsl(222,15%,60%)]">
-                              {(category as Category).srcCategoryId || "—"}
-                            </span>
-                          )}
-                        </TableCell>
-                                <TableCell className="py-2 px-3 text-center space-x-1">
-                          {editingCategory?.id === category.id ? (
-                            <>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={handleSaveEditCategory}
-                                disabled={updatingCategory}
-                                className="text-green-500 hover:bg-green-900/20"
-                              >
-                                Save
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={handleCancelEditCategory}
-                                disabled={updatingCategory}
-                                className="text-gray-500 hover:bg-gray-900/20"
-                              >
-                                Cancel
-                              </Button>
-                            </>
-                          ) : (
-                            <>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleMoveCategoryUp(category.id)}
-                                disabled={reorderingCategory === category.id || index === 0}
-                                  className="text-purple-500 hover:bg-purple-900/20 disabled:opacity-50 h-7 w-7 p-0 transition-all duration-200 hover:scale-110"
-                                title="Move up"
-                              >
-                                  <ArrowUp className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleMoveCategoryDown(category.id)}
-                                disabled={reorderingCategory === category.id || index === firestoreCategories.length - 1}
-                                  className="text-purple-500 hover:bg-purple-900/20 disabled:opacity-50 h-7 w-7 p-0 transition-all duration-200 hover:scale-110"
-                                title="Move down"
-                              >
-                                  <ArrowDown className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleStartEditCategory(category)}
-                                  className="text-blue-500 hover:bg-blue-900/20 h-7 w-7 p-0 transition-all duration-200 hover:scale-110"
-                              >
-                                  <Edit2 className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleStartEditTranslation('category', category.id, category.name)}
-                                  className="text-[#94e2d5] hover:bg-teal-900/20 h-7 w-7 p-0 transition-all duration-200 hover:scale-110"
-                                title="Manage translations"
-                              >
-                                  <Languages className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDeleteCategory(category.id)}
-                                  className="text-red-500 hover:bg-red-900/20 h-7 w-7 p-0 transition-all duration-200 hover:scale-110"
-                              >
-                                  <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-                  </div>
-                </div>
-                    </AnimatedTabsContent>
-
-                    <AnimatedTabsContent value="subcategories" className="mt-0">
-                      <div className="space-y-6">
-                        {/* Category Selection */}
-                        <div>
-                          <Label htmlFor="subcategory-category-select" className="text-sm mb-2 block">Select Category</Label>
-                          <Select
-                            value={selectedCategoryForSubcategories?.id || ""}
-                            onValueChange={(value) => {
-                              const category = firestoreCategories.find(c => c.id === value) as Category | undefined;
-                              setSelectedCategoryForSubcategories(category || null);
-                            }}
-                          >
-                            <SelectTrigger id="subcategory-category-select" className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]">
-                              <SelectValue placeholder="Select a category to manage subcategories" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {firestoreCategories.map((cat) => (
-                                <SelectItem key={cat.id} value={cat.id}>
-                                  {cat.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          {selectedCategoryForSubcategories && !selectedCategoryForSubcategories.srcCategoryId && (
-                            <p className="text-xs text-yellow-400 mt-2">
-                              Note: This category doesn't have a linked SRC category ID. SRC variable import will not be available. You can set the SRC Category ID in the Categories tab by editing this category.
-                            </p>
-                          )}
-                        </div>
-
-                        {selectedCategoryForSubcategories && (
-                          <>
-                            {/* SRC Variables Section */}
-                            {selectedCategoryForSubcategories.srcCategoryId && (
-                              <div className="bg-[hsl(240,21%,15%)] rounded-none p-4 border border-[hsl(235,13%,30%)]">
-                                <div className="flex items-center justify-between mb-3">
-                                  <h4 className="text-sm font-semibold text-[#f2cdcd]">Speedrun.com Variables</h4>
-                                  {srcVariables.length > 0 && (
-                                    <Button
-                                      onClick={handleImportSubcategoriesFromSRC}
-                                      disabled={updatingSubcategory || loadingSRCVariables}
-                                      size="sm"
-                                      className="bg-gradient-to-r from-[#94e2d5] to-[#74c7b0] hover:from-[#74c7b0] hover:to-[#94e2d5] text-[hsl(240,21%,15%)] font-bold text-xs"
-                                    >
-                                      <Upload className="h-3 w-3 mr-1" />
-                                      Import from SRC
-                                    </Button>
-                                  )}
-                                </div>
-                                {loadingSRCVariables ? (
-                                  <p className="text-xs text-[hsl(222,15%,60%)]">Loading SRC variables...</p>
-                                ) : srcVariables.length > 0 ? (
-                                  <div className="space-y-3">
-                                    {/* Variable Selection Dropdown (only show if multiple variables) */}
-                                    {srcVariables.length > 1 && (
-                                      <div>
-                                        <Label htmlFor="subcategory-variable-select" className="text-xs mb-2 block text-[#f2cdcd]">
-                                          Select Variable for Subcategories
-                                        </Label>
-                                        <Select
-                                          value={selectedCategoryForSubcategories.srcSubcategoryVariableName || "__default__"}
-                                          onValueChange={(value) => handleSetSubcategoryVariable(value === "__default__" ? null : value)}
-                                          disabled={updatingSubcategory}
-                                        >
-                                          <SelectTrigger 
-                                            id="subcategory-variable-select"
-                                            className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] h-9 text-sm"
-                                          >
-                                            <SelectValue placeholder="Select variable (defaults to first)" />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            <SelectItem value="__default__">Use First Variable (Default)</SelectItem>
-                                            {srcVariables.map((variable) => (
-                                              <SelectItem key={variable.id} value={variable.name}>
-                                                {variable.name}
-                                              </SelectItem>
-                                            ))}
-                                          </SelectContent>
-                                        </Select>
-                                        <p className="text-xs text-[hsl(222,15%,60%)] mt-1">
-                                          {selectedCategoryForSubcategories.srcSubcategoryVariableName 
-                                            ? `Using "${selectedCategoryForSubcategories.srcSubcategoryVariableName}" for subcategories.`
-                                            : "Using first variable for subcategories."}
-                                        </p>
-                                      </div>
-                                    )}
-                                    <div className="space-y-2">
-                                      {srcVariables.map((variable) => {
-                                        const isSelected = selectedCategoryForSubcategories.srcSubcategoryVariableName 
-                                          ? variable.name.toLowerCase().trim() === selectedCategoryForSubcategories.srcSubcategoryVariableName.toLowerCase().trim()
-                                          : srcVariables.indexOf(variable) === 0;
-                                        return (
-                                          <div 
-                                            key={variable.id} 
-                                            className={`text-xs p-2 rounded-none border ${
-                                              isSelected 
-                                                ? 'bg-[hsl(240,21%,18%)] border-[#94e2d5]' 
-                                                : 'bg-[hsl(240,21%,12%)] border-[hsl(235,13%,30%)]'
-                                            }`}
-                                          >
-                                            <div className="flex items-center gap-2 mb-1">
-                                              <div className={`font-medium ${isSelected ? 'text-[#94e2d5]' : 'text-[#cba6f7]'}`}>
-                                                {variable.name}
-                                              </div>
-                                              {isSelected && (
-                                                <Badge variant="outline" className="text-xs border-[#94e2d5] text-[#94e2d5]">
-                                                  Selected
-                                                </Badge>
-                                              )}
-                                            </div>
-                                            <div className="text-[hsl(222,15%,60%)] space-y-1">
-                                              {Object.entries(variable.values.values).slice(0, 5).map(([valueId, valueData]) => (
-                                                <div key={valueId}>• {valueData.label}</div>
-                                              ))}
-                                              {Object.keys(variable.values.values).length > 5 && (
-                                                <div className="text-[hsl(222,15%,50%)]">
-                                                  ... and {Object.keys(variable.values.values).length - 5} more
-                                                </div>
-                                              )}
-                                            </div>
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <p className="text-xs text-[hsl(222,15%,60%)]">No variables found for this category on Speedrun.com.</p>
-                                )}
-                              </div>
-                            )}
-
-                            {/* Add Subcategory */}
-                            <div className="bg-[hsl(240,21%,15%)] rounded-none p-4 border border-[hsl(235,13%,30%)]">
-                              <h4 className="text-sm font-semibold mb-3 text-[#f2cdcd]">Add New Subcategory</h4>
-                              <form onSubmit={(e) => { e.preventDefault(); handleAddSubcategory(); }} className="space-y-3">
-                                <div>
-                                  <Label htmlFor="new-subcategory-name" className="text-xs">Subcategory Name</Label>
-                                  <Input
-                                    id="new-subcategory-name"
-                                    type="text"
-                                    value={newSubcategoryName}
-                                    onChange={(e) => setNewSubcategoryName(e.target.value)}
-                                    placeholder="e.g., Glitchless"
-                                    required
-                                    className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] h-9 text-sm"
-                                  />
-                                </div>
-                                <Button
-                                  type="submit"
-                                  disabled={addingSubcategory}
-                                  size="sm"
-                                  className="bg-gradient-to-r from-[#cba6f7] to-[#b4a0e2] hover:from-[#b4a0e2] hover:to-[#cba6f7] text-[hsl(240,21%,15%)] font-bold flex items-center gap-2 transition-all duration-300 hover:scale-105 hover:shadow-lg"
-                                >
-                                  <PlusCircle className="h-3 w-3" />
-                                  {addingSubcategory ? "Adding..." : "Add Subcategory"}
-                                </Button>
-                              </form>
-                            </div>
-
-                            {/* Existing Subcategories */}
-                            <div>
-                              <h4 className="text-sm font-semibold mb-3 text-[#f2cdcd]">Existing Subcategories</h4>
-                              {(() => {
-                                const currentCategory = firestoreCategories.find(c => c.id === selectedCategoryForSubcategories.id) as Category | undefined;
-                                const subcategories = currentCategory?.subcategories || [];
-                                const sortedSubcategories = [...subcategories].sort((a, b) => {
-                                  const orderA = a.order ?? Infinity;
-                                  const orderB = b.order ?? Infinity;
-                                  return orderA - orderB;
-                                });
-
-                                if (sortedSubcategories.length === 0) {
-                                  return (
-                                    <p className="text-[hsl(222,15%,60%)] text-center py-4 text-sm">
-                                      No subcategories found. Add your first subcategory!
-                                    </p>
-                                  );
-                                }
-
-                                return (
-                                  <div className="overflow-x-auto">
-                                    <Table>
-                                      <TableHeader>
-                                        <TableRow className="border-b border-[hsl(235,13%,30%)] hover:bg-transparent">
-                                          <TableHead className="py-2 px-3 text-left text-xs">Name</TableHead>
-                                          <TableHead className="py-2 px-3 text-left text-xs">SRC Link</TableHead>
-                                          <TableHead className="py-2 px-3 text-center text-xs">Actions</TableHead>
-                                        </TableRow>
-                                      </TableHeader>
-                                      <TableBody>
-                                        {sortedSubcategories.map((subcategory, index) => (
-                                          <TableRow key={subcategory.id} className="border-b border-[hsl(235,13%,30%)] hover:bg-[hsl(235,19%,13%)] transition-all duration-200 hover:shadow-sm">
-                                            <TableCell className="py-2 px-3 font-medium text-sm">
-                                              {editingSubcategory?.id === subcategory.id ? (
-                                                <Input
-                                                  value={editingSubcategoryName}
-                                                  onChange={(e) => setEditingSubcategoryName(e.target.value)}
-                                                  className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] h-8 text-sm"
-                                                  autoFocus
-                                                />
-                                              ) : (
-                                                subcategory.name
-                                              )}
-                                            </TableCell>
-                                            <TableCell className="py-2 px-3 text-xs text-[hsl(222,15%,60%)]">
-                                              {subcategory.srcVariableId && subcategory.srcValueId ? (
-                                                <span className="text-green-400">Linked to SRC</span>
-                                              ) : (
-                                                <span className="text-[hsl(222,15%,50%)]">—</span>
-                                              )}
-                                            </TableCell>
-                                            <TableCell className="py-2 px-3 text-center space-x-1">
-                                              {editingSubcategory?.id === subcategory.id ? (
-                                                <>
-                                                  <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={handleSaveEditSubcategory}
-                                                    disabled={updatingSubcategory}
-                                                    className="text-green-500 hover:bg-green-900/20 h-7"
-                                                  >
-                                                    Save
-                                                  </Button>
-                                                  <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={handleCancelEditSubcategory}
-                                                    disabled={updatingSubcategory}
-                                                    className="text-gray-500 hover:bg-gray-900/20 h-7"
-                                                  >
-                                                    Cancel
-                                                  </Button>
-                                                </>
-                                              ) : (
-                                                <>
-                                                  <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => handleMoveSubcategoryUp(subcategory.id)}
-                                                    disabled={reorderingSubcategory === subcategory.id || index === 0}
-                                                    className="text-purple-500 hover:bg-purple-900/20 disabled:opacity-50 h-7 w-7 p-0 transition-all duration-200 hover:scale-110"
-                                                    title="Move up"
-                                                  >
-                                                    <ArrowUp className="h-3 w-3" />
-                                                  </Button>
-                                                  <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => handleMoveSubcategoryDown(subcategory.id)}
-                                                    disabled={reorderingSubcategory === subcategory.id || index === sortedSubcategories.length - 1}
-                                                    className="text-purple-500 hover:bg-purple-900/20 disabled:opacity-50 h-7 w-7 p-0 transition-all duration-200 hover:scale-110"
-                                                    title="Move down"
-                                                  >
-                                                    <ArrowDown className="h-3 w-3" />
-                                                  </Button>
-                                                  <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => handleStartEditSubcategory(subcategory)}
-                                                    className="text-blue-500 hover:bg-blue-900/20 h-7 w-7 p-0 transition-all duration-200 hover:scale-110"
-                                                  >
-                                                    <Edit2 className="h-3 w-3" />
-                                                  </Button>
-                                                  <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => handleDeleteSubcategory(subcategory.id)}
-                                                    className="text-red-500 hover:bg-red-900/20 h-7 w-7 p-0 transition-all duration-200 hover:scale-110"
-                                                  >
-                                                    <Trash2 className="h-3 w-3" />
-                                                  </Button>
-                                                </>
-                                              )}
-                                            </TableCell>
-                                          </TableRow>
-                                        ))}
-                                      </TableBody>
-                                    </Table>
-                                  </div>
-                                );
-                              })()}
-                            </div>
-                          </>
-                        )}
-
-                        {!selectedCategoryForSubcategories && (
-                          <div className="text-center py-8">
-                            <p className="text-[hsl(222,15%,60%)] text-sm">
-                              Select a category above to manage its subcategories.
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </AnimatedTabsContent>
-                  </Tabs>
-                ) : (
-                  // For non-regular categories, just show the regular category management
-                  <>
-                    <div className="mb-4 flex items-center gap-4">
-                      <div className="flex items-center gap-2">
-                        <Languages className="h-4 w-4 text-[hsl(222,15%,60%)]" />
-                        <Label htmlFor="translation-language-2" className="text-sm">Translation Language:</Label>
-                        <Select
-                          value={selectedTranslationLanguage}
-                          onValueChange={setSelectedTranslationLanguage}
-                        >
-                          <SelectTrigger id="translation-language-2" className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] h-8 text-sm w-32">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="en">English</SelectItem>
-                            <SelectItem value="es">Español</SelectItem>
-                            <SelectItem value="pt-BR">Português</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                      <div>
-                        <h3 className="text-base font-semibold mb-3">Add New Category</h3>
-                        <form onSubmit={handleAddCategory} className="space-y-3">
-                          <div>
-                            <Label htmlFor="categoryName" className="text-sm">Category Name</Label>
-                            <Input
-                              id="categoryName"
-                              type="text"
-                              value={newCategoryName}
-                              onChange={(e) => setNewCategoryName(e.target.value)}
-                              placeholder="e.g., 100% Glitchless"
-                              required
-                              className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] h-9 text-sm"
-                            />
-                          </div>
-                          <Button 
-                            type="submit" 
-                            disabled={addingCategory}
-                            size="sm"
-                            className="bg-gradient-to-r from-[#cba6f7] to-[#b4a0e2] hover:from-[#b4a0e2] hover:to-[#cba6f7] text-[hsl(240,21%,15%)] font-bold flex items-center gap-2 transition-all duration-300 hover:scale-105 hover:shadow-lg"
-                          >
-                            <PlusCircle className="h-3 w-3" />
-                            {addingCategory ? "Adding..." : "Add Category"}
-                          </Button>
-                        </form>
-                      </div>
-                      <div>
-                        <h3 className="text-base font-semibold mb-3">Existing Categories</h3>
-                        {firestoreCategories.length === 0 ? (
-                          <p className="text-[hsl(222,15%,60%)] text-center py-4 text-sm">No categories found. Add your first category!</p>
-                        ) : (
-                          <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
-                            <Table>
-                              <TableHeader>
-                                <TableRow className="border-b border-[hsl(235,13%,30%)] hover:bg-transparent">
-                                  <TableHead className="py-2 px-3 text-left text-xs">Name</TableHead>
-                                  <TableHead className="py-2 px-3 text-left text-xs">SRC Category ID</TableHead>
-                                  <TableHead className="py-2 px-3 text-center text-xs">Actions</TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {firestoreCategories.map((category, index) => {
-                                  const translatedName = getCategoryTranslation(category.id, category.name);
-                                  const hasTranslation = translatedName !== category.name;
-                                  return (
-                                    <TableRow key={category.id} className="border-b border-[hsl(235,13%,30%)] hover:bg-[hsl(235,19%,13%)] transition-all duration-200 hover:shadow-sm">
-                                      <TableCell className="py-2 px-3 font-medium text-sm">
-                                        {editingCategory?.id === category.id ? (
-                                          <Input
-                                            value={editingCategoryName}
-                                            onChange={(e) => setEditingCategoryName(e.target.value)}
-                                            className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] h-8 text-sm"
-                                            autoFocus
-                                          />
-                                        ) : (
-                                          <div className="flex flex-col gap-1">
-                                            <span>{translatedName}</span>
-                                            {hasTranslation && (
-                                              <span className="text-xs text-[hsl(222,15%,60%)]">Original: {category.name}</span>
-                                            )}
-                                          </div>
-                                        )}
-                                      </TableCell>
-                                      <TableCell className="py-2 px-3 text-sm">
-                                        {editingCategory?.id === category.id ? (
-                                          <Input
-                                            value={editingCategorySrcId}
-                                            onChange={(e) => setEditingCategorySrcId(e.target.value)}
-                                            placeholder="e.g., 9kj3k0x8"
-                                            className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] h-8 text-sm"
-                                          />
-                                        ) : (
-                                          <span className="text-[hsl(222,15%,60%)]">
-                                            {(category as Category).srcCategoryId || "—"}
-                                          </span>
-                                        )}
-                                      </TableCell>
-                                      <TableCell className="py-2 px-3 text-center space-x-1">
-                                        {editingCategory?.id === category.id ? (
-                                          <>
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              onClick={handleSaveEditCategory}
-                                              disabled={updatingCategory}
-                                              className="text-green-500 hover:bg-green-900/20"
-                                            >
-                                              Save
-                                            </Button>
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              onClick={handleCancelEditCategory}
-                                              disabled={updatingCategory}
-                                              className="text-gray-500 hover:bg-gray-900/20"
-                                            >
-                                              Cancel
-                                            </Button>
-                                          </>
-                                        ) : (
-                                          <>
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              onClick={() => handleMoveCategoryUp(category.id)}
-                                              disabled={reorderingCategory === category.id || index === 0}
-                                              className="text-purple-500 hover:bg-purple-900/20 disabled:opacity-50 h-7 w-7 p-0 transition-all duration-200 hover:scale-110"
-                                              title="Move up"
-                                            >
-                                              <ArrowUp className="h-3 w-3" />
-                                            </Button>
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              onClick={() => handleMoveCategoryDown(category.id)}
-                                              disabled={reorderingCategory === category.id || index === firestoreCategories.length - 1}
-                                              className="text-purple-500 hover:bg-purple-900/20 disabled:opacity-50 h-7 w-7 p-0 transition-all duration-200 hover:scale-110"
-                                              title="Move down"
-                                            >
-                                              <ArrowDown className="h-3 w-3" />
-                                            </Button>
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              onClick={() => handleStartEditCategory(category)}
-                                              className="text-blue-500 hover:bg-blue-900/20 h-7 w-7 p-0 transition-all duration-200 hover:scale-110"
-                                            >
-                                              <Edit2 className="h-3 w-3" />
-                                            </Button>
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              onClick={() => handleStartEditTranslation('category', category.id, category.name)}
-                                              className="text-[#94e2d5] hover:bg-teal-900/20 h-7 w-7 p-0 transition-all duration-200 hover:scale-110"
-                                              title="Manage translations"
-                                            >
-                                              <Languages className="h-3 w-3" />
-                                            </Button>
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              onClick={() => handleDeleteCategory(category.id)}
-                                              className="text-red-500 hover:bg-red-900/20 h-7 w-7 p-0 transition-all duration-200 hover:scale-110"
-                                            >
-                                              <Trash2 className="h-3 w-3" />
-                                            </Button>
-                                          </>
-                                        )}
-                                      </TableCell>
-                                    </TableRow>
-                                  );
-                                })}
-                              </TableBody>
-                            </Table>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </>
-                )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Translation Dialog */}
-        <Dialog open={editingEntityTranslation !== null} onOpenChange={(open) => {
-          if (!open) {
-            handleCancelEditTranslation();
-          }
-        }}>
-          <DialogContent className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]">
-            <DialogHeader>
-              <DialogTitle className="text-[#f2cdcd]">
-                Manage Translation - {editingEntityTranslation?.type}
-              </DialogTitle>
-            </DialogHeader>
-            {editingEntityTranslation && (
-              <div className="space-y-4">
-                <div>
-                  <Label className="text-sm">Original Name</Label>
-                  <p className="text-sm text-[hsl(222,15%,60%)] mt-1">{editingEntityTranslation.originalName}</p>
-                </div>
-                <div>
-                  <Label className="text-sm">Language</Label>
-                  <Select
-                    value={editingEntityTranslation.language}
-                    onValueChange={(value) => {
-                      setEditingEntityTranslation(prev => prev ? { ...prev, language: value } : null);
-                      const translationKey = editingEntityTranslation.id.startsWith('downloadCategory.') 
-                        ? `entities.${editingEntityTranslation.id}`
-                        : `entities.${editingEntityTranslation.type}.${editingEntityTranslation.id}`;
-                      const currentTranslation = adminTranslations[value]?.[translationKey] || 
-                                                 i18n.t(translationKey, { lng: value });
-                      setEditingTranslationValue(currentTranslation && currentTranslation !== translationKey ? currentTranslation : '');
-                    }}
-                  >
-                    <SelectTrigger className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="en">English</SelectItem>
-                      <SelectItem value="es">Español</SelectItem>
-                      <SelectItem value="pt-BR">Português</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="text-sm">Translation</Label>
-                  <Textarea
-                    value={editingTranslationValue}
-                    onChange={(e) => setEditingTranslationValue(e.target.value)}
-                    placeholder={`Enter translation for ${editingEntityTranslation.originalName}`}
-                    className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] mt-1"
-                    rows={3}
-                  />
-                </div>
-              </div>
-            )}
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={handleCancelEditTranslation}
-                disabled={savingTranslation}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleSaveTranslation}
-                disabled={savingTranslation || !editingTranslationValue.trim()}
-                className="bg-gradient-to-r from-[#94e2d5] to-[#7dd3c7] hover:from-[#7dd3c7] hover:to-[#94e2d5] text-[hsl(240,21%,15%)] font-bold"
-              >
-                {savingTranslation ? "Saving..." : "Save Translation"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            <CategoriesTab 
+              selectedTranslationLanguage={selectedTranslationLanguage}
+              onTranslationLanguageChange={setSelectedTranslationLanguage}
+              onStartEditTranslation={handleStartEditTranslation}
+            />
           </AnimatedTabsContent>
 
           {/* Level Management Section */}
           <AnimatedTabsContent value="levels" className="space-y-4 animate-fade-in">
-            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
-              <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
-                <CardTitle className="flex items-center gap-2 text-xl text-[#f2cdcd]">
-                  <span>
-                    Manage Levels
-                  </span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-4">
-                <Tabs 
-                  value={levelLeaderboardType} 
-                  onValueChange={(value) => setLevelLeaderboardType(value as 'individual-level' | 'community-golds')}
-                  className="w-full mb-4"
-                >
-                  <AnimatedTabsList 
-                    className="grid w-full grid-cols-2 p-1 gap-2 h-auto"
-                    indicatorClassName="h-0.5 bg-[#94e2d5]"
-                  >
-                    <AnimatedTabsTrigger 
-                      value="individual-level"
-                      className="py-2 px-3 text-sm transition-all duration-300 font-medium data-[state=active]:text-[#94e2d5]"
-                    >
-                      <Star className="h-4 w-4 mr-2" />
-                      Individual Level
-                    </AnimatedTabsTrigger>
-                    <AnimatedTabsTrigger 
-                      value="community-golds"
-                      className="py-2 px-3 text-sm transition-all duration-300 font-medium data-[state=active]:text-[#94e2d5]"
-                    >
-                      <Gem className="h-4 w-4 mr-2" />
-                      Community Golds
-                    </AnimatedTabsTrigger>
-                  </AnimatedTabsList>
-                </Tabs>
-
-                <div className="mb-4 flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <Languages className="h-4 w-4 text-[hsl(222,15%,60%)]" />
-                    <Label htmlFor="translation-language-levels" className="text-sm">Translation Language:</Label>
-                    <Select
-                      value={selectedTranslationLanguage}
-                      onValueChange={setSelectedTranslationLanguage}
-                    >
-                      <SelectTrigger id="translation-language-levels" className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] h-8 text-sm w-32">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="en">English</SelectItem>
-                        <SelectItem value="es">Español</SelectItem>
-                        <SelectItem value="pt-BR">Português</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="mt-0">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                      <div>
-                        <h3 className="text-base font-semibold mb-3">Add New Level</h3>
-                        <form onSubmit={(e) => { e.preventDefault(); handleAddLevel(); }} className="space-y-3">
-                          <div>
-                            <Label htmlFor="levelName" className="text-sm">Level Name</Label>
-                            <Input
-                              id="levelName"
-                              type="text"
-                              value={newLevelName}
-                              onChange={(e) => setNewLevelName(e.target.value)}
-                              placeholder="e.g., Level 1"
-                              required
-                              className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] h-9 text-sm"
-                            />
-                          </div>
-                          <Button 
-                            type="submit" 
-                            disabled={addingLevel}
-                            size="sm"
-                            className="bg-gradient-to-r from-[#cba6f7] to-[#b4a0e2] hover:from-[#b4a0e2] hover:to-[#cba6f7] text-[hsl(240,21%,15%)] font-bold flex items-center gap-2 transition-all duration-300 hover:scale-105 hover:shadow-lg"
-                          >
-                            <PlusCircle className="h-3 w-3" />
-                            {addingLevel ? "Adding..." : "Add Level"}
-                          </Button>
-                        </form>
-                      </div>
-                      <div>
-                        <h3 className="text-base font-semibold mb-3">Existing Levels</h3>
-                        {availableLevels.length === 0 ? (
-                          <p className="text-[hsl(222,15%,60%)] text-center py-4 text-sm">No levels found.</p>
-                        ) : (
-                          <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
-                            <Table>
-                              <TableHeader>
-                                <TableRow className="border-b border-[hsl(235,13%,30%)] hover:bg-transparent">
-                                  <TableHead className="py-2 px-3 text-left text-xs">Name</TableHead>
-                                  <TableHead className="py-2 px-3 text-center text-xs">Actions</TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {availableLevels.map((level, index) => {
-                                  const translatedName = getLevelTranslation(level.id, level.name);
-                                  const hasTranslation = translatedName !== level.name;
-                                  return (
-                              <TableRow key={level.id} className="border-b border-[hsl(235,13%,30%)] hover:bg-[hsl(235,19%,13%)] transition-all duration-200 hover:shadow-sm">
-                                <TableCell className="py-2 px-3 font-medium text-sm">
-                                  {editingLevel?.id === level.id ? (
-                                    <Input
-                                      value={editingLevelName}
-                                      onChange={(e) => setEditingLevelName(e.target.value)}
-                                      className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] h-8 text-sm"
-                                      autoFocus
-                                    />
-                                  ) : (
-                                    <div className="flex flex-col gap-1">
-                                      <span>{translatedName}</span>
-                                      {hasTranslation && (
-                                        <span className="text-xs text-[hsl(222,15%,60%)]">Original: {level.name}</span>
-                                      )}
-                                    </div>
-                                  )}
-                                </TableCell>
-                                <TableCell className="py-2 px-3 text-center space-x-1">
-                                  {editingLevel?.id === level.id ? (
-                                    <>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={handleSaveEditLevel}
-                                        disabled={updatingLevel}
-                                        className="text-green-500 hover:bg-green-900/20 h-7"
-                                      >
-                                        Save
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={handleCancelEditLevel}
-                                        disabled={updatingLevel}
-                                        className="text-gray-500 hover:bg-gray-900/20 h-7"
-                                      >
-                                        Cancel
-                                      </Button>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleMoveLevelUp(level.id)}
-                                        disabled={reorderingLevel === level.id || index === 0}
-                                        className="text-purple-500 hover:bg-purple-900/20 disabled:opacity-50 h-7 w-7 p-0 transition-all duration-200 hover:scale-110"
-                                        title="Move up"
-                                      >
-                                        <ArrowUp className="h-3 w-3" />
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleMoveLevelDown(level.id)}
-                                        disabled={reorderingLevel === level.id || index === availableLevels.length - 1}
-                                        className="text-purple-500 hover:bg-purple-900/20 disabled:opacity-50 h-7 w-7 p-0 transition-all duration-200 hover:scale-110"
-                                        title="Move down"
-                                      >
-                                        <ArrowDown className="h-3 w-3" />
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleStartEditLevel(level)}
-                                        className="text-blue-500 hover:bg-blue-900/20 h-7 w-7 p-0 transition-all duration-200 hover:scale-110"
-                                      >
-                                        <Edit2 className="h-3 w-3" />
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleStartEditTranslation('level', level.id, level.name)}
-                                        className="text-[#94e2d5] hover:bg-teal-900/20 h-7 w-7 p-0 transition-all duration-200 hover:scale-110"
-                                        title="Manage translations"
-                                      >
-                                        <Languages className="h-3 w-3" />
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleDeleteLevel(level.id)}
-                                        className="text-red-500 hover:bg-red-900/20 h-7 w-7 p-0 transition-all duration-200 hover:scale-110"
-                                      >
-                                        <Trash2 className="h-3 w-3" />
-                                      </Button>
-                                    </>
-                                  )}
-                                </TableCell>
-                              </TableRow>
-                                );
-                                })}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    )}
-                      </div>
-                    </div>
-                  
-                  {/* Category Management for Levels */}
-                  {availableLevels.length > 0 && (
-                    <div className="mt-6 pt-6 border-t border-[hsl(235,13%,30%)]">
-                      <h3 className="text-base font-semibold mb-4">Disable Levels by Category</h3>
-                      <p className="text-sm text-[hsl(222,15%,60%)] mb-4">
-                        Disable specific levels from appearing in certain categories for {levelLeaderboardType === 'individual-level' ? 'Individual Level' : 'Community Golds'} runs.
-                      </p>
-                      <div className="space-y-4 max-h-[500px] overflow-y-auto">
-                        {availableLevels.map((level) => {
-                          // Categories are already filtered by levelLeaderboardType in the useEffect above
-                          // firestoreCategories should already contain the correct categories
-                          // For community-golds, we use regular categories
-                          // For individual-level, we use individual-level categories
-                          const relevantCategories = firestoreCategories;
-                          
-                          if (relevantCategories.length === 0) {
-                            return (
-                              <div key={level.id} className="bg-[hsl(240,21%,15%)] rounded-none p-4 border border-[hsl(235,13%,30%)]">
-                                <div className="font-medium text-sm mb-3 text-[#f2cdcd]">{level.name}</div>
-                                <p className="text-xs text-[hsl(222,15%,60%)]">
-                                  No categories available for {levelLeaderboardType === 'community-golds' ? 'Community Golds' : 'Individual Level'} runs.
-                                </p>
-                              </div>
-                            );
-                          }
-                          
-                          const isDisabled = (categoryId: string) => {
-                            return (level as Level).disabledCategories?.[categoryId] === true;
-                          };
-                          
-                          return (
-                            <div key={level.id} className="bg-[hsl(240,21%,15%)] rounded-none p-4 border border-[hsl(235,13%,30%)]">
-                              <div className="font-medium text-sm mb-3 text-[#f2cdcd]">{level.name}</div>
-                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                                {relevantCategories.map((category) => (
-                                  <label
-                                    key={category.id}
-                                    className="flex items-center gap-2 p-2 rounded-none hover:bg-[hsl(235,19%,13%)] cursor-pointer transition-colors"
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={!isDisabled(category.id)}
-                                      onChange={async (e) => {
-                                        const disabled = !e.target.checked;
-                                        try {
-                                          // Dynamic import at call site
-
-                                          const { updateLevelCategoryDisabled } = await import("@/lib/db/categories");
-                                          const success = await updateLevelCategoryDisabled(
-                                            level.id,
-                                            category.id,
-                                            disabled
-                                          );
-                                          if (success) {
-                                            // Update local state
-                                            setAvailableLevels(prev => 
-                                              prev.map(l => {
-                                                if (l.id === level.id) {
-                                                  const levelData = l as Level;
-                                                  const disabledCategories = levelData.disabledCategories || {};
-                                                  if (disabled) {
-                                                    disabledCategories[category.id] = true;
-                                                  } else {
-                                                    delete disabledCategories[category.id];
-                                                  }
-                                                  return { ...l, disabledCategories };
-                                                }
-                                                return l;
-                                              })
-                                            );
-                                            toast({
-                                              title: disabled ? "Level Disabled" : "Level Enabled",
-                                              description: `${level.name} is now ${disabled ? 'disabled' : 'enabled'} for ${category.name}.`,
-                                            });
-                                          } else {
-                                            throw new Error("Failed to update level category state");
-                                          }
-                                        } catch (error: any) {
-                                          toast({
-                                            title: "Error",
-                                            description: error.message || "Failed to update level category state.",
-                                            variant: "destructive",
-                                          });
-                                        }
-                                      }}
-                                      className="w-4 h-4 rounded-none border-[hsl(235,13%,30%)] bg-[hsl(240,21%,15%)] text-[#cba6f7] focus:ring-2 focus:ring-[#cba6f7] cursor-pointer"
-                                    />
-                                    <span className={`text-xs ${isDisabled(category.id) ? 'text-[hsl(222,15%,50%)] line-through' : 'text-[hsl(222,15%,70%)]'}`}>
-                                      {category.name}
-                                    </span>
-                                  </label>
-                                ))}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+            <LevelManagementTab 
+              selectedTranslationLanguage={selectedTranslationLanguage}
+              onTranslationLanguageChange={setSelectedTranslationLanguage}
+              onStartEditTranslation={handleStartEditTranslation}
+            />
           </AnimatedTabsContent>
 
         {/* Platform Management Section */}
           <AnimatedTabsContent value="platforms" className="space-y-4 animate-fade-in">
-            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
-              <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
-                <CardTitle className="flex items-center gap-2 text-xl text-[#f2cdcd]">
-                  <span>
-              Manage Platforms
-                  </span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4">
-            <div className="mb-4 flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Languages className="h-4 w-4 text-[hsl(222,15%,60%)]" />
-                <Label htmlFor="translation-language-platforms" className="text-sm">Translation Language:</Label>
-                <Select
-                  value={selectedTranslationLanguage}
-                  onValueChange={setSelectedTranslationLanguage}
-                >
-                  <SelectTrigger id="translation-language-platforms" className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] h-8 text-sm w-32">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="en">English</SelectItem>
-                    <SelectItem value="es">Español</SelectItem>
-                    <SelectItem value="pt-BR">Português</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div>
-                <h3 className="text-base font-semibold mb-3">Add New Platform</h3>
-                <form onSubmit={(e) => { e.preventDefault(); handleAddPlatform(); }} className="space-y-3">
-                  <div>
-                    <Label htmlFor="platformName" className="text-sm">Platform Name</Label>
-                <Input
-                  id="platformName"
-                  type="text"
-                  value={newPlatformName}
-                  onChange={(e) => setNewPlatformName(e.target.value)}
-                  placeholder="e.g., Nintendo Switch"
-                  required
-                      className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] h-9 text-sm"
-                />
-              </div>
-              <Button 
-                type="submit" 
-                disabled={addingPlatform}
-                    size="sm"
-                    className="bg-gradient-to-r from-[#cba6f7] to-[#b4a0e2] hover:from-[#b4a0e2] hover:to-[#cba6f7] text-[hsl(240,21%,15%)] font-bold flex items-center gap-2 transition-all duration-300 hover:scale-105 hover:shadow-lg"
-              >
-                    <PlusCircle className="h-3 w-3" />
-                {addingPlatform ? "Adding..." : "Add Platform"}
-              </Button>
-            </form>
-              </div>
-              <div>
-                <h3 className="text-base font-semibold mb-3">Existing Platforms</h3>
-            {firestorePlatforms.length === 0 ? (
-                  <p className="text-[hsl(222,15%,60%)] text-center py-4 text-sm">No platforms found.</p>
-            ) : (
-                  <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-b border-[hsl(235,13%,30%)] hover:bg-transparent">
-                          <TableHead className="py-2 px-3 text-left text-xs">Name</TableHead>
-                          <TableHead className="py-2 px-3 text-center text-xs">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {firestorePlatforms.map((platform, index) => {
-                      const translatedName = getPlatformTranslation(platform.id, platform.name);
-                      const hasTranslation = translatedName !== platform.name;
-                      return (
-                          <TableRow key={platform.id} className="border-b border-[hsl(235,13%,30%)] hover:bg-[hsl(235,19%,13%)] transition-all duration-200 hover:shadow-sm">
-                            <TableCell className="py-2 px-3 font-medium text-sm">
-                          {editingPlatform?.id === platform.id ? (
-                            <Input
-                              value={editingPlatformName}
-                              onChange={(e) => setEditingPlatformName(e.target.value)}
-                                  className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] h-8 text-sm"
-                              autoFocus
-                            />
-                          ) : (
-                            <div className="flex flex-col gap-1">
-                              <span>{translatedName}</span>
-                              {hasTranslation && (
-                                <span className="text-xs text-[hsl(222,15%,60%)]">Original: {platform.name}</span>
-                              )}
-                            </div>
-                          )}
-                        </TableCell>
-                            <TableCell className="py-2 px-3 text-center space-x-1">
-                          {editingPlatform?.id === platform.id ? (
-                            <>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={handleSaveEditPlatform}
-                                disabled={updatingPlatform}
-                                    className="text-green-500 hover:bg-green-900/20 h-7"
-                              >
-                                Save
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={handleCancelEditPlatform}
-                                disabled={updatingPlatform}
-                                    className="text-gray-500 hover:bg-gray-900/20 h-7"
-                              >
-                                Cancel
-                              </Button>
-                            </>
-                          ) : (
-                            <>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleMovePlatformUp(platform.id)}
-                                disabled={reorderingPlatform === platform.id || index === 0}
-                                    className="text-purple-500 hover:bg-purple-900/20 disabled:opacity-50 h-7 w-7 p-0 transition-all duration-200 hover:scale-110"
-                                title="Move up"
-                              >
-                                    <ArrowUp className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleMovePlatformDown(platform.id)}
-                                disabled={reorderingPlatform === platform.id || index === firestorePlatforms.length - 1}
-                                    className="text-purple-500 hover:bg-purple-900/20 disabled:opacity-50 h-7 w-7 p-0 transition-all duration-200 hover:scale-110"
-                                title="Move down"
-                              >
-                                    <ArrowDown className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleStartEditPlatform(platform)}
-                                    className="text-blue-500 hover:bg-blue-900/20 h-7 w-7 p-0 transition-all duration-200 hover:scale-110"
-                              >
-                                    <Edit2 className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleStartEditTranslation('platform', platform.id, platform.name)}
-                                    className="text-[#94e2d5] hover:bg-teal-900/20 h-7 w-7 p-0 transition-all duration-200 hover:scale-110"
-                                title="Manage translations"
-                              >
-                                    <Languages className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDeletePlatform(platform.id)}
-                                    className="text-red-500 hover:bg-red-900/20 h-7 w-7 p-0 transition-all duration-200 hover:scale-110"
-                              >
-                                    <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
+            <PlatformManagementTab 
+              selectedTranslationLanguage={selectedTranslationLanguage}
+              onTranslationLanguageChange={setSelectedTranslationLanguage}
+              onStartEditTranslation={handleStartEditTranslation}
+            />
           </AnimatedTabsContent>
 
           {/* Users Section */}
           <AnimatedTabsContent value="users" className="space-y-4 animate-fade-in">
-            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
-              <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2 text-xl text-[#f2cdcd]">
-                    <Users className="h-5 w-5" />
-                    <span>User Management</span>
-                  </CardTitle>
-                  <Button
-                    onClick={fetchPlayers}
-                    disabled={loadingPlayers}
-                    variant="outline"
-                    size="sm"
-                    className="border-[hsl(235,13%,30%)] bg-gradient-to-r from-transparent via-[hsl(237,16%,24%)]/50 to-transparent hover:from-[hsl(237,16%,24%)] hover:via-[hsl(237,16%,28%)] hover:to-[hsl(237,16%,24%)] hover:border-[#cba6f7]/50"
-                  >
-                    <RefreshCw className={`h-4 w-4 mr-2 ${loadingPlayers ? 'animate-spin' : ''}`} />
-                    Refresh
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-6">
-                {/* Search and Filters */}
-                <div className="mb-6 space-y-4">
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <div className="flex-1 relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-ctp-overlay0" />
-                      <Input
-                        placeholder="Search by name, email, UID, Twitch, or SRC username..."
-                        value={playersSearchQuery}
-                        onChange={(e) => {
-                          setPlayersSearchQuery(e.target.value);
-                          setPlayersPage(1);
-                        }}
-                        className="pl-10 bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] text-ctp-text"
-                      />
-                    </div>
-                    <div className="flex gap-2">
-                      <Select
-                        value={playersSortBy}
-                        onValueChange={(value: 'joinDate' | 'displayName' | 'totalPoints' | 'totalRuns') => {
-                          setPlayersSortBy(value);
-                          setPlayersPage(1);
-                        }}
-                      >
-                        <SelectTrigger className="w-[180px] bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] text-ctp-text">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="joinDate">Join Date</SelectItem>
-                          <SelectItem value="displayName">Display Name</SelectItem>
-                          <SelectItem value="totalPoints">Total Points</SelectItem>
-                          <SelectItem value="totalRuns">Total Runs</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setPlayersSortOrder(playersSortOrder === 'asc' ? 'desc' : 'asc');
-                          setPlayersPage(1);
-                        }}
-                        className="border-[hsl(235,13%,30%)] bg-[hsl(240,21%,15%)] text-ctp-text"
-                      >
-                        {playersSortOrder === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Players Table */}
-                {loadingPlayers ? (
-                  <div className="flex items-center justify-center py-8">
-                    <LoadingSpinner size="md" />
-                  </div>
-                ) : filteredPlayers.length === 0 ? (
-                  <p className="text-sm text-ctp-subtext1 text-center py-8">
-                    {playersSearchQuery ? "No users found matching your search." : "No users found."}
-                  </p>
-                ) : (
-                  <>
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="border-[hsl(235,13%,30%)]">
-                            <TableHead className="text-ctp-text">Display Name</TableHead>
-                            <TableHead className="text-ctp-text">Email</TableHead>
-                            <TableHead className="text-ctp-text">Join Date</TableHead>
-                            <TableHead className="text-ctp-text">Stats</TableHead>
-                            <TableHead className="text-ctp-text">Admin</TableHead>
-                            <TableHead className="text-ctp-text">Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {paginatedPlayers.map((player) => (
-                            <TableRow key={player.id} className="border-[hsl(235,13%,30%)]">
-                              <TableCell className="text-ctp-text">
-                                <div className="flex items-center gap-2">
-                                  <span style={{ color: player.nameColor || '#cba6f7' }}>
-                                    {player.displayName || "Unknown"}
-                                  </span>
-                                  {player.isAdmin && (
-                                    <Badge variant="outline" className="border-yellow-600/50 bg-yellow-600/10 text-yellow-400 text-xs">
-                                      Admin
-                                    </Badge>
-                                  )}
-                                </div>
-                              </TableCell>
-                              <TableCell className="text-ctp-text">{player.email || "—"}</TableCell>
-                              <TableCell className="text-ctp-text">{player.joinDate || "—"}</TableCell>
-                              <TableCell className="text-ctp-text">
-                                <div className="flex flex-col gap-1 text-xs">
-                                  <span>Points: {player.totalPoints || 0}</span>
-                                  <span>Runs: {player.totalRuns || 0}</span>
-                                </div>
-                              </TableCell>
-                              <TableCell className="text-ctp-text">
-                                {player.isAdmin ? (
-                                  <Badge variant="outline" className="border-green-600/50 bg-green-600/10 text-green-400">
-                                    Yes
-                                  </Badge>
-                                ) : (
-                                  <Badge variant="outline" className="border-[hsl(235,13%,30%)]">
-                                    No
-                                  </Badge>
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-2">
-                                  <Button
-                                    onClick={() => handleEditPlayer(player)}
-                                    variant="outline"
-                                    size="sm"
-                                    className="border-[hsl(235,13%,30%)] bg-[hsl(240,21%,15%)] text-ctp-text hover:bg-[hsl(240,21%,18%)]"
-                                  >
-                                    <Edit2 className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    onClick={() => handleDeletePlayerClick(player)}
-                                    variant="destructive"
-                                    size="sm"
-                                    className="bg-red-600/20 hover:bg-red-600/30 text-red-400 border-red-600/50"
-                                    disabled={player.uid === currentUser?.uid}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                    {filteredPlayers.length > itemsPerPage && (
-                      <div className="mt-4">
-                        <Pagination
-                          currentPage={playersPage}
-                          totalPages={Math.ceil(filteredPlayers.length / itemsPerPage)}
-                          onPageChange={setPlayersPage}
-                          itemsPerPage={itemsPerPage}
-                          totalItems={filteredPlayers.length}
-                        />
-                      </div>
-                    )}
-                  </>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Edit Player Dialog */}
-            {editingPlayer && (
-              <Dialog open={!!editingPlayer} onOpenChange={(open) => !open && setEditingPlayer(null)}>
-                <DialogContent className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] text-ctp-text max-w-2xl max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle className="text-[#f2cdcd]">Edit User: {editingPlayer.displayName || "Unknown"}</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="edit-displayName">Display Name</Label>
-                      <Input
-                        id="edit-displayName"
-                        value={editingPlayerForm.displayName || ""}
-                        onChange={(e) => setEditingPlayerForm({ ...editingPlayerForm, displayName: e.target.value })}
-                        className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] text-ctp-text"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="edit-email">Email</Label>
-                      <Input
-                        id="edit-email"
-                        type="email"
-                        value={editingPlayerForm.email || ""}
-                        onChange={(e) => setEditingPlayerForm({ ...editingPlayerForm, email: e.target.value })}
-                        className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] text-ctp-text"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="edit-nameColor">Name Color</Label>
-                      <Input
-                        id="edit-nameColor"
-                        type="color"
-                        value={editingPlayerForm.nameColor || "#cba6f7"}
-                        onChange={(e) => setEditingPlayerForm({ ...editingPlayerForm, nameColor: e.target.value })}
-                        className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] text-ctp-text h-10"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="edit-bio">Bio</Label>
-                      <Textarea
-                        id="edit-bio"
-                        value={editingPlayerForm.bio || ""}
-                        onChange={(e) => setEditingPlayerForm({ ...editingPlayerForm, bio: e.target.value })}
-                        className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] text-ctp-text"
-                        rows={3}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="edit-pronouns">Pronouns</Label>
-                      <Input
-                        id="edit-pronouns"
-                        value={editingPlayerForm.pronouns || ""}
-                        onChange={(e) => setEditingPlayerForm({ ...editingPlayerForm, pronouns: e.target.value })}
-                        className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] text-ctp-text"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="edit-twitchUsername">Twitch Username</Label>
-                      <Input
-                        id="edit-twitchUsername"
-                        value={editingPlayerForm.twitchUsername || ""}
-                        onChange={(e) => setEditingPlayerForm({ ...editingPlayerForm, twitchUsername: e.target.value })}
-                        className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] text-ctp-text"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="edit-srcUsername">Speedrun.com Username</Label>
-                      <Input
-                        id="edit-srcUsername"
-                        value={editingPlayerForm.srcUsername || ""}
-                        onChange={(e) => setEditingPlayerForm({ ...editingPlayerForm, srcUsername: e.target.value })}
-                        className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] text-ctp-text"
-                      />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id="edit-isAdmin"
-                        checked={editingPlayerForm.isAdmin || false}
-                        onChange={(e) => setEditingPlayerForm({ ...editingPlayerForm, isAdmin: e.target.checked })}
-                        className="w-4 h-4"
-                      />
-                      <Label htmlFor="edit-isAdmin">Admin Status</Label>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setEditingPlayer(null);
-                        setEditingPlayerForm({});
-                      }}
-                      className="border-[hsl(235,13%,30%)] bg-[hsl(240,21%,15%)] text-ctp-text"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={handleSavePlayer}
-                      disabled={savingPlayer}
-                      className="bg-[#cba6f7] hover:bg-[#b4a0e2] text-[hsl(240,21%,15%)] font-bold"
-                    >
-                      {savingPlayer ? (
-                        <>
-                          <LoadingSpinner size="sm" className="mr-2" />
-                          Saving...
-                        </>
-                      ) : (
-                        <>
-                          <Save className="h-4 w-4 mr-2" />
-                          Save
-                        </>
-                      )}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            )}
-
-            {/* Delete Player Dialog */}
-            <Dialog open={showDeletePlayerDialog} onOpenChange={setShowDeletePlayerDialog}>
-              <DialogContent className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] text-ctp-text">
-                <DialogHeader>
-                  <DialogTitle className="text-[#f2cdcd]">Delete User</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <p className="text-ctp-text">
-                    Are you sure you want to delete <strong>{playerToDelete?.displayName}</strong>? This action cannot be undone.
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="delete-runs"
-                      checked={deletePlayerRuns}
-                      onChange={(e) => setDeletePlayerRuns(e.target.checked)}
-                      className="w-4 h-4"
-                    />
-                    <Label htmlFor="delete-runs">Also delete all runs associated with this user</Label>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setShowDeletePlayerDialog(false);
-                      setPlayerToDelete(null);
-                      setDeletePlayerRuns(false);
-                    }}
-                    className="border-[hsl(235,13%,30%)] bg-[hsl(240,21%,15%)] text-ctp-text"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleDeletePlayer}
-                    disabled={deletingPlayerId === playerToDelete?.id}
-                    variant="destructive"
-                    className="bg-red-600/20 hover:bg-red-600/30 text-red-400 border-red-600/50"
-                  >
-                    {deletingPlayerId === playerToDelete?.id ? (
-                      <>
-                        <LoadingSpinner size="sm" className="mr-2" />
-                        Deleting...
-                      </>
-                    ) : (
-                      <>
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
-                      </>
-                    )}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            <UsersTab />
           </AnimatedTabsContent>
 
           {/* Points Configuration Section */}
           <AnimatedTabsContent value="points" className="space-y-4 animate-fade-in">
-            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
-              <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
-                <CardTitle className="flex items-center gap-2 text-xl text-[#fab387]">
-                  <Coins className="h-5 w-5" />
-                  Points Configuration
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6">
-                {loadingPointsConfig ? (
-                  <div className="py-12">
-                    <LoadingSpinner size="sm" />
-                  </div>
-                ) : pointsConfig ? (
-                  <div className="space-y-6">
-                    {/* Base Points */}
-                    <div className="space-y-2">
-                      <Label htmlFor="basePoints" className="text-base font-semibold">
-                        Base Points
-                      </Label>
-                      <Input
-                        id="basePoints"
-                        type="number"
-                        min="0"
-                        value={pointsConfigForm.basePoints ?? pointsConfig.basePoints ?? 10}
-                        onChange={(e) => setPointsConfigForm({ ...pointsConfigForm, basePoints: parseInt(e.target.value) || 0 })}
-                        className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                      />
-                      <p className="text-sm text-[hsl(222,15%,60%)]">
-                        Base points awarded for all verified runs.
-                      </p>
-                    </div>
-
-                    {/* Rank Bonuses */}
-                    <div className="space-y-4">
-                      <Label className="text-base font-semibold">Rank Bonuses</Label>
-                      <div className="grid grid-cols-3 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="rank1Bonus">Rank 1 Bonus</Label>
-                          <Input
-                            id="rank1Bonus"
-                            type="number"
-                            min="0"
-                            value={pointsConfigForm.rank1Bonus ?? pointsConfig.rank1Bonus ?? 50}
-                            onChange={(e) => setPointsConfigForm({ ...pointsConfigForm, rank1Bonus: parseInt(e.target.value) || 0 })}
-                            className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="rank2Bonus">Rank 2 Bonus</Label>
-                          <Input
-                            id="rank2Bonus"
-                            type="number"
-                            min="0"
-                            value={pointsConfigForm.rank2Bonus ?? pointsConfig.rank2Bonus ?? 30}
-                            onChange={(e) => setPointsConfigForm({ ...pointsConfigForm, rank2Bonus: parseInt(e.target.value) || 0 })}
-                            className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="rank3Bonus">Rank 3 Bonus</Label>
-                          <Input
-                            id="rank3Bonus"
-                            type="number"
-                            min="0"
-                            value={pointsConfigForm.rank3Bonus ?? pointsConfig.rank3Bonus ?? 20}
-                            onChange={(e) => setPointsConfigForm({ ...pointsConfigForm, rank3Bonus: parseInt(e.target.value) || 0 })}
-                            className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                          />
-                        </div>
-                      </div>
-                      <p className="text-sm text-[hsl(222,15%,60%)]">
-                        Additional bonus points for top 3 ranks (only applies to Full Game runs unless enabled below).
-                      </p>
-                    </div>
-
-                    {/* Multipliers */}
-                    <div className="space-y-4">
-                      <Label className="text-base font-semibold">Multipliers</Label>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="coOpMultiplier">Co-op Multiplier</Label>
-                          <Input
-                            id="coOpMultiplier"
-                            type="number"
-                            step="0.1"
-                            min="0"
-                            max="1"
-                            value={pointsConfigForm.coOpMultiplier ?? pointsConfig.coOpMultiplier ?? 0.5}
-                            onChange={(e) => setPointsConfigForm({ ...pointsConfigForm, coOpMultiplier: parseFloat(e.target.value) || 0 })}
-                            className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                          />
-                          <p className="text-xs text-[hsl(222,15%,60%)]">
-                            Typically 0.5 to split points between players.
-                          </p>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="obsoleteMultiplier">Obsolete Multiplier</Label>
-                          <Input
-                            id="obsoleteMultiplier"
-                            type="number"
-                            step="0.1"
-                            min="0"
-                            max="1"
-                            value={pointsConfigForm.obsoleteMultiplier ?? pointsConfig.obsoleteMultiplier ?? 0.5}
-                            onChange={(e) => setPointsConfigForm({ ...pointsConfigForm, obsoleteMultiplier: parseFloat(e.target.value) || 0 })}
-                            className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                          />
-                          <p className="text-xs text-[hsl(222,15%,60%)]">
-                            Multiplier for obsolete runs (typically 0.5 for half points).
-                          </p>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="ilMultiplier">Individual Level Multiplier</Label>
-                          <Input
-                            id="ilMultiplier"
-                            type="number"
-                            step="0.1"
-                            min="0"
-                            value={pointsConfigForm.ilMultiplier ?? pointsConfig.ilMultiplier ?? 1.0}
-                            onChange={(e) => setPointsConfigForm({ ...pointsConfigForm, ilMultiplier: parseFloat(e.target.value) || 0 })}
-                            className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                          />
-                          <p className="text-xs text-[hsl(222,15%,60%)]">
-                            Multiplier for Individual Level runs (typically 1.0).
-                          </p>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="communityGoldsMultiplier">Community Golds Multiplier</Label>
-                          <Input
-                            id="communityGoldsMultiplier"
-                            type="number"
-                            step="0.1"
-                            min="0"
-                            value={pointsConfigForm.communityGoldsMultiplier ?? pointsConfig.communityGoldsMultiplier ?? 1.0}
-                            onChange={(e) => setPointsConfigForm({ ...pointsConfigForm, communityGoldsMultiplier: parseFloat(e.target.value) || 0 })}
-                            className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                          />
-                          <p className="text-xs text-[hsl(222,15%,60%)]">
-                            Multiplier for Community Golds runs (typically 1.0).
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Rank Bonus Options */}
-                    <div className="space-y-4">
-                      <Label className="text-base font-semibold">Rank Bonus Options</Label>
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between p-4 bg-[hsl(240,21%,15%)] border border-[hsl(235,13%,30%)] rounded-none">
-                          <div className="space-y-0.5">
-                            <Label htmlFor="applyRankBonusesToIL" className="text-base">
-                              Apply Rank Bonuses to Individual Levels
-                            </Label>
-                            <p className="text-sm text-[hsl(222,15%,60%)]">
-                              Enable rank bonuses for Individual Level runs.
-                            </p>
-                          </div>
-                          <Switch
-                            id="applyRankBonusesToIL"
-                            checked={pointsConfigForm.applyRankBonusesToIL ?? pointsConfig.applyRankBonusesToIL ?? false}
-                            onCheckedChange={(checked) => setPointsConfigForm({ ...pointsConfigForm, applyRankBonusesToIL: checked })}
-                          />
-                        </div>
-                        <div className="flex items-center justify-between p-4 bg-[hsl(240,21%,15%)] border border-[hsl(235,13%,30%)] rounded-none">
-                          <div className="space-y-0.5">
-                            <Label htmlFor="applyRankBonusesToCommunityGolds" className="text-base">
-                              Apply Rank Bonuses to Community Golds
-                            </Label>
-                            <p className="text-sm text-[hsl(222,15%,60%)]">
-                              Enable rank bonuses for Community Golds runs.
-                            </p>
-                          </div>
-                          <Switch
-                            id="applyRankBonusesToCommunityGolds"
-                            checked={pointsConfigForm.applyRankBonusesToCommunityGolds ?? pointsConfig.applyRankBonusesToCommunityGolds ?? false}
-                            onCheckedChange={(checked) => setPointsConfigForm({ ...pointsConfigForm, applyRankBonusesToCommunityGolds: checked })}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Save Button */}
-                    <div className="flex justify-end pt-4 border-t border-[hsl(235,13%,30%)]">
-                      <Button
-                        onClick={handleSavePointsConfig}
-                        disabled={savingPointsConfig}
-                        className="bg-gradient-to-r from-[#fab387] to-[#f9e2af] hover:from-[#f9e2af] hover:to-[#fab387] text-[hsl(240,21%,15%)] font-bold"
-                      >
-                        {savingPointsConfig ? (
-                          <>
-                            <LoadingSpinner size="sm" className="mr-2" />
-                            Saving...
-                          </>
-                        ) : (
-                          <>
-                            <Save className="h-4 w-4 mr-2" />
-                            Save Configuration
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-12 text-[hsl(222,15%,60%)]">
-                    Failed to load points configuration.
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Recalculate Points Card */}
-            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
-              <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
-                <CardTitle className="flex items-center gap-2 text-xl text-[#fab387]">
-                  <RefreshCw className="h-5 w-5" />
-                  <span>
-                      Recalculate All Points
-                  </span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <p className="text-sm text-ctp-subtext1 leading-relaxed mb-4">
-                      Recalculate and update points for all verified runs using the current points configuration. This will also recalculate all players' total points based on their verified runs. Includes all run types (Full Game, Individual Levels, Community Golds). The operation runs in the background so you can continue using the admin panel.
-                    </p>
-                    {backfillingPoints && (
-                  <p className="text-xs text-ctp-overlay0 mb-4 italic flex items-center gap-2">
-                    <span className="animate-pulse">●</span>
-                        Recalculation in progress... This may take a while depending on the number of runs. You can continue using the admin panel.
-                      </p>
-                    )}
-                  <Button
-                    onClick={() => {
-                      if (!currentUser) return;
-                      
-                      // Confirmation dialog
-                      if (!window.confirm(
-                        "This will recalculate points for ALL verified runs and update all player totals using the current points configuration. " +
-                        "This operation cannot be undone and may take several minutes. Continue?"
-                      )) {
-                        return;
-                      }
-                      
-                      setBackfillingPoints(true);
-                      
-                      // Run in background - don't block UI
-                      setTimeout(async () => {
-                        try {
-                          // Dynamic import at call site
-
-                          const { backfillPointsForAllRuns } = await import("@/lib/db/config");
-                          const result = await backfillPointsForAllRuns();
-                          if (result.errors.length > 0) {
-                            toast({
-                              title: "Recalculation Complete with Errors",
-                              description: `Updated ${result.runsUpdated} runs and ${result.playersUpdated} players. ${result.errors.length} error(s) occurred.`,
-                              variant: "destructive",
-                            });
-                          } else {
-                            toast({
-                              title: "Recalculation Complete",
-                              description: `Successfully recalculated points for ${result.runsUpdated} runs and updated ${result.playersUpdated} players.`,
-                            });
-                          }
-                        } catch (error: any) {
-                          toast({
-                            title: "Error",
-                            description: error.message || "Failed to recalculate points.",
-                            variant: "destructive",
-                          });
-                        } finally {
-                          setBackfillingPoints(false);
-                        }
-                      }, 0);
-                    }}
-                    disabled={backfillingPoints}
-                    className="bg-gradient-to-r from-[#FFD700] to-[#FFA500] hover:from-[#FFA500] hover:to-[#FFD700] text-black font-semibold w-full sm:w-auto transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-[#FFD700]/50"
-                  >
-                    {backfillingPoints ? (
-                      <>
-                        <LoadingSpinner size="sm" className="mr-2" />
-                        Recalculating Points...
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Recalculate All Points
-                      </>
-                    )}
-                  </Button>
-              </CardContent>
-            </Card>
-
-            {/* Recalculate Total Runs Card */}
-            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
-              <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
-                <CardTitle className="flex items-center gap-2 text-xl text-[#fab387]">
-                  <RefreshCw className="h-5 w-5" />
-                  <span>
-                      Recalculate All Total Runs
-                  </span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <p className="text-sm text-ctp-subtext1 leading-relaxed mb-4">
-                      Recalculate and update the total verified runs count for all players. This fixes players who have incorrect totalRuns counts (e.g., showing 0 despite having verified runs). The operation runs in the background so you can continue using the admin panel.
-                    </p>
-                    {recalculatingTotalRuns && (
-                  <p className="text-xs text-ctp-overlay0 mb-4 italic flex items-center gap-2">
-                    <span className="animate-pulse">●</span>
-                        Recalculation in progress... This may take a while depending on the number of players. You can continue using the admin panel.
-                  </p>
-                    )}
-                  <Button
-                    onClick={async () => {
-                      if (!window.confirm(
-                        "This will recalculate the total verified runs count for ALL players. " +
-                        "This operation cannot be undone and may take several minutes. Continue?"
-                      )) {
-                        return;
-                      }
-
-                      setRecalculatingTotalRuns(true);
-                      try {
-                        const { recalculateAllPlayerTotalRuns } = await import("@/lib/db/players");
-                        const result = await recalculateAllPlayerTotalRuns((processed, total) => {
-                          console.log(`Recalculating totalRuns: ${processed}/${total} players processed`);
-                        });
-                        if (result.errors.length > 0) {
-                          toast({
-                            title: "Recalculation Complete with Errors",
-                            description: `Updated ${result.playersUpdated} player(s). Some errors occurred.`,
-                            variant: "destructive",
-                          });
-                        } else {
-                          toast({
-                            title: "Recalculation Complete",
-                            description: `Successfully updated ${result.playersUpdated} player(s).`,
-                          });
-                        }
-                      } catch (error: any) {
-                        toast({
-                          title: "Error",
-                          description: error.message || "Failed to recalculate total runs.",
-                          variant: "destructive",
-                        });
-                      } finally {
-                        setRecalculatingTotalRuns(false);
-                      }
-                    }}
-                    disabled={recalculatingTotalRuns}
-                    className="bg-gradient-to-r from-[#a6e3a1] to-[#86c77a] hover:from-[#86c77a] hover:to-[#a6e3a1] text-black font-semibold w-full sm:w-auto transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-[#a6e3a1]/50"
-                  >
-                    {recalculatingTotalRuns ? (
-                      <>
-                        <LoadingSpinner size="sm" className="mr-2" />
-                        Recalculating Total Runs...
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Recalculate All Total Runs
-                      </>
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
+            <PointsConfigTab />
           </AnimatedTabsContent>
 
         {/* Manage Downloads Section */}
           <AnimatedTabsContent value="downloads" className="space-y-4 animate-fade-in">
-            {/* Download Categories Management */}
-            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
-              <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
-                <CardTitle className="flex items-center gap-2 text-xl text-[#f2cdcd]">
-                  <FolderTree className="h-5 w-5" />
-                  <span>Download Categories</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <div className="mb-4 flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <Languages className="h-4 w-4 text-[hsl(222,15%,60%)]" />
-                    <Label htmlFor="translation-language-downloads" className="text-sm">Translation Language:</Label>
-                    <Select
-                      value={selectedTranslationLanguage}
-                      onValueChange={setSelectedTranslationLanguage}
-                    >
-                      <SelectTrigger id="translation-language-downloads" className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] h-8 text-sm w-32">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="en">English</SelectItem>
-                        <SelectItem value="es">Español</SelectItem>
-                        <SelectItem value="pt-BR">Português</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <h3 className="text-xl font-semibold mb-4">Add New Category</h3>
-                <form onSubmit={handleAddDownloadCategory} className="space-y-4 mb-8">
-                  <div className="flex gap-4">
-                    <Input
-                      type="text"
-                      value={newDownloadCategoryName}
-                      onChange={(e) => setNewDownloadCategoryName(e.target.value)}
-                      placeholder="Category name"
-                      required
-                      className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                    />
-                    <Button 
-                      type="submit" 
-                      disabled={addingDownloadCategory}
-                      className="bg-gradient-to-r from-[#cba6f7] to-[#b4a0e2] hover:from-[#b4a0e2] hover:to-[#cba6f7] text-[hsl(240,21%,15%)] font-bold flex items-center gap-2 transition-all duration-300 hover:scale-105 hover:shadow-lg"
-                    >
-                      <PlusCircle className="h-4 w-4" />
-                      {addingDownloadCategory ? "Adding..." : "Add Category"}
-                    </Button>
-                  </div>
-                </form>
-
-                <h3 className="text-xl font-semibold mb-4">Existing Categories</h3>
-                {downloadCategories.length === 0 ? (
-                  <p className="text-[hsl(222,15%,60%)] text-center py-4">No categories added yet.</p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="border-b border-[hsl(235,13%,30%)] hover:bg-transparent">
-                          <TableHead className="py-3 px-4 text-left">Name</TableHead>
-                          <TableHead className="py-3 px-4 text-center">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {downloadCategories.map((category) => {
-                          // For download categories, use a custom translation key
-                          const translationKey = `entities.downloadCategory.${category.id}`;
-                          const translatedName = adminTranslations[selectedTranslationLanguage]?.[translationKey] || 
-                                                 i18n.t(translationKey, { lng: selectedTranslationLanguage });
-                          const displayName = translatedName && translatedName !== translationKey ? translatedName : category.name;
-                          const hasTranslation = translatedName && translatedName !== translationKey;
-                          return (
-                          <TableRow key={category.id} className="border-b border-[hsl(235,13%,30%)] hover:bg-[hsl(235,19%,13%)] transition-all duration-200 hover:shadow-sm">
-                            <TableCell className="py-3 px-4">
-                              {editingDownloadCategory?.id === category.id ? (
-                                <Input
-                                  type="text"
-                                  value={editingDownloadCategoryName}
-                                  onChange={(e) => setEditingDownloadCategoryName(e.target.value)}
-                                  className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                      handleSaveEditDownloadCategory();
-                                    } else if (e.key === 'Escape') {
-                                      handleCancelEditDownloadCategory();
-                                    }
-                                  }}
-                                  autoFocus
-                                />
-                              ) : (
-                                <div className="flex flex-col gap-1">
-                                  <span className="font-medium">{displayName}</span>
-                                  {hasTranslation && (
-                                    <span className="text-xs text-[hsl(222,15%,60%)]">Original: {category.name}</span>
-                                  )}
-                                </div>
-                              )}
-                            </TableCell>
-                            <TableCell className="py-3 px-4 text-center">
-                              <div className="flex items-center justify-center gap-2">
-                                {editingDownloadCategory?.id === category.id ? (
-                                  <>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm" 
-                                      onClick={handleSaveEditDownloadCategory}
-                                      disabled={updatingDownloadCategory}
-                                      className="text-green-500 hover:bg-green-900/20 transition-all duration-200 hover:scale-110"
-                                    >
-                                      <Save className="h-4 w-4" />
-                                    </Button>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm" 
-                                      onClick={handleCancelEditDownloadCategory}
-                                      disabled={updatingDownloadCategory}
-                                      className="text-[hsl(222,15%,60%)] hover:bg-[hsl(235,19%,13%)] transition-all duration-200 hover:scale-110"
-                                    >
-                                      <X className="h-4 w-4" />
-                                    </Button>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm" 
-                                      onClick={() => handleStartEditDownloadCategory(category)}
-                                      className="text-[#cba6f7] hover:bg-purple-900/20 transition-all duration-200 hover:scale-110"
-                                    >
-                                      <Edit2 className="h-4 w-4" />
-                                    </Button>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm" 
-                                      onClick={() => {
-                                        // Use a custom type for download categories
-                                        const translationKey = `entities.downloadCategory.${category.id}`;
-                                        const currentTranslation = adminTranslations[selectedTranslationLanguage]?.[translationKey] || 
-                                                                   i18n.t(translationKey, { lng: selectedTranslationLanguage });
-                                        const value = currentTranslation && currentTranslation !== translationKey ? currentTranslation : '';
-                                        setEditingEntityTranslation({ 
-                                          type: 'category', // Reuse category type for the dialog
-                                          id: `downloadCategory.${category.id}`, // Use a composite ID
-                                          originalName: category.name, 
-                                          language: selectedTranslationLanguage 
-                                        });
-                                        setEditingTranslationValue(value);
-                                      }}
-                                      className="text-[#94e2d5] hover:bg-teal-900/20 transition-all duration-200 hover:scale-110"
-                                      title="Manage translations"
-                                    >
-                                      <Languages className="h-4 w-4" />
-                                    </Button>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm" 
-                                      onClick={() => handleDeleteDownloadCategory(category.id)}
-                                      className="text-red-500 hover:bg-red-900/20 transition-all duration-200 hover:scale-110"
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </>
-                                )}
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Downloads Management */}
-            <Card className="bg-gradient-to-br from-[hsl(240,21%,16%)] via-[hsl(240,21%,14%)] to-[hsl(235,19%,13%)] border-[hsl(235,13%,30%)] shadow-xl">
-              <CardHeader className="bg-gradient-to-r from-[hsl(240,21%,18%)] to-[hsl(240,21%,15%)] border-b border-[hsl(235,13%,30%)]">
-                <CardTitle className="flex items-center gap-2 text-xl text-[#f2cdcd]">
-                  <span>
-              Manage Downloads
-                  </span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <h3 className="text-xl font-semibold mb-4">Add New Download</h3>
-            <form onSubmit={handleAddDownload} className="space-y-4 mb-8">
-              <div>
-                <Label htmlFor="downloadName">Name</Label>
-                <Input
-                  id="downloadName"
-                  type="text"
-                  value={newDownload.name}
-                  onChange={(e) => setNewDownload({ ...newDownload, name: e.target.value })}
-                  required
-                  className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                />
-              </div>
-              <div>
-                <Label htmlFor="downloadDescription">Description</Label>
-                <Textarea
-                  id="downloadDescription"
-                  value={newDownload.description}
-                  onChange={(e) => setNewDownload({ ...newDownload, description: e.target.value })}
-                  required
-                  className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                  rows={3}
-                />
-              </div>
-              <div>
-                <Label>Upload Type</Label>
-                <div className="flex gap-4 mb-4">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      checked={!newDownload.useFileUpload}
-                      onChange={() => setNewDownload((prev) => ({ ...prev, useFileUpload: false, fileUrl: "", fileName: "" }))}
-                      className="w-4 h-4"
-                    />
-                    <span>External URL</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      checked={newDownload.useFileUpload}
-                      onChange={() => setNewDownload((prev) => ({ ...prev, useFileUpload: true, url: "" }))}
-                      className="w-4 h-4"
-                    />
-                    <span>Upload File</span>
-                  </label>
-                </div>
-                {newDownload.useFileUpload ? (
-                  <div className="space-y-2">
-                    <Label htmlFor="fileUpload">File</Label>
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-3">
-                        <Button
-                          type="button"
-                          onClick={async () => {
-                            const input = document.createElement('input');
-                            input.type = 'file';
-                            input.onchange = async (e) => {
-                            const file = (e.target as HTMLInputElement).files?.[0];
-                            if (!file) return;
-                            
-                            // Store file name immediately when selected
-                            setNewDownload((prev) => ({
-                              ...prev,
-                              fileName: file.name,
-                              useFileUpload: true,
-                            }));
-                            
-                            try {
-                              const uploadedFiles = await startUpload([file]);
-                              
-                              // Handle different response structures
-                              let fileUrl: string | null = null;
-                              
-                              if (Array.isArray(uploadedFiles) && uploadedFiles.length > 0) {
-                                // Standard array response
-                                const firstFile = uploadedFiles[0] as any;
-                                fileUrl = firstFile?.url || firstFile?.serverData?.url || null;
-                              } else if (uploadedFiles && typeof uploadedFiles === 'object') {
-                                // Object response - try different possible properties
-                                fileUrl = (uploadedFiles as any).url || 
-                                         (uploadedFiles as any).fileUrl || 
-                                         (uploadedFiles as any)[0]?.url ||
-                                         null;
-                              }
-                              
-                              if (fileUrl) {
-                                // Use functional update to ensure we have the latest state
-                                setNewDownload((prev) => {
-                                  const updated = { 
-                                    ...prev, 
-                                    fileUrl: fileUrl!,
-                                    fileName: file.name, // Keep file name
-                                    useFileUpload: true // Ensure this is set to true
-                                  };
-                                  return updated;
-                                });
-                                toast({
-                                  title: "File Uploaded",
-                                  description: "File uploaded successfully. You can now click 'Add Download' to save it.",
-                                });
-                              } else {
-                                throw new Error("Upload completed but no file URL found in response.");
-                              }
-                            } catch (error: any) {
-                              toast({
-                                title: "Upload Failed",
-                                description: error.message || "Failed to upload file.",
-                                variant: "destructive",
-                              });
-                            }
-                          };
-                          input.click();
-                        }}
-                          disabled={isUploading}
-                          className="bg-[#cba6f7] hover:bg-[#b4a0e2] text-[hsl(240,21%,15%)] font-bold flex items-center gap-2"
-                        >
-                          <Upload className="h-4 w-4" />
-                          {isUploading ? "Uploading..." : "Choose File"}
-                        </Button>
-                        {newDownload.fileName && (
-                          <span className="text-sm text-[hsl(222,15%,70%)] flex items-center gap-2">
-                            {newDownload.fileUrl ? (
-                              <>
-                                <CheckCircle className="h-4 w-4 text-green-500" />
-                                <span className="font-medium">{newDownload.fileName}</span>
-                                <span className="text-xs text-[hsl(222,15%,60%)]">(uploaded)</span>
-                              </>
-                            ) : (
-                              <>
-                                <span className="font-medium">{newDownload.fileName}</span>
-                                <span className="text-xs text-[hsl(222,15%,60%)]">(selected)</span>
-                              </>
-                            )}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    {newDownload.fileUrl && (
-                      <p className="text-xs text-[hsl(222,15%,60%)] mt-2 break-all">
-                        File URL: {newDownload.fileUrl}
-                      </p>
-                    )}
-                  </div>
-                ) : (
-              <div>
-                <Label htmlFor="downloadUrl">URL</Label>
-                <Input
-                  id="downloadUrl"
-                  type="url"
-                  value={newDownload.url}
-                  onChange={(e) => setNewDownload({ ...newDownload, url: e.target.value })}
-                      required={!newDownload.useFileUpload}
-                  className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                />
-                  </div>
-                )}
-              </div>
-              <div>
-                <Label htmlFor="downloadCategory">Category</Label>
-                <Select value={newDownload.category} onValueChange={(value) => setNewDownload({ ...newDownload, category: value })}>
-                  <SelectTrigger className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]">
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {downloadCategories.map((cat) => (
-                      <SelectItem key={cat.id} value={cat.id}>
-                        {cat.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button 
-                type="submit" 
-                disabled={addingDownload}
-                className="bg-gradient-to-r from-[#cba6f7] to-[#b4a0e2] hover:from-[#b4a0e2] hover:to-[#cba6f7] text-[hsl(240,21%,15%)] font-bold flex items-center gap-2 transition-all duration-300 hover:scale-105 hover:shadow-lg"
-              >
-                <PlusCircle className="h-4 w-4" />
-                {addingDownload ? "Adding..." : "Add Download"}
-              </Button>
-            </form>
-
-            <h3 className="text-xl font-semibold mb-4">Existing Downloads</h3>
-            {downloadEntries.length === 0 ? (
-              <p className="text-[hsl(222,15%,60%)] text-center py-4">No download entries added yet.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-b border-[hsl(235,13%,30%)] hover:bg-transparent">
-                      <TableHead className="py-3 px-4 text-left">Order</TableHead>
-                      <TableHead className="py-3 px-4 text-left">Name</TableHead>
-                      <TableHead className="py-3 px-4 text-left">Category</TableHead>
-                      <TableHead className="py-3 px-4 text-left">URL</TableHead>
-                      <TableHead className="py-3 px-4 text-left">Added By</TableHead>
-                      <TableHead className="py-3 px-4 text-center">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {downloadEntries.map((entry, index) => (
-                      <TableRow key={entry.id} className="border-b border-[hsl(235,13%,30%)] hover:bg-[hsl(235,19%,13%)] transition-all duration-200 hover:shadow-sm">
-                        <TableCell className="py-3 px-4">
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleMoveDownloadUp(entry.id)}
-                              disabled={reorderingDownload !== null || index === 0}
-                              className="h-8 w-8 p-0 transition-all duration-200 hover:scale-110 hover:bg-purple-900/20 text-purple-500"
-                            >
-                              <ArrowUp className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleMoveDownloadDown(entry.id)}
-                              disabled={reorderingDownload !== null || index === downloadEntries.length - 1}
-                              className="h-8 w-8 p-0 transition-all duration-200 hover:scale-110 hover:bg-purple-900/20 text-purple-500"
-                            >
-                              <ArrowDown className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-3 px-4 font-medium">{entry.name}</TableCell>
-                        <TableCell className="py-3 px-4">{downloadCategories.find(c => c.id === entry.category)?.name || entry.category}</TableCell>
-                        <TableCell className="py-3 px-4">
-                          {entry.fileUrl ? (
-                            <a href={entry.fileUrl} target="_blank" rel="noopener noreferrer" className="text-[#cba6f7] hover:underline flex items-center gap-1">
-                              File <Download className="h-4 w-4" />
-                            </a>
-                          ) : entry.url ? (
-                          <a href={entry.url} target="_blank" rel="noopener noreferrer" className="text-[#cba6f7] hover:underline flex items-center gap-1">
-                            Link <ExternalLink className="h-4 w-4" />
-                          </a>
-                          ) : (
-                            <span className="text-[hsl(222,15%,60%)]">No link</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="py-3 px-4 text-[hsl(222,15%,60%)]">{entry.addedBy}</TableCell>
-                        <TableCell className="py-3 px-4 text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              onClick={() => handleEditDownload(entry)}
-                              className="text-[#cba6f7] hover:bg-purple-900/20 transition-all duration-200 hover:scale-110"
-                            >
-                              <Edit2 className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              onClick={() => handleDeleteDownload(entry.id)}
-                              className="text-red-500 hover:bg-red-900/20 transition-all duration-200 hover:scale-110"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-        </AnimatedTabsContent>
+            <DownloadsTab 
+              selectedTranslationLanguage={selectedTranslationLanguage}
+              onTranslationLanguageChange={setSelectedTranslationLanguage}
+              adminTranslations={adminTranslations}
+              onStartEditTranslation={(type, id, originalName, language, value) => {
+                setEditingEntityTranslation({ 
+                  type, 
+                  id, 
+                  originalName, 
+                  language 
+                });
+                setEditingTranslationValue(value);
+              }}
+            />
+          </AnimatedTabsContent>
         </Tabs>
-
-        {/* Edit Download Dialog */}
-        <Dialog open={!!editingDownload} onOpenChange={(open) => {
-          if (!open) {
-            if (!savingDownload) {
-              setEditingDownload(null);
-              setEditingDownloadForm({ description: "" });
-            }
-          }
-        }}>
-          <DialogContent className="bg-[hsl(240,21%,16%)] border-[hsl(235,13%,30%)] max-w-2xl">
-            <DialogHeader>
-              <DialogTitle className="text-[#f2cdcd]">
-                Edit Download: {editingDownload?.name}
-              </DialogTitle>
-            </DialogHeader>
-            {editingDownload && (
-              <div className="space-y-4 py-4">
-                <div>
-                  <Label htmlFor="edit-downloadDescription">Description</Label>
-                  <Textarea
-                    id="edit-downloadDescription"
-                    value={editingDownloadForm.description}
-                    onChange={(e) => setEditingDownloadForm({ ...editingDownloadForm, description: e.target.value })}
-                    required
-                    className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)]"
-                    rows={4}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="edit-downloadImage">Image</Label>
-                  <div className="space-y-2">
-                    {editingDownloadForm.imageUrl && (
-                      <div className="relative w-full h-48 rounded-lg overflow-hidden border border-[hsl(235,13%,30%)]">
-                        <img 
-                          src={editingDownloadForm.imageUrl} 
-                          alt={editingDownload.name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    )}
-                    <div className="flex items-center gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={async () => {
-                          const input = document.createElement('input');
-                          input.type = 'file';
-                          input.accept = 'image/*';
-                          input.onchange = async (e) => {
-                            const file = (e.target as HTMLInputElement).files?.[0];
-                            if (!file) return;
-                            
-                            try {
-                              const uploadedFiles = await startImageUpload([file]);
-                              if (uploadedFiles && uploadedFiles.length > 0) {
-                                const fileUrl = uploadedFiles[0]?.url;
-                                if (fileUrl) {
-                                  setEditingDownloadForm({ ...editingDownloadForm, imageUrl: fileUrl });
-                                  toast({
-                                    title: "Image Uploaded",
-                                    description: "Image uploaded successfully.",
-                                  });
-                                }
-                              }
-                            } catch (error: any) {
-                              toast({
-                                title: "Upload Failed",
-                                description: error.message || "Failed to upload image.",
-                                variant: "destructive",
-                              });
-                            }
-                          };
-                          input.click();
-                        }}
-                        disabled={isUploadingImage}
-                        className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] hover:bg-[hsl(234,14%,29%)]"
-                      >
-                        <Upload className="h-4 w-4 mr-2" />
-                        {isUploadingImage ? "Uploading..." : editingDownloadForm.imageUrl ? "Change Image" : "Upload Image"}
-                      </Button>
-                      {editingDownloadForm.imageUrl && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => setEditingDownloadForm({ ...editingDownloadForm, imageUrl: "" })}
-                          className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] hover:bg-[hsl(234,14%,29%)] text-red-500"
-                        >
-                          <X className="h-4 w-4 mr-2" />
-                          Remove Image
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setEditingDownload(null);
-                  setEditingDownloadForm({ description: "" });
-                }}
-                disabled={savingDownload}
-                className="bg-[hsl(240,21%,15%)] border-[hsl(235,13%,30%)] hover:bg-[hsl(234,14%,29%)]"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleSaveDownload}
-                disabled={savingDownload}
-                className="bg-gradient-to-r from-[#cba6f7] to-[#b4a0e2] hover:from-[#b4a0e2] hover:to-[#cba6f7] text-[hsl(240,21%,15%)] font-bold"
-              >
-                {savingDownload ? "Saving..." : "Save Changes"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
 
         {/* Edit Imported Run Dialog */}
         <Dialog open={!!editingImportedRun} onOpenChange={(open) => {
@@ -8740,7 +3548,7 @@ const Admin = () => {
                     // Dynamic import at call site
 
 
-                    const { updateLeaderboardEntry } = await import("@/lib/db/runs");
+                    const { updateLeaderboardEntryFirestore } = await import("@/lib/data/firestore/runs");
                     const success = await updateLeaderboardEntry(editingImportedRun.id, updateData);
                     if (success) {
                       toast({
@@ -8813,6 +3621,7 @@ const Admin = () => {
             animation: gradient 3s linear infinite;
           }
         `}</style>
+          </FadeIn>
       </div>
     </div>
   );

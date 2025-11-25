@@ -11,17 +11,18 @@ import {
 } from "firebase/firestore";
 import { Platform } from "@/types/database";
 import { platformConverter } from "./converters";
+import { withArrayErrorHandling, withBooleanErrorHandling } from "./utils";
+import { logger } from "@/lib/logger";
 
 export const getPlatformsFirestore = async (): Promise<Platform[]> => {
-  if (!db) return [];
-  try {
-    const q = query(collection(db, "platforms").withConverter(platformConverter), orderBy("order", "asc"));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => doc.data());
-  } catch (error) {
-    console.error("Error fetching platforms:", error);
-    return [];
-  }
+  return withArrayErrorHandling(
+    async () => {
+      const q = query(collection(db!, "platforms").withConverter(platformConverter), orderBy("order", "asc"));
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(doc => doc.data());
+    },
+    "Error fetching platforms:"
+  );
 };
 
 export const addPlatformFirestore = async (name: string): Promise<string | null> => {
@@ -40,32 +41,28 @@ export const addPlatformFirestore = async (name: string): Promise<string | null>
     await setDoc(newDocRef, newPlatform);
     return newDocRef.id;
   } catch (error) {
-    console.error("Error adding platform:", error);
+    logger.error("Error adding platform:", error);
     return null;
   }
 };
 
 export const updatePlatformFirestore = async (id: string, name: string): Promise<boolean> => {
-  if (!db) return false;
-  try {
-    const docRef = doc(db, "platforms", id).withConverter(platformConverter);
-    await updateDoc(docRef, { name });
-    return true;
-  } catch (error) {
-    console.error("Error updating platform:", error);
-    return false;
-  }
+  return withBooleanErrorHandling(
+    async () => {
+      const docRef = doc(db!, "platforms", id).withConverter(platformConverter);
+      await updateDoc(docRef, { name });
+    },
+    "Error updating platform:"
+  );
 };
 
 export const deletePlatformFirestore = async (id: string): Promise<boolean> => {
-  if (!db) return false;
-  try {
-    await deleteDoc(doc(db, "platforms", id));
-    return true;
-  } catch (error) {
-    console.error("Error deleting platform:", error);
-    return false;
-  }
+  return withBooleanErrorHandling(
+    async () => {
+      await deleteDoc(doc(db!, "platforms", id));
+    },
+    "Error deleting platform:"
+  );
 };
 
 export const movePlatformUpFirestore = async (_id: string): Promise<boolean> => {

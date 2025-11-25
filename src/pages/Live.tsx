@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AnimatedCard } from '@/components/ui/animated-card';
 import { FadeIn } from '@/components/ui/fade-in';
-import { getPlayersWithTwitchUsernames } from '@/lib/db';
+import { getPlayersWithTwitchUsernamesFirestore as getPlayersWithTwitchUsernames } from '@/lib/data/firestore/players';
 import { useTranslation } from 'react-i18next';
 
 interface LiveRunner {

@@ -151,9 +151,6 @@ const processNewImportedRuns = async (changes: DocumentChange<LeaderboardEntry>[
   if (batches.length > 0) {
     try {
       await Promise.all(batches.map(batch => batch.commit()));
-      if (totalClaimed > 0) {
-        console.log(`[Autoclaim] Claimed ${totalClaimed} new run(s) via real-time listener`);
-      }
     } catch (error) {
       console.error("Error committing autoclaim batches:", error);
     }
@@ -172,10 +169,7 @@ const processPlayerSRCUpdate = async (player: Player) => {
   // Use the existing function to claim all matching runs (verified or unverified)
   // autoClaimRunsBySRCUsernameFirestore doesn't filter by verified status
   try {
-    const claimed = await autoClaimRunsBySRCUsernameFirestore(player.uid, normalizedUsername);
-    if (claimed > 0) {
-      console.log(`[Autoclaim] Claimed ${claimed} run(s) for player ${player.uid} after srcUsername update`);
-    }
+    await autoClaimRunsBySRCUsernameFirestore(player.uid, normalizedUsername);
   } catch (error) {
     console.error("Error claiming runs for updated player:", error);
   }
@@ -226,16 +220,11 @@ const processExistingUnclaimedRuns = async (): Promise<void> => {
           const claimed = await autoClaimRunsBySRCUsernameFirestore(player.uid, normalizedUsername);
           if (claimed > 0) {
             totalClaimed += claimed;
-            console.log(`[Autoclaim] Initial check: Claimed ${claimed} existing run(s) for player ${player.uid}`);
           }
         } catch (error) {
           console.error(`Error claiming runs for player ${player.uid} during initial check:`, error);
         }
       }
-    }
-
-    if (totalClaimed > 0) {
-      console.log(`[Autoclaim] Initial check complete: Claimed ${totalClaimed} total existing run(s)`);
     }
   } catch (error) {
     console.error("Error processing existing unclaimed runs:", error);
@@ -380,8 +369,6 @@ export const startRealtimeAutoclaiming = (): void => {
       console.error("Error setting up fallback players listener:", fallbackError);
     }
   }
-
-  console.log("[Autoclaim] Real-time autoclaiming listeners started");
 };
 
 /**
@@ -404,7 +391,6 @@ export const stopRealtimeAutoclaiming = (): void => {
   }
 
   isListening = false;
-  console.log("[Autoclaim] Real-time autoclaiming listeners stopped");
 };
 
 /**

@@ -15,7 +15,7 @@ import {
   setAdminTranslation, 
   deleteAdminTranslation 
 } from "@/lib/data/firestore/translations";
-import { mergeTranslations } from "@/lib/i18n/translation-service";
+// mergeTranslations will be imported dynamically when needed
 import { useAuth } from "@/components/AuthProvider";
 import { Search, Save, Trash2, Edit2, X, Languages, Wand2 } from "lucide-react";
 import i18n from "@/lib/i18n";
@@ -197,6 +197,7 @@ export function TranslationManager() {
       
       // Update i18n resources immediately
       // Use mergeTranslations to properly handle nested keys
+      const { mergeTranslations } = await import("@/lib/i18n/translation-service");
       const existingResources = i18n.getResourceBundle(selectedLanguage, 'translation') || {};
       const newTranslation = { [trimmedKey]: editingValue.trim() };
       const merged = mergeTranslations(existingResources, newTranslation);
