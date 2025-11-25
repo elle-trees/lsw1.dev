@@ -10,7 +10,7 @@ interface StaggerListProps {
 }
 
 /**
- * Container component for staggered list animations
+ * Optimized container component for staggered list animations
  * Use this to wrap lists of items that should animate in sequence
  */
 export function StaggerList({ children, className, itemClassName }: StaggerListProps) {
@@ -21,16 +21,18 @@ export function StaggerList({ children, className, itemClassName }: StaggerListP
       animate="visible"
       className={cn(className)}
     >
-      {React.Children.map(children, (child, index) => (
-        <motion.div
-          key={index}
-          variants={staggerItemVariants}
-          className={cn(itemClassName)}
-        >
-          {child}
-        </motion.div>
-      ))}
+      {React.Children.map(children, (child, index) => {
+        if (!child) return null;
+        return (
+          <motion.div
+            key={typeof child === 'object' && 'key' in child ? child.key ?? index : index}
+            variants={staggerItemVariants}
+            className={cn(itemClassName)}
+          >
+            {child}
+          </motion.div>
+        );
+      })}
     </motion.div>
   );
 }
-

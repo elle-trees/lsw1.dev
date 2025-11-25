@@ -132,7 +132,7 @@ export function RecentRuns({ runs, loading, showRankBadge = true, maxRuns }: Rec
         </TableHeader>
         <TableBody>
           {visibleRuns.map((run, index) => {
-            const rank = index + 1;
+            const rank = visibleRuns.indexOf(run) + 1;
             const platformName = getPlatformName(
               run.platform,
               platforms,
@@ -146,8 +146,7 @@ export function RecentRuns({ runs, loading, showRankBadge = true, maxRuns }: Rec
                 key={run.id} 
                 onMouseEnter={() => setHighlightedId(run.id)}
                 onMouseLeave={() => setHighlightedId(null)}
-                className={`table-row-animate border-b border-ctp-surface1/20 transition-colors duration-50 ${isHighlighted ? 'bg-ctp-surface0' : ''} ${run.isObsolete ? 'opacity-60 italic' : ''}`}
-                style={{ animationDelay: `${index * 50}ms` }}
+                className={`border-b border-ctp-surface1/20 transition-colors duration-50 ${isHighlighted ? 'bg-ctp-surface0' : ''} ${run.isObsolete ? 'opacity-60 italic' : ''}`}
               >
                 {showRankBadge && (
                   <TableCell className="py-4 pl-4 pr-2">
