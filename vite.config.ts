@@ -24,7 +24,7 @@ export default defineConfig(({ mode }) => {
       include: [
         'react',
         'react-dom',
-        'react-router-dom',
+        '@tanstack/react-router',
         '@tanstack/react-query',
         'firebase/app',
         'firebase/auth',

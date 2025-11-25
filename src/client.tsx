@@ -1,5 +1,4 @@
-import { hydrateRoot } from 'react-dom/client'
-import { StartClient } from '@tanstack/start/client'
+import { createRoot } from 'react-dom/client'
 import { App } from './app'
 import { auth } from './lib/firebase'
 import { onAuthStateChanged } from 'firebase/auth'
@@ -19,10 +18,5 @@ onAuthStateChanged(auth, async (user) => {
 
 const rootElement = document.getElementById('root')!
 
-hydrateRoot(
-  rootElement,
-  <StartClient>
-    <App />
-  </StartClient>
-)
+createRoot(rootElement).render(<App />)
 
