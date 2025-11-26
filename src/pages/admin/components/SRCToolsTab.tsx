@@ -18,7 +18,7 @@ import { LeaderboardEntry, Category, Level, Platform } from "@/types/database";
 import { formatTime } from "@/lib/utils";
 import { getCategoryName, getPlatformName, getLevelName, normalizeCategoryId, normalizePlatformId, normalizeLevelId } from "@/lib/dataValidation";
 import { Pagination } from "@/components/Pagination";
-import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useSRCToolsManagement } from "../hooks/useSRCToolsManagement";
 import { SRCCategory } from "@/lib/speedruncom";
 import { useToast } from "@/hooks/use-toast";
@@ -695,8 +695,10 @@ export function SRCToolsTab({
         </CardHeader>
         <CardContent className="pt-6">
           {loadingSRCCategories ? (
-            <div className="text-center py-8">
-              <LoadingSpinner />
+            <div className="py-8 space-y-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full rounded-none" />
+              ))}
             </div>
           ) : srcCategoriesWithVars.length === 0 ? (
             <p className="text-[hsl(222,15%,60%)] text-center py-8">

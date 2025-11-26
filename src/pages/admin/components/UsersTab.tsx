@@ -14,7 +14,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Badge } from "@/components/ui/badge";
 import { Users, Search, Edit2, Trash2, RefreshCw, ArrowUp, ArrowDown, Save } from "lucide-react";
 import { useUsersManagement } from "../hooks/useUsersManagement";
-import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { Pagination } from "@/components/Pagination";
 import { FadeIn } from "@/components/ui/fade-in";
 import { TableSkeleton } from "@/components/admin/TableSkeleton";
@@ -325,10 +324,7 @@ export function UsersTab() {
                 className="bg-[#cba6f7] hover:bg-[#b4a0e2] text-[hsl(240,21%,15%)] font-bold"
               >
                 {savingPlayer ? (
-                  <>
-                    <LoadingSpinner size="sm" className="mr-2" />
-                    Saving...
-                  </>
+                  <>Saving...</>
                 ) : (
                   <>
                     <Save className="h-4 w-4 mr-2" />
@@ -381,10 +377,7 @@ export function UsersTab() {
               className="bg-red-600/20 hover:bg-red-600/30 text-red-400 border-red-600/50"
             >
               {deletingPlayerId === playerToDelete?.id ? (
-                <>
-                  <LoadingSpinner size="sm" className="mr-2" />
-                  Deleting...
-                </>
+                <>Deleting...</>
               ) : (
                 <>
                   <Trash2 className="h-4 w-4 mr-2" />

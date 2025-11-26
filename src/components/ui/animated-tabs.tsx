@@ -134,8 +134,9 @@ const AnimatedTabsList = React.forwardRef<
           }}
           transition={{
             type: "spring",
-            stiffness: 300,
-            damping: 30,
+            stiffness: 280,
+            damping: 28,
+            mass: 0.8,
           }}
         />
       )}

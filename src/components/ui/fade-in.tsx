@@ -46,7 +46,7 @@ export function FadeIn({
       initial="hidden"
       animate="visible"
       variants={getVariants()}
-      transition={{ ...transitions.spring, delay }}
+      transition={{ ...transitions.smooth, delay }}
       className={cn(className)}
       {...props}
     >

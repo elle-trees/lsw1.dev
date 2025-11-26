@@ -25,7 +25,6 @@ import { fetchCategoryVariables, getLSWGameId, fetchCategories as fetchSRCCatego
 import { useUploadThing } from "@/lib/uploadthing";
 import { LeaderboardEntry, Category, Level, Subcategory, PointsConfig, GameDetailsConfig, GameDetailsHeaderLink, Player } from "@/types/database";
 import { useNavigate } from "@tanstack/react-router";
-import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { formatTime } from "@/lib/utils";
 import { FadeIn } from "@/components/ui/fade-in";
 import { CardSkeleton } from "@/components/admin/CardSkeleton";

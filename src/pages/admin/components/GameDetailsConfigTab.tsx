@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Gamepad2, PlusCircle, Save, Edit2, Trash2, ArrowUp, ArrowDown } from "lucide-react";
-import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useGameDetailsConfig } from "../hooks/useGameDetailsConfig";
 import { GameDetailsHeaderLink } from "@/types/database";
 
@@ -55,8 +55,10 @@ export function GameDetailsConfigTab({ activeTab }: GameDetailsConfigTabProps) {
         </CardHeader>
         <CardContent className="pt-6">
           {loadingGameDetailsConfig ? (
-            <div className="py-12">
-              <LoadingSpinner size="sm" />
+            <div className="py-12 space-y-4">
+              <Skeleton className="h-10 w-full rounded-none" />
+              <Skeleton className="h-10 w-full rounded-none" />
+              <Skeleton className="h-10 w-3/4 rounded-none" />
             </div>
           ) : gameDetailsConfig ? (
             <div className="space-y-6">
@@ -485,10 +487,7 @@ export function GameDetailsConfigTab({ activeTab }: GameDetailsConfigTabProps) {
                   className="bg-gradient-to-r from-[#94e2d5] to-[#7dd3c7] hover:from-[#7dd3c7] hover:to-[#94e2d5] text-[hsl(240,21%,15%)] font-bold flex items-center gap-2 transition-all duration-300 hover:scale-105 hover:shadow-lg"
                 >
                   {savingGameDetailsConfig ? (
-                    <>
-                      <LoadingSpinner size="sm" />
-                      Saving...
-                    </>
+                    <>Saving...</>
                   ) : (
                     <>
                       <Save className="h-4 w-4" />

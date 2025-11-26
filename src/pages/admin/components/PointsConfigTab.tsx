@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Coins, Save, RefreshCw } from "lucide-react";
-import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { usePointsConfig } from "../hooks/usePointsConfig";
 
 export function PointsConfigTab() {
@@ -38,8 +38,10 @@ export function PointsConfigTab() {
         </CardHeader>
         <CardContent className="pt-6">
           {loadingPointsConfig ? (
-            <div className="py-12">
-              <LoadingSpinner size="sm" />
+            <div className="py-12 space-y-4">
+              <Skeleton className="h-10 w-full rounded-none" />
+              <Skeleton className="h-10 w-full rounded-none" />
+              <Skeleton className="h-10 w-3/4 rounded-none" />
             </div>
           ) : pointsConfig ? (
             <div className="space-y-6">
@@ -218,10 +220,7 @@ export function PointsConfigTab() {
                   className="bg-gradient-to-r from-[#fab387] to-[#f9e2af] hover:from-[#f9e2af] hover:to-[#fab387] text-[hsl(240,21%,15%)] font-bold"
                 >
                   {savingPointsConfig ? (
-                    <>
-                      <LoadingSpinner size="sm" className="mr-2" />
-                      Saving...
-                    </>
+                    <>Saving...</>
                   ) : (
                     <>
                       <Save className="h-4 w-4 mr-2" />
@@ -263,10 +262,7 @@ export function PointsConfigTab() {
             className="bg-gradient-to-r from-[#FFD700] to-[#FFA500] hover:from-[#FFA500] hover:to-[#FFD700] text-black font-semibold w-full sm:w-auto transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-[#FFD700]/50"
           >
             {backfillingPoints ? (
-              <>
-                <LoadingSpinner size="sm" className="mr-2" />
-                Recalculating Points...
-              </>
+              <>Recalculating Points...</>
             ) : (
               <>
                 <RefreshCw className="h-4 w-4 mr-2" />
@@ -301,10 +297,7 @@ export function PointsConfigTab() {
             className="bg-gradient-to-r from-[#a6e3a1] to-[#86c77a] hover:from-[#86c77a] hover:to-[#a6e3a1] text-black font-semibold w-full sm:w-auto transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-[#a6e3a1]/50"
           >
             {recalculatingTotalRuns ? (
-              <>
-                <LoadingSpinner size="sm" className="mr-2" />
-                Recalculating Total Runs...
-              </>
+              <>Recalculating Total Runs...</>
             ) : (
               <>
                 <RefreshCw className="h-4 w-4 mr-2" />

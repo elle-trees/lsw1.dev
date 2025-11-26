@@ -23,26 +23,9 @@ export {
   modalVariants,
   modalBackdropVariants,
   tableRowVariants,
+  listItemVariants,
   createSpringTransition,
 } from './framer-motion';
-
-// AutoAnimate exports
-export {
-  autoAnimateConfigs,
-  bouncyPlugin,
-  slidePlugin,
-  useAutoAnimateWithConfig,
-  applyAutoAnimate,
-  useAutoAnimateRef,
-} from './auto-animate';
-
-// Hooks exports
-export {
-  useAnimateList,
-  useAnimateTable,
-  useAnimateGrid,
-  useAnimateConditional,
-} from './hooks';
 
 // Type exports
 export type { Variants, Transition } from 'framer-motion';

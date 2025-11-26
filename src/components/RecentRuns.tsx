@@ -12,6 +12,8 @@ import LegoStudIcon from "@/components/icons/LegoStudIcon";
 import { getPlatformName } from "@/lib/dataValidation";
 import { usePrefetchVisible } from "@/hooks/usePrefetch";
 import { useTranslation } from "react-i18next";
+import { motion } from "framer-motion";
+import { tableRowVariants } from "@/lib/animations";
 
 interface RecentRunsProps {
   runs: LeaderboardEntry[];
@@ -141,9 +143,15 @@ export function RecentRuns({ runs, loading, showRankBadge = true, maxRuns }: Rec
 
             const isHighlighted = highlightedId === run.id;
             
+            const MotionTableRow = motion(TableRow);
+            
             return (
-              <TableRow 
-                key={run.id} 
+              <MotionTableRow 
+                key={run.id}
+                variants={tableRowVariants}
+                initial="hidden"
+                animate="visible"
+                custom={index}
                 onMouseEnter={() => setHighlightedId(run.id)}
                 onMouseLeave={() => setHighlightedId(null)}
                 className={`border-b border-ctp-surface1/20 transition-colors duration-50 ${isHighlighted ? 'bg-ctp-surface0' : ''} ${run.isObsolete ? 'opacity-60 italic' : ''}`}
@@ -297,7 +305,7 @@ export function RecentRuns({ runs, loading, showRankBadge = true, maxRuns }: Rec
                     )}
                   </PrefetchLink>
                 </TableCell>
-              </TableRow>
+              </MotionTableRow>
             );
           })}
         </TableBody>
