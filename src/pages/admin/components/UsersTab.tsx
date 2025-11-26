@@ -67,8 +67,8 @@ export function UsersTab() {
               size="sm"
               className="border-[hsl(235,13%,30%)] bg-gradient-to-r from-transparent via-[hsl(237,16%,24%)]/50 to-transparent hover:from-[hsl(237,16%,24%)] hover:via-[hsl(237,16%,28%)] hover:to-[hsl(237,16%,24%)] hover:border-[#cba6f7]/50"
             >
-              <RefreshCw className={`h-4 w-4 mr-2 ${loadingPlayers ? 'animate-spin' : ''}`} />
-              Refresh
+              <RefreshCw className="h-4 w-4 mr-2" />
+              {loadingPlayers ? 'Refreshing...' : 'Refresh'}
             </Button>
           </div>
         </CardHeader>

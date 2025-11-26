@@ -24,6 +24,7 @@ import { formatDate, formatTime } from "@/lib/utils";
 import { useUploadThing } from "@/lib/uploadthing";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useTranslation } from "react-i18next";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const UserSettings = () => {
   const { t } = useTranslation();
@@ -411,8 +412,25 @@ const UserSettings = () => {
 
   if (authLoading || pageLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[hsl(240,21%,15%)] to-[hsl(235,19%,13%)] text-ctp-text flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#cba6f7]"></div>
+      <div className="min-h-screen bg-gradient-to-b from-[hsl(240,21%,15%)] to-[hsl(235,19%,13%)] text-ctp-text py-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6">
+          <div className="space-y-6">
+            <div>
+              <Skeleton className="h-10 w-64 mb-2 rounded-none" />
+              <Skeleton className="h-5 w-96 rounded-none" />
+            </div>
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-48 rounded-none" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Skeleton className="h-10 w-full rounded-none" />
+                <Skeleton className="h-10 w-full rounded-none" />
+                <Skeleton className="h-10 w-3/4 rounded-none" />
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     );
   }
@@ -657,8 +675,10 @@ const UserSettings = () => {
                   )}
                 </div>
                 {loadingSRCUnclaimed ? (
-                  <div className="text-center py-4">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#cba6f7] mx-auto"></div>
+                  <div className="py-4 space-y-2">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <Skeleton key={i} className="h-12 w-full rounded-none" />
+                    ))}
                   </div>
                 ) : unclaimedSRCRuns.length === 0 ? (
                   <p className="text-[hsl(222,15%,60%)] text-center py-4">

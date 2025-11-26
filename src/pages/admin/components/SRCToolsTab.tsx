@@ -131,10 +131,7 @@ export function SRCToolsTab({
                 className="bg-red-900/20 border-red-700/50 text-red-400 hover:bg-red-900/30 hover:border-red-600 transition-all duration-300"
               >
                 {clearingImportedRuns ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                    Clearing...
-                  </>
+                  <>Clearing...</>
                 ) : (
                   <>
                     <X className="h-4 w-4 mr-2" />
@@ -159,10 +156,7 @@ export function SRCToolsTab({
                 className="bg-gradient-to-r from-[#cba6f7] to-[#b4a0e2] hover:from-[#b4a0e2] hover:to-[#cba6f7] text-[hsl(240,21%,15%)] font-bold transition-all duration-300 hover:scale-105 hover:shadow-lg"
               >
                 {importingRuns ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                    Importing...
-                  </>
+                  <>Importing...</>
                 ) : (
                   <>
                     <Upload className="h-4 w-4 mr-2" />
@@ -178,10 +172,7 @@ export function SRCToolsTab({
                     className="bg-gradient-to-r from-[#94e2d5] to-[#74c7b0] hover:from-[#74c7b0] hover:to-[#94e2d5] text-[hsl(240,21%,15%)] font-bold transition-all duration-300 hover:scale-105 hover:shadow-lg"
                   >
                     {batchVerifying ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        Verifying...
-                      </>
+                      <>Verifying...</>
                     ) : (
                       <>
                         <CheckCircle className="h-4 w-4 mr-2" />
@@ -195,10 +186,7 @@ export function SRCToolsTab({
                     className="bg-gradient-to-r from-[#a6e3a1] to-[#86c77a] hover:from-[#86c77a] hover:to-[#a6e3a1] text-[hsl(240,21%,15%)] font-bold transition-all duration-300 hover:scale-105 hover:shadow-lg"
                   >
                     {batchVerifyingAll ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        Verifying All...
-                      </>
+                      <>Verifying All...</>
                     ) : (
                       <>
                         <CheckCircle className="h-4 w-4 mr-2" />
@@ -240,10 +228,7 @@ export function SRCToolsTab({
               className="bg-gradient-to-r from-[#89b4fa] to-[#74c7ec] hover:from-[#74c7ec] hover:to-[#89b4fa] text-[hsl(240,21%,15%)] font-bold transition-all duration-300 hover:scale-105 hover:shadow-lg"
             >
               {backfillingSrcPlayerName ? (
-                <>
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                  Backfilling...
-                </>
+                <>Backfilling...</>
               ) : (
                 <>
                   <RefreshCw className="h-4 w-4 mr-2" />
@@ -265,10 +250,7 @@ export function SRCToolsTab({
               className="bg-gradient-to-r from-[#f9e2af] to-[#e6d19a] hover:from-[#e6d19a] hover:to-[#f9e2af] text-[hsl(240,21%,15%)] font-bold transition-all duration-300 hover:scale-105 hover:shadow-lg"
             >
               {autoclaiming ? (
-                <>
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                  Autoclaiming...
-                </>
+                <>Autoclaiming...</>
               ) : (
                 <>
                   <UserCheck className="h-4 w-4 mr-2" />
@@ -685,7 +667,7 @@ export function SRCToolsTab({
               disabled={loadingSRCCategories}
               className="border-[hsl(235,13%,30%)] hover:bg-[hsl(235,19%,13%)]"
             >
-              <RefreshCw className={`h-4 w-4 mr-2 ${loadingSRCCategories ? 'animate-spin' : ''}`} />
+              <RefreshCw className="h-4 w-4 mr-2" />
               {loadingSRCCategories ? 'Loading...' : 'Load Categories'}
             </Button>
           </div>

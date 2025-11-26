@@ -591,7 +591,7 @@ export function TranslationManager() {
                               disabled={autoTranslating === key}
                               title={t("translationManager.autoTranslate")}
                             >
-                              <Wand2 className={`h-4 w-4 ${autoTranslating === key ? 'animate-spin' : ''}`} />
+                              <Wand2 className="h-4 w-4" />
                             </Button>
                           )}
                           {hasAdminOverride(key) && (
@@ -647,7 +647,7 @@ export function TranslationManager() {
                     onClick={() => handleAutoTranslate(editingKey)}
                     disabled={autoTranslating === editingKey}
                   >
-                    <Wand2 className={`h-4 w-4 mr-2 ${autoTranslating === editingKey ? 'animate-spin' : ''}`} />
+                    <Wand2 className="h-4 w-4 mr-2" />
                     {autoTranslating === editingKey ? t("translationManager.autoTranslating") : t("translationManager.autoTranslate")}
                   </Button>
                 )}
