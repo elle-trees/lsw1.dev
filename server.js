@@ -11,12 +11,24 @@ const __dirname = dirname(__filename);
 const PORT = parseInt(process.env.PORT || '8080', 10);
 const HOST = '0.0.0.0';
 const DIST_DIR = resolve(__dirname, 'dist');
+const SERVER_ENTRY = resolve(DIST_DIR, 'server/server.js');
+const SSR_ENABLED = existsSync(SERVER_ENTRY);
 
-// SSR is not currently enabled - this is a client-side only SPA
-// If SSR is needed in the future, uncomment and configure:
-// const SERVER_ENTRY = resolve(DIST_DIR, 'server/server.js');
-// const SSR_ENABLED = existsSync(SERVER_ENTRY);
+// Dynamically import SSR render function if available
 let render = null;
+let createHTMLTemplate = null;
+
+if (SSR_ENABLED) {
+  try {
+    const serverModule = await import(SERVER_ENTRY);
+    render = serverModule.render || serverModule.renderStream;
+    createHTMLTemplate = serverModule.createHTMLTemplate;
+    console.log('✅ SSR enabled - server entry found');
+  } catch (error) {
+    console.warn('⚠️  Failed to load SSR module:', error.message);
+    console.warn('   Falling back to static SPA mode');
+  }
+}
 
 const MIME_TYPES = {
   '.html': 'text/html',
@@ -106,7 +118,69 @@ const server = createServer(async (req, res) => {
       }
     }
     
-    // Serve index.html for all non-asset requests (SPA routing)
+    // Try SSR if enabled, otherwise fall back to static SPA
+    if (SSR_ENABLED && render && !isStaticAsset) {
+      try {
+        const url = req.url || '/';
+        const result = await render(url);
+        
+        if (result.error) {
+          console.error('SSR render error:', result.error);
+          // Fall through to static fallback
+        } else if (result.stream && result.stream.pipe) {
+          // Streaming SSR response
+          res.writeHead(200, {
+            'Content-Type': 'text/html; charset=utf-8',
+            'Cache-Control': 'no-cache',
+            'Transfer-Encoding': 'chunked',
+          });
+          
+          // Write HTML head and root opening
+          const htmlHead = createHTMLTemplate 
+            ? createHTMLTemplate('', result.dehydratedState).split('<div id="root">')[0] + '<div id="root">'
+            : `<!doctype html><html><head><script>window.__REACT_QUERY_STATE__ = ${JSON.stringify(result.dehydratedState)};</script></head><body><div id="root">`
+          
+          res.write(htmlHead)
+          
+          // Create a PassThrough stream to handle the React stream
+          const { PassThrough } = await import('stream')
+          const passThrough = new PassThrough()
+          
+          // Pipe React stream through PassThrough to response
+          result.stream.pipe(passThrough)
+          passThrough.pipe(res, { end: false })
+          
+          passThrough.on('end', () => {
+            res.write('</div></body></html>')
+            res.end()
+          })
+          
+          passThrough.on('error', (error) => {
+            console.error('Stream error:', error)
+            res.end()
+          })
+          
+          return
+        } else if (result.html) {
+          // Non-streaming SSR response
+          const html = createHTMLTemplate
+            ? createHTMLTemplate(result.html, result.dehydratedState)
+            : `<!doctype html><html><head><script>window.__REACT_QUERY_STATE__ = ${JSON.stringify(result.dehydratedState)};</script></head><body><div id="root">${result.html}</div></body></html>`
+          
+          res.writeHead(200, {
+            'Content-Type': 'text/html; charset=utf-8',
+            'Cache-Control': 'no-cache',
+          });
+          res.end(html);
+          return;
+        }
+      } catch (ssrError) {
+        console.error('SSR error:', ssrError);
+        // Fall through to static fallback
+      }
+    }
+    
+    // Fallback: Serve index.html for all non-asset requests (SPA routing)
     const indexResult = serveFile(indexPath);
     
     if (indexResult) {
@@ -128,7 +202,14 @@ const server = createServer(async (req, res) => {
 
 server.listen(PORT, HOST, () => {
   console.log(`Server running on http://${HOST}:${PORT}`);
-  console.log('Serving static files (SPA mode)');
+  if (SSR_ENABLED && render) {
+    console.log('✅ SSR mode enabled');
+  } else {
+    console.log('📄 Serving static files (SPA mode)');
+    if (!SSR_ENABLED) {
+      console.log('   (SSR not available - run "npm run build" to enable)');
+    }
+  }
   if (!existsSync(resolve(DIST_DIR, 'index.html'))) {
     console.warn('⚠️  WARNING: dist/index.html not found. Run "npm run build" first.');
     console.warn('   For development, use "npm run dev" instead.');

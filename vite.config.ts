@@ -265,6 +265,20 @@ export default defineConfig(({ mode }) => {
         '@tanstack/react-router',
         '@tanstack/react-query',
       ],
+      // Externalize Node.js built-ins and problematic packages
+      external: [
+        // Node.js built-ins
+        'fs',
+        'path',
+        'url',
+        'stream',
+        'http',
+        'https',
+        'util',
+        'crypto',
+        'buffer',
+        'events',
+      ],
     },
     build: {
       // Optimize build performance
@@ -285,70 +299,9 @@ export default defineConfig(({ mode }) => {
       target: "esnext", // Target modern browsers for smaller bundles
       // Disable compressed size reporting to speed up build
       reportCompressedSize: false,
-      // Use terser for better minification (optional, esbuild is faster but terser produces smaller bundles)
-      // minify: 'terser', // Uncomment if you want smaller bundles at the cost of build time
-      // Optimize chunking strategy
-      rollupOptions: {
-        output: {
-          // Optimize chunk file names for better caching
-          chunkFileNames: 'assets/js/[name]-[hash].js',
-          entryFileNames: 'assets/js/[name]-[hash].js',
-          assetFileNames: (assetInfo) => {
-            if (assetInfo.name?.endsWith('.css')) {
-              return 'assets/css/[name]-[hash][extname]';
-            }
-            return 'assets/[name]-[hash][extname]';
-          },
-          manualChunks: (id) => {
-            // Separate vendor chunks for better caching and parallel loading
-            if (id.includes('node_modules')) {
-              // Firebase and related - large dependency, separate for better caching
-              if (id.includes('firebase')) {
-                return 'vendor-firebase';
-              }
-              // React and React DOM - core framework (most frequently used)
-              if (id.includes('react-dom') || id.includes('react/')) {
-                return 'vendor-react';
-              }
-              // Radix UI components - large UI library (used across many pages)
-              if (id.includes('@radix-ui')) {
-                return 'vendor-radix';
-              }
-              // Recharts (only used on Stats page) - large charting library, lazy load
-              // This will be code-split since it's lazy loaded
-              if (id.includes('recharts')) {
-                return 'vendor-recharts';
-              }
-              // React Router - routing library
-              if (id.includes('react-router')) {
-                return 'vendor-router';
-              }
-              // React Query - data fetching
-              if (id.includes('@tanstack/react-query')) {
-                return 'vendor-query';
-              }
-              // Framer Motion - animation library (can be large, used selectively)
-              if (id.includes('framer-motion')) {
-                return 'vendor-animations';
-              }
-              // Uploadthing - file upload library (only on specific pages)
-              if (id.includes('uploadthing') || id.includes('@uploadthing')) {
-                return 'vendor-upload';
-              }
-              // Form libraries (react-hook-form, zod, etc.) - used on submit/settings pages
-              if (id.includes('react-hook-form') || id.includes('@hookform') || id.includes('zod')) {
-                return 'vendor-forms';
-              }
-              // Icon and utility libraries
-              if (id.includes('lucide-react') || id.includes('date-fns')) {
-                return 'vendor-utils';
-              }
-              // Everything else from node_modules
-              return 'vendor';
-            }
-          },
-        },
-      },
+      // SSR build configuration
+      // Note: SSR build is done separately via build:server script
+      // This config is for client build only
     },
   };
 });
