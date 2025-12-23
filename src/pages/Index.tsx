@@ -219,7 +219,7 @@ const Index = () => {
                 {statsLoading ? (
                   <Skeleton className="h-10 w-28 mb-1 bg-ctp-surface0/50" />
                 ) : (
-                  <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-ctp-green transition-all duration-300 break-words min-w-0">
+                  <div className="text-2xl sm:text-3xl lg:text-4xl font-bold text-ctp-green transition-all duration-300 break-words min-w-0">
                     {totalVerifiedRuns.toLocaleString()}
                   </div>
                 )}
@@ -315,7 +315,7 @@ const Index = () => {
                 {statsLoading ? (
                   <Skeleton className="h-10 w-36 mb-1 bg-ctp-surface0/50" />
                 ) : (
-                  <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-ctp-text transition-all duration-300 break-words min-w-0 leading-tight">
+                  <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-ctp-text transition-all duration-300 break-words min-w-0 leading-tight">
                     {totalTime}
                   </div>
                 )}
