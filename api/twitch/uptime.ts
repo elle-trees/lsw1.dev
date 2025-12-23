@@ -8,45 +8,47 @@ import {
   createOptionsResponse,
   createCacheHeaders,
   handleApiRequest,
-} from '../utils/errorHandler';
+} from "../utils/errorHandler.js";
 
 export async function GET(request: Request) {
   return handleApiRequest(async () => {
     const { searchParams } = new URL(request.url);
-    
+
     // Validate required parameters
-    const validation = validateQueryParams(searchParams, ['username']);
+    const validation = validateQueryParams(searchParams, ["username"]);
     if (!validation.valid) {
       return validation.error;
     }
-    
-    const username = searchParams.get('username')!;
-    
+
+    const username = searchParams.get("username")!;
+
     // Fetch from decapi.me
-    const response = await fetch(`https://decapi.me/twitch/uptime/${username.toLowerCase()}`, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0',
+    const response = await fetch(
+      `https://decapi.me/twitch/uptime/${username.toLowerCase()}`,
+      {
+        headers: {
+          "User-Agent": "Mozilla/5.0",
+        },
       },
-    });
-    
+    );
+
     if (!response.ok) {
       return createErrorResponse(
-        'Failed to fetch uptime',
+        "Failed to fetch uptime",
         response.status,
-        'TWITCH_API_ERROR'
+        "TWITCH_API_ERROR",
       );
     }
-    
+
     const text = await response.text();
-    
+
     // Return the text response with CORS headers and caching
     // Cache for 30 seconds (uptime changes less frequently than viewercount)
     return createTextResponse(text, 200, createCacheHeaders(30, 60));
-  }, 'Twitch uptime');
+  }, "Twitch uptime");
 }
 
 // Handle OPTIONS for CORS preflight
 export async function OPTIONS() {
   return createOptionsResponse();
 }
-
