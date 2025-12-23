@@ -92,10 +92,10 @@ A modern, fast, speedrunning leaderboard platform built with React, TypeScript, 
 
 ```bash
 # Install dependencies
-npm install
+bun install
 
 # Start development server
-npm run dev
+bun run dev
 
 # The app will be available at http://localhost:8080
 ```
@@ -104,13 +104,13 @@ npm run dev
 
 ```bash
 # Build the application
-npm run build
+bun run build
 
 # Start production server
-npm start
+bun start
 ```
 
-**Note:** For development, always use `npm run dev`. The production server (`npm start`) requires a build first.
+**Note:** For development, always use `bun run dev`. The production server (`bun start`) requires a build first.
 
 ## Tech Stack
 

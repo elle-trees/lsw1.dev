@@ -14,10 +14,6 @@ export default defineConfig(({ mode }) => {
   const isProduction = mode === "production";
 
   return {
-    // Enable Rolldown's native plugins for better performance
-    experimental: {
-      enableNativePlugin: "v1",
-    },
     // Optimize dependency pre-bundling
     optimizeDeps: {
       // Include dependencies that should be pre-bundled
