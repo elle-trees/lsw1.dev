@@ -14,6 +14,10 @@ import LegoStudIcon from "@/components/icons/LegoStudIcon";
 import { formatTime } from "@/lib/utils";
 import { getPlatformName, getLevelName } from "@/lib/dataValidation";
 import { useTranslation } from "react-i18next";
+import { motion } from "framer-motion";
+import { tableRowVariants } from "@/lib/animations";
+
+const MotionTableRow = motion(TableRow);
 
 interface LeaderboardTableProps {
   data: LeaderboardEntry[];
@@ -95,9 +99,15 @@ export function LeaderboardTable({
                 : undefined;
 
             return (
-              <TableRow
+              <MotionTableRow
                 key={entry.id}
-                className={`border-b border-ctp-surface1/20 cursor-pointer transition-colors duration-50 hover:bg-ctp-surface0 ${entry.isObsolete ? "opacity-60 italic" : ""}`}
+                variants={tableRowVariants}
+                initial="hidden"
+                animate="visible"
+                custom={index}
+                viewport={{ once: true }}
+                whileHover={{ backgroundColor: "#313244" }}
+                className={`border-b border-ctp-surface1/20 cursor-pointer transition-colors duration-50 ${entry.isObsolete ? "opacity-60 italic" : ""}`}
               >
                 <TableCell className="py-2.5 pl-3 pr-1">
                   <PrefetchLink
@@ -340,7 +350,7 @@ export function LeaderboardTable({
                     </a>
                   )}
                 </TableCell>
-              </TableRow>
+              </MotionTableRow>
             );
           })}
         </TableBody>
