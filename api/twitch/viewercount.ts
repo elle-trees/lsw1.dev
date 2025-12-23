@@ -16,7 +16,7 @@ export async function GET(request: Request) {
 
     // Validate required parameters
     const validation = validateQueryParams(searchParams, ["username"]);
-    if (!validation.valid) {
+    if (validation.valid === false) {
       return validation.error;
     }
 
