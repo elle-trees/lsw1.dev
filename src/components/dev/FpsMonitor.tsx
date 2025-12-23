@@ -9,6 +9,12 @@ declare global {
   }
 }
 
+export const toggleFpsMonitor = () => {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("toggle-fps"));
+  }
+};
+
 /**
  * FPS Monitor component
  * Displays real-time frame rate information
@@ -80,9 +86,18 @@ export function FpsMonitor() {
       checkVisibility();
     };
 
+    // Listen for custom toggle event
+    const handleToggle = () => {
+      if (window.toggleFps) {
+        window.toggleFps();
+      }
+    };
+    window.addEventListener("toggle-fps", handleToggle);
+
     return () => {
       clearInterval(interval);
       delete window.toggleFps;
+      window.removeEventListener("toggle-fps", handleToggle);
     };
   }, [isVisible]);
 
