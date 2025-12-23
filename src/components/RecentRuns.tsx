@@ -1,6 +1,13 @@
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { User, Users, Trophy, Sparkles, Check } from "lucide-react";
 import { LeaderboardEntry } from "@/types/database";
 import { getCategoriesFirestore as getCategories } from "@/lib/data/firestore/categories";
@@ -22,10 +29,21 @@ interface RecentRunsProps {
   maxRuns?: number; // Optional max runs to display
 }
 
-export function RecentRuns({ runs, loading, showRankBadge = true, maxRuns }: RecentRunsProps) {
+const MotionTableRow = motion(TableRow);
+
+export function RecentRuns({
+  runs,
+  loading,
+  showRankBadge = true,
+  maxRuns,
+}: RecentRunsProps) {
   const { t } = useTranslation();
-  const [platforms, setPlatforms] = useState<{ id: string; name: string }[]>([]);
-  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [platforms, setPlatforms] = useState<{ id: string; name: string }[]>(
+    [],
+  );
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>(
+    [],
+  );
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const { prefetchItem } = usePrefetchVisible([]);
 
@@ -34,7 +52,7 @@ export function RecentRuns({ runs, loading, showRankBadge = true, maxRuns }: Rec
       try {
         const [platformsData, categoriesData] = await Promise.all([
           getPlatforms(),
-          getCategories()
+          getCategories(),
         ]);
         setPlatforms(platformsData);
         setCategories(categoriesData);
@@ -47,14 +65,14 @@ export function RecentRuns({ runs, loading, showRankBadge = true, maxRuns }: Rec
 
   // Function to get full category name
   const getCategoryName = (categoryId: string) => {
-    const category = categories.find(c => c.id === categoryId);
+    const category = categories.find((c) => c.id === categoryId);
     return category ? category.name : null;
   };
 
   // Filter out individual level runs
-  const filteredRuns = runs.filter(run => {
-    const runLeaderboardType = run.leaderboardType || 'regular';
-    return runLeaderboardType !== 'individual-level';
+  const filteredRuns = runs.filter((run) => {
+    const runLeaderboardType = run.leaderboardType || "regular";
+    return runLeaderboardType !== "individual-level";
   });
 
   // Get visible runs based on maxRuns prop
@@ -66,13 +84,29 @@ export function RecentRuns({ runs, loading, showRankBadge = true, maxRuns }: Rec
         <Table>
           <TableHeader>
             <TableRow className="border-b border-ctp-surface1/50 hover:bg-transparent bg-ctp-surface0/50">
-              {showRankBadge && <TableHead className="py-4 pl-4 pr-2 text-left text-base font-semibold text-ctp-text whitespace-nowrap w-20">{t("components.rank")}</TableHead>}
-              <TableHead className="py-4 pl-2 pr-3 text-left text-base font-semibold text-ctp-text min-w-[250px]">{t("components.player")}</TableHead>
-              <TableHead className="py-4 px-3 text-left text-base font-semibold text-ctp-text hidden sm:table-cell whitespace-nowrap w-32">{t("components.time")}</TableHead>
-              <TableHead className="py-4 px-3 text-left text-base font-semibold text-ctp-text hidden md:table-cell whitespace-nowrap w-36">{t("components.date")}</TableHead>
-              <TableHead className="py-4 px-3 text-left text-base font-semibold text-ctp-text hidden lg:table-cell whitespace-nowrap w-40">{t("components.platform")}</TableHead>
-              <TableHead className="py-4 px-3 text-left text-base font-semibold text-ctp-text hidden lg:table-cell whitespace-nowrap w-32">{t("components.type")}</TableHead>
-              <TableHead className="py-4 px-3 text-left text-base font-semibold text-ctp-text hidden lg:table-cell whitespace-nowrap w-40">{t("components.category")}</TableHead>
+              {showRankBadge && (
+                <TableHead className="py-4 pl-4 pr-2 text-left text-base font-semibold text-ctp-text whitespace-nowrap w-20">
+                  {t("components.rank")}
+                </TableHead>
+              )}
+              <TableHead className="py-4 pl-2 pr-3 text-left text-base font-semibold text-ctp-text min-w-[250px]">
+                {t("components.player")}
+              </TableHead>
+              <TableHead className="py-4 px-3 text-left text-base font-semibold text-ctp-text hidden sm:table-cell whitespace-nowrap w-32">
+                {t("components.time")}
+              </TableHead>
+              <TableHead className="py-4 px-3 text-left text-base font-semibold text-ctp-text hidden md:table-cell whitespace-nowrap w-36">
+                {t("components.date")}
+              </TableHead>
+              <TableHead className="py-4 px-3 text-left text-base font-semibold text-ctp-text hidden lg:table-cell whitespace-nowrap w-40">
+                {t("components.platform")}
+              </TableHead>
+              <TableHead className="py-4 px-3 text-left text-base font-semibold text-ctp-text hidden lg:table-cell whitespace-nowrap w-32">
+                {t("components.type")}
+              </TableHead>
+              <TableHead className="py-4 px-3 text-left text-base font-semibold text-ctp-text hidden lg:table-cell whitespace-nowrap w-40">
+                {t("components.category")}
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -113,7 +147,9 @@ export function RecentRuns({ runs, loading, showRankBadge = true, maxRuns }: Rec
     return (
       <div className="text-center py-16">
         <Sparkles className="h-16 w-16 mx-auto mb-4 text-ctp-overlay0 opacity-50" />
-        <p className="text-lg text-ctp-overlay0">{t("components.noRecentRuns")}</p>
+        <p className="text-lg text-ctp-overlay0">
+          {t("components.noRecentRuns")}
+        </p>
       </div>
     );
   }
@@ -123,13 +159,29 @@ export function RecentRuns({ runs, loading, showRankBadge = true, maxRuns }: Rec
       <Table>
         <TableHeader>
           <TableRow className="border-b border-ctp-surface1/50 hover:bg-transparent bg-ctp-surface0/50">
-            {showRankBadge && <TableHead className="py-4 pl-4 pr-2 text-left text-base font-semibold text-ctp-text whitespace-nowrap w-20">{t("components.rank")}</TableHead>}
-            <TableHead className="py-4 pl-2 pr-3 text-left text-base font-semibold text-ctp-text min-w-[250px]">{t("components.player")}</TableHead>
-            <TableHead className="py-4 px-3 text-left text-base font-semibold text-ctp-text hidden sm:table-cell whitespace-nowrap w-32">{t("components.time")}</TableHead>
-            <TableHead className="py-4 px-3 text-left text-base font-semibold text-ctp-text hidden md:table-cell whitespace-nowrap w-36">{t("components.date")}</TableHead>
-            <TableHead className="py-4 px-3 text-left text-base font-semibold text-ctp-text hidden lg:table-cell whitespace-nowrap w-40">{t("components.platform")}</TableHead>
-            <TableHead className="py-4 px-3 text-left text-base font-semibold text-ctp-text hidden lg:table-cell whitespace-nowrap w-32">{t("components.type")}</TableHead>
-            <TableHead className="py-4 px-3 text-left text-base font-semibold text-ctp-text hidden lg:table-cell whitespace-nowrap w-40">{t("components.category")}</TableHead>
+            {showRankBadge && (
+              <TableHead className="py-4 pl-4 pr-2 text-left text-base font-semibold text-ctp-text whitespace-nowrap w-20">
+                {t("components.rank")}
+              </TableHead>
+            )}
+            <TableHead className="py-4 pl-2 pr-3 text-left text-base font-semibold text-ctp-text min-w-[250px]">
+              {t("components.player")}
+            </TableHead>
+            <TableHead className="py-4 px-3 text-left text-base font-semibold text-ctp-text hidden sm:table-cell whitespace-nowrap w-32">
+              {t("components.time")}
+            </TableHead>
+            <TableHead className="py-4 px-3 text-left text-base font-semibold text-ctp-text hidden md:table-cell whitespace-nowrap w-36">
+              {t("components.date")}
+            </TableHead>
+            <TableHead className="py-4 px-3 text-left text-base font-semibold text-ctp-text hidden lg:table-cell whitespace-nowrap w-40">
+              {t("components.platform")}
+            </TableHead>
+            <TableHead className="py-4 px-3 text-left text-base font-semibold text-ctp-text hidden lg:table-cell whitespace-nowrap w-32">
+              {t("components.type")}
+            </TableHead>
+            <TableHead className="py-4 px-3 text-left text-base font-semibold text-ctp-text hidden lg:table-cell whitespace-nowrap w-40">
+              {t("components.category")}
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -138,15 +190,13 @@ export function RecentRuns({ runs, loading, showRankBadge = true, maxRuns }: Rec
             const platformName = getPlatformName(
               run.platform,
               platforms,
-              run.srcPlatformName
+              run.srcPlatformName,
             );
 
             const isHighlighted = highlightedId === run.id;
-            
-            const MotionTableRow = motion(TableRow);
-            
+
             return (
-              <MotionTableRow 
+              <MotionTableRow
                 key={run.id}
                 variants={tableRowVariants}
                 initial="hidden"
@@ -154,11 +204,16 @@ export function RecentRuns({ runs, loading, showRankBadge = true, maxRuns }: Rec
                 custom={index}
                 onMouseEnter={() => setHighlightedId(run.id)}
                 onMouseLeave={() => setHighlightedId(null)}
-                className={`border-b border-ctp-surface1/20 transition-colors duration-50 ${isHighlighted ? 'bg-ctp-surface0' : ''} ${run.isObsolete ? 'opacity-60 italic' : ''}`}
+                className={`border-b border-ctp-surface1/20 transition-colors duration-50 ${isHighlighted ? "bg-ctp-surface0" : ""} ${run.isObsolete ? "opacity-60 italic" : ""}`}
               >
                 {showRankBadge && (
                   <TableCell className="py-4 pl-4 pr-2">
-                    <PrefetchLink to="/run/$runId" params={{ runId: run.id }} className="block" onClick={(e) => e.stopPropagation()}>
+                    <PrefetchLink
+                      to="/run/$runId"
+                      params={{ runId: run.id }}
+                      className="block"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <div className="flex items-center gap-2">
                         {rank === 1 ? (
                           <LegoStudIcon size={36} color="#0055BF" />
@@ -172,7 +227,10 @@ export function RecentRuns({ runs, loading, showRankBadge = true, maxRuns }: Rec
                           </span>
                         )}
                         {run.isObsolete && (
-                          <Badge variant="destructive" className="bg-red-800/50 text-red-200 text-xs px-2 py-1 border border-red-700/30">
+                          <Badge
+                            variant="destructive"
+                            className="bg-red-800/50 text-red-200 text-xs px-2 py-1 border border-red-700/30"
+                          >
                             {t("components.obsolete")}
                           </Badge>
                         )}
@@ -184,16 +242,22 @@ export function RecentRuns({ runs, loading, showRankBadge = true, maxRuns }: Rec
                   <div className="flex items-center gap-2 flex-wrap">
                     {(() => {
                       // Check if run is unclaimed - simply check if playerId is empty/null
-                      const isUnclaimed = !run.playerId || run.playerId.trim() === "";
-                      
+                      const isUnclaimed =
+                        !run.playerId || run.playerId.trim() === "";
+
                       if (isUnclaimed) {
                         // For unclaimed runs, show name without link
                         return (
                           <>
-                            <span className="font-semibold text-base whitespace-nowrap text-ctp-text">{run.playerName}</span>
+                            <span className="font-semibold text-base whitespace-nowrap text-ctp-text">
+                              {run.playerName}
+                            </span>
                             {run.player2Name && (
                               <>
-                                <span className="text-ctp-overlay0 text-base"> & </span>
+                                <span className="text-ctp-overlay0 text-base">
+                                  {" "}
+                                  &{" "}
+                                </span>
                                 <span className="font-semibold text-base whitespace-nowrap text-ctp-text">
                                   {run.player2Name}
                                 </span>
@@ -202,8 +266,12 @@ export function RecentRuns({ runs, loading, showRankBadge = true, maxRuns }: Rec
                             {rank === 1 && !run.isObsolete && (
                               <Badge className="bg-gradient-to-r from-[#0055BF] to-[#0070f3] text-white text-sm px-2 py-1 border border-[#0055BF]/50 flex items-center gap-1.5 font-semibold">
                                 <Trophy className="h-3.5 w-3.5" />
-                                <span className="hidden sm:inline">{t("components.worldRecord")}</span>
-                                <span className="sm:hidden">{t("components.worldRecordShort")}</span>
+                                <span className="hidden sm:inline">
+                                  {t("components.worldRecord")}
+                                </span>
+                                <span className="sm:hidden">
+                                  {t("components.worldRecordShort")}
+                                </span>
                               </Badge>
                             )}
                           </>
@@ -212,30 +280,42 @@ export function RecentRuns({ runs, loading, showRankBadge = true, maxRuns }: Rec
                         // For claimed runs, show with link and check icon
                         return (
                           <>
-                            <PrefetchLink 
-                              to="/player/$playerId" 
+                            <PrefetchLink
+                              to="/player/$playerId"
                               params={{ playerId: run.playerId }}
                               className="inline-block"
-                              style={{ color: run.nameColor || '#cba6f7' }}
+                              style={{ color: run.nameColor || "#cba6f7" }}
                               onClick={(e) => e.stopPropagation()}
                             >
-                              <span className="font-semibold text-base whitespace-nowrap">{run.playerName}</span>
+                              <span className="font-semibold text-base whitespace-nowrap">
+                                {run.playerName}
+                              </span>
                             </PrefetchLink>
                             {run.player2Name && (
                               <>
-                                <span className="text-ctp-overlay0 text-base"> & </span>
-                                {run.player2Id && run.player2Id.trim() !== "" ? (
-                                  <PrefetchLink 
-                                    to="/player/$playerId" 
+                                <span className="text-ctp-overlay0 text-base">
+                                  {" "}
+                                  &{" "}
+                                </span>
+                                {run.player2Id &&
+                                run.player2Id.trim() !== "" ? (
+                                  <PrefetchLink
+                                    to="/player/$playerId"
                                     params={{ playerId: run.player2Id }}
                                     className="inline-block"
-                                    style={{ color: run.player2Color || '#cba6f7' }}
+                                    style={{
+                                      color: run.player2Color || "#cba6f7",
+                                    }}
                                     onClick={(e) => e.stopPropagation()}
                                   >
-                                    <span className="font-semibold text-base whitespace-nowrap">{run.player2Name}</span>
+                                    <span className="font-semibold text-base whitespace-nowrap">
+                                      {run.player2Name}
+                                    </span>
                                   </PrefetchLink>
                                 ) : (
-                                  <span className="font-semibold text-base whitespace-nowrap text-ctp-text">{run.player2Name}</span>
+                                  <span className="font-semibold text-base whitespace-nowrap text-ctp-text">
+                                    {run.player2Name}
+                                  </span>
                                 )}
                               </>
                             )}
@@ -243,8 +323,12 @@ export function RecentRuns({ runs, loading, showRankBadge = true, maxRuns }: Rec
                             {rank === 1 && !run.isObsolete && (
                               <Badge className="bg-gradient-to-r from-[#0055BF] to-[#0070f3] text-white text-sm px-2 py-1 border border-[#0055BF]/50 flex items-center gap-1.5 font-semibold">
                                 <Trophy className="h-3.5 w-3.5" />
-                                <span className="hidden sm:inline">{t("components.worldRecord")}</span>
-                                <span className="sm:hidden">{t("components.worldRecordShort")}</span>
+                                <span className="hidden sm:inline">
+                                  {t("components.worldRecord")}
+                                </span>
+                                <span className="sm:hidden">
+                                  {t("components.worldRecordShort")}
+                                </span>
                               </Badge>
                             )}
                           </>
@@ -254,52 +338,108 @@ export function RecentRuns({ runs, loading, showRankBadge = true, maxRuns }: Rec
                   </div>
                   <div className="sm:hidden mt-2">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-base font-semibold text-ctp-text">{formatTime(run.time)}</span>
+                      <span className="text-base font-semibold text-ctp-text">
+                        {formatTime(run.time)}
+                      </span>
                       {platformName && (
-                        <Badge variant="outline" className="border-ctp-surface1 bg-ctp-surface0 text-ctp-text text-sm px-2 py-1">
+                        <Badge
+                          variant="outline"
+                          className="border-ctp-surface1 bg-ctp-surface0 text-ctp-text text-sm px-2 py-1"
+                        >
                           {platformName}
                         </Badge>
                       )}
-                      <Badge variant="outline" className="border-ctp-surface1 bg-ctp-surface0 text-ctp-text flex items-center gap-1.5 w-fit text-sm px-2 py-1">
-                        {run.runType === 'solo' ? <User className="h-4 w-4" /> : <Users className="h-4 w-4" />}
-                        {run.runType === 'solo' ? t("stats.solo") : t("stats.coop")}
+                      <Badge
+                        variant="outline"
+                        className="border-ctp-surface1 bg-ctp-surface0 text-ctp-text flex items-center gap-1.5 w-fit text-sm px-2 py-1"
+                      >
+                        {run.runType === "solo" ? (
+                          <User className="h-4 w-4" />
+                        ) : (
+                          <Users className="h-4 w-4" />
+                        )}
+                        {run.runType === "solo"
+                          ? t("stats.solo")
+                          : t("stats.coop")}
                       </Badge>
                     </div>
                   </div>
                 </TableCell>
                 <TableCell className="py-4 px-3 hidden sm:table-cell text-left">
-                  <PrefetchLink to={`/run/${run.id}`} params={{ runId: run.id }} className="block" onClick={(e) => e.stopPropagation()}>
+                  <PrefetchLink
+                    to={`/run/${run.id}`}
+                    params={{ runId: run.id }}
+                    className="block"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <span className="text-base font-semibold text-ctp-text">
                       {formatTime(run.time)}
                     </span>
                   </PrefetchLink>
                 </TableCell>
                 <TableCell className="py-4 px-3 hidden md:table-cell text-left">
-                  <PrefetchLink to={`/run/${run.id}`} params={{ runId: run.id }} className="block" onClick={(e) => e.stopPropagation()}>
-                    <span className="text-base text-ctp-subtext1 whitespace-nowrap">{run.date}</span>
+                  <PrefetchLink
+                    to={`/run/${run.id}`}
+                    params={{ runId: run.id }}
+                    className="block"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <span className="text-base text-ctp-subtext1 whitespace-nowrap">
+                      {run.date}
+                    </span>
                   </PrefetchLink>
                 </TableCell>
                 <TableCell className="py-4 px-3 hidden lg:table-cell">
-                  <PrefetchLink to={`/run/${run.id}`} params={{ runId: run.id }} className="block" onClick={(e) => e.stopPropagation()}>
+                  <PrefetchLink
+                    to={`/run/${run.id}`}
+                    params={{ runId: run.id }}
+                    className="block"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {platformName && (
-                      <Badge variant="outline" className="border-ctp-surface1/50 bg-ctp-surface0/50 text-ctp-text text-sm px-2 py-1">
+                      <Badge
+                        variant="outline"
+                        className="border-ctp-surface1/50 bg-ctp-surface0/50 text-ctp-text text-sm px-2 py-1"
+                      >
                         {platformName}
                       </Badge>
                     )}
                   </PrefetchLink>
                 </TableCell>
                 <TableCell className="py-4 px-3 hidden lg:table-cell">
-                  <PrefetchLink to={`/run/${run.id}`} params={{ runId: run.id }} className="block" onClick={(e) => e.stopPropagation()}>
-                    <Badge variant="outline" className="border-ctp-surface1/50 bg-ctp-surface0/50 text-ctp-text flex items-center gap-1.5 w-fit text-sm px-2 py-1">
-                      {run.runType === 'solo' ? <User className="h-4 w-4" /> : <Users className="h-4 w-4" />}
-                      {run.runType === 'solo' ? t("stats.solo") : t("stats.coop")}
+                  <PrefetchLink
+                    to={`/run/${run.id}`}
+                    params={{ runId: run.id }}
+                    className="block"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Badge
+                      variant="outline"
+                      className="border-ctp-surface1/50 bg-ctp-surface0/50 text-ctp-text flex items-center gap-1.5 w-fit text-sm px-2 py-1"
+                    >
+                      {run.runType === "solo" ? (
+                        <User className="h-4 w-4" />
+                      ) : (
+                        <Users className="h-4 w-4" />
+                      )}
+                      {run.runType === "solo"
+                        ? t("stats.solo")
+                        : t("stats.coop")}
                     </Badge>
                   </PrefetchLink>
                 </TableCell>
                 <TableCell className="py-4 px-3 hidden lg:table-cell">
-                  <PrefetchLink to={`/run/${run.id}`} params={{ runId: run.id }} className="block" onClick={(e) => e.stopPropagation()}>
+                  <PrefetchLink
+                    to={`/run/${run.id}`}
+                    params={{ runId: run.id }}
+                    className="block"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {getCategoryName(run.category) && (
-                      <Badge variant="outline" className="border-ctp-surface1/50 bg-ctp-surface0/50 text-ctp-text text-sm px-2 py-1">
+                      <Badge
+                        variant="outline"
+                        className="border-ctp-surface1/50 bg-ctp-surface0/50 text-ctp-text text-sm px-2 py-1"
+                      >
                         {getCategoryName(run.category)}
                       </Badge>
                     )}
