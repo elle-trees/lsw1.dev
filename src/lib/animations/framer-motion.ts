@@ -7,25 +7,25 @@ import { Variants, Transition } from "framer-motion";
 
 // Optimized transitions - using smoother spring physics with better performance
 export const transitions = {
-  smooth: { 
+  smooth: {
     type: "spring" as const,
     stiffness: 280,
     damping: 28,
     mass: 0.8,
   } as Transition,
-  spring: { 
+  spring: {
     type: "spring" as const,
     stiffness: 300,
     damping: 30,
     mass: 0.9,
   } as Transition,
-  springBounce: { 
+  springBounce: {
     type: "spring" as const,
     stiffness: 350,
     damping: 26,
     mass: 0.85,
   } as Transition,
-  quick: { 
+  quick: {
     type: "spring" as const,
     stiffness: 400,
     damping: 35,
@@ -41,30 +41,41 @@ export const transitions = {
 
 // Factory function for creating slide variants (reduces code duplication)
 // Optimized with smoother animations and reduced motion support
-const createSlideVariants = (direction: 'up' | 'down' | 'left' | 'right'): Variants => {
-  const offsets = {
-    up: { y: 8, exitY: -6 },
-    down: { y: -8, exitY: 6 },
-    left: { x: 12, exitX: -12 },
-    right: { x: -12, exitX: 12 },
-  };
-  
-  const offset = offsets[direction];
-  const isVertical = direction === 'up' || direction === 'down';
-  
+const createSlideVariants = (
+  direction: "up" | "down" | "left" | "right",
+): Variants => {
+  const isVertical = direction === "up" || direction === "down";
+
+  if (isVertical) {
+    const y = direction === "up" ? 8 : -8;
+    const exitY = direction === "up" ? -6 : 6;
+    return {
+      hidden: { opacity: 0, y },
+      visible: {
+        opacity: 1,
+        y: 0,
+        transition: transitions.smooth,
+      },
+      exit: {
+        opacity: 0,
+        y: exitY,
+        transition: transitions.quick,
+      },
+    };
+  }
+
+  const x = direction === "left" ? 12 : -12;
+  const exitX = direction === "left" ? -12 : 12;
   return {
-    hidden: { 
-      opacity: 0, 
-      ...(isVertical ? { y: offset.y } : { x: offset.x })
-    },
-    visible: { 
-      opacity: 1, 
-      ...(isVertical ? { y: 0 } : { x: 0 }),
+    hidden: { opacity: 0, x },
+    visible: {
+      opacity: 1,
+      x: 0,
       transition: transitions.smooth,
     },
-    exit: { 
-      opacity: 0, 
-      ...(isVertical ? { y: offset.exitY } : { x: offset.exitX }),
+    exit: {
+      opacity: 0,
+      x: exitX,
       transition: transitions.quick,
     },
   };
@@ -73,36 +84,36 @@ const createSlideVariants = (direction: 'up' | 'down' | 'left' | 'right'): Varia
 // Fade animation - optimized for smooth transitions
 export const fadeVariants: Variants = {
   hidden: { opacity: 0 },
-  visible: { 
-    opacity: 1, 
+  visible: {
+    opacity: 1,
     transition: transitions.gentle,
   },
-  exit: { 
-    opacity: 0, 
+  exit: {
+    opacity: 0,
     transition: transitions.quick,
   },
 };
 
 // Slide animations (using factory)
-export const slideUpVariants = createSlideVariants('up');
-export const slideDownVariants = createSlideVariants('down');
-export const slideLeftVariants = createSlideVariants('left');
-export const slideRightVariants = createSlideVariants('right');
+export const slideUpVariants = createSlideVariants("up");
+export const slideDownVariants = createSlideVariants("down");
+export const slideLeftVariants = createSlideVariants("left");
+export const slideRightVariants = createSlideVariants("right");
 
 // Combined fade + slide (most commonly used)
-export const fadeSlideUpVariants = createSlideVariants('up');
-export const fadeSlideDownVariants = createSlideVariants('down');
+export const fadeSlideUpVariants = createSlideVariants("up");
+export const fadeSlideDownVariants = createSlideVariants("down");
 
 // Scale animation
 export const scaleVariants: Variants = {
   hidden: { opacity: 0, scale: 0.96 },
-  visible: { 
-    opacity: 1, 
+  visible: {
+    opacity: 1,
     scale: 1,
     transition: transitions.springBounce,
   },
-  exit: { 
-    opacity: 0, 
+  exit: {
+    opacity: 0,
     scale: 0.96,
     transition: transitions.quick,
   },
@@ -148,12 +159,12 @@ export const buttonVariants: Variants = {
 // Page transition variants - optimized for smooth navigation
 export const pageVariants: Variants = {
   initial: { opacity: 0, y: 4 },
-  enter: { 
+  enter: {
     opacity: 1,
     y: 0,
     transition: transitions.smooth,
   },
-  exit: { 
+  exit: {
     opacity: 0,
     y: -2,
     transition: transitions.quick,
@@ -216,10 +227,9 @@ export const listItemVariants: Variants = {
 // Utility function for spring transitions with custom values
 export const createSpringTransition = (
   stiffness: number = 300,
-  damping: number = 30
+  damping: number = 30,
 ): Transition => ({
   type: "spring",
   stiffness,
   damping,
 });
-

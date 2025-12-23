@@ -1,19 +1,20 @@
 // Import i18n FIRST before any other imports that might use translations
-import './lib/i18n'
+import "./lib/i18n";
 
-import { RouterProvider } from '@tanstack/react-router'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { Toaster } from '@/components/ui/toaster'
-import { Toaster as Sonner } from '@/components/ui/sonner'
-import { TooltipProvider } from '@/components/ui/tooltip'
-import { Analytics } from '@vercel/analytics/react'
-import { GameDetails } from '@/components/GameDetails'
-import { AuthProvider } from '@/components/AuthProvider'
-import { ErrorBoundary } from '@/components/ErrorBoundary'
-import { initializeRoutePrefetches } from '@/lib/prefetch'
-import { useEffect } from 'react'
-import { router } from './router'
-import './globals.css'
+import { RouterProvider } from "@tanstack/react-router";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { Analytics } from "@vercel/analytics/react";
+import { GameDetails } from "@/components/GameDetails";
+import { AuthProvider } from "@/components/AuthProvider";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { FpsMonitor } from "@/components/dev/FpsMonitor";
+import { initializeRoutePrefetches } from "@/lib/prefetch";
+import { useEffect } from "react";
+import { router } from "./router";
+import "./globals.css";
 
 function createQueryClient() {
   return new QueryClient({
@@ -29,58 +30,57 @@ function createQueryClient() {
         retry: 1,
       },
     },
-  })
+  });
 }
 
-export function App({ queryClient: providedQueryClient }: { queryClient?: QueryClient } = {}) {
-  const queryClient = providedQueryClient || createQueryClient()
+export function App({
+  queryClient: providedQueryClient,
+}: { queryClient?: QueryClient } = {}) {
+  const queryClient = providedQueryClient || createQueryClient();
   // Initialize prefetch system on mount
   useEffect(() => {
-    initializeRoutePrefetches()
-  }, [])
+    initializeRoutePrefetches();
+  }, []);
 
   // Initialize real-time points system
   useEffect(() => {
     (async () => {
       // Initialize points config subscription for real-time updates
-      const { initializePointsConfigSubscription } = await import('@/lib/points-config')
-      initializePointsConfigSubscription()
+      const { initializePointsConfigSubscription } =
+        await import("@/lib/points-config");
+      initializePointsConfigSubscription();
 
       // Start the points recalculation service (listens for config changes)
-      const {
-        startPointsRecalculationService,
-        startRankUpdateService,
-      } = await import('@/lib/data/firestore/points-realtime')
-      startPointsRecalculationService()
-      startRankUpdateService()
-    })()
+      const { startPointsRecalculationService, startRankUpdateService } =
+        await import("@/lib/data/firestore/points-realtime");
+      startPointsRecalculationService();
+      startRankUpdateService();
+    })();
 
     // Cleanup on unmount
     return () => {
-      ;(async () => {
-        const {
-          stopPointsRecalculationService,
-          stopRankUpdateService,
-        } = await import('@/lib/data/firestore/points-realtime')
-        stopPointsRecalculationService()
-        stopRankUpdateService()
-      })()
-    }
-  }, [])
+      (async () => {
+        const { stopPointsRecalculationService, stopRankUpdateService } =
+          await import("@/lib/data/firestore/points-realtime");
+        stopPointsRecalculationService();
+        stopRankUpdateService();
+      })();
+    };
+  }, []);
 
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-            <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              <RouterProvider router={router} />
-              <Analytics />
-            </TooltipProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <FpsMonitor />
+            <RouterProvider router={router} />
+            <Analytics />
+          </TooltipProvider>
         </AuthProvider>
       </QueryClientProvider>
     </ErrorBoundary>
-  )
+  );
 }
-

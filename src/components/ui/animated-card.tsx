@@ -1,11 +1,15 @@
-import * as React from "react"
-import { motion, MotionProps, Variants } from "framer-motion"
-import { cn } from "@/lib/utils"
-import { fadeSlideUpVariants, cardHoverVariants, transitions } from "@/lib/animations"
+import * as React from "react";
+import { motion, HTMLMotionProps, Variants } from "framer-motion";
+import { cn } from "@/lib/utils";
+import {
+  fadeSlideUpVariants,
+  cardHoverVariants,
+  transitions,
+} from "@/lib/animations";
 
-interface AnimatedCardProps extends React.HTMLAttributes<HTMLDivElement>, MotionProps {
-  hover?: boolean
-  delay?: number
+interface AnimatedCardProps extends HTMLMotionProps<"div"> {
+  hover?: boolean;
+  delay?: number;
 }
 
 const AnimatedCard = React.forwardRef<HTMLDivElement, AnimatedCardProps>(
@@ -31,16 +35,15 @@ const AnimatedCard = React.forwardRef<HTMLDivElement, AnimatedCardProps>(
         whileHover={hover ? "hover" : undefined}
         className={cn(
           "rounded-none border bg-card text-card-foreground shadow-sm",
-          className
+          className,
         )}
         {...props}
       >
         {children}
       </motion.div>
-    )
-  }
-)
-AnimatedCard.displayName = "AnimatedCard"
+    );
+  },
+);
+AnimatedCard.displayName = "AnimatedCard";
 
-export { AnimatedCard }
-
+export { AnimatedCard };
