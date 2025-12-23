@@ -4,16 +4,26 @@ import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, Clock, ExternalLink } from "lucide-react";
-import { subscribeToRecentRunsFirestore as subscribeToRecentRuns, subscribeToAllVerifiedRunsFirestore as subscribeToAllVerifiedRuns } from "@/lib/data/firestore/runs";
+import {
+  subscribeToRecentRunsFirestore as subscribeToRecentRuns,
+  subscribeToAllVerifiedRunsFirestore as subscribeToAllVerifiedRuns,
+} from "@/lib/data/firestore/runs";
 import { LeaderboardEntry } from "@/types/database";
 import type { Unsubscribe } from "firebase/firestore";
 import { RecentRuns } from "@/components/RecentRuns";
 import TwitchEmbed from "@/components/TwitchEmbed";
 import { parseTimeToSeconds, cn } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { buttonVariants } from "@/components/ui/button";
+
 import { AnimatedCard } from "@/components/ui/animated-card";
-import { fadeSlideUpVariants, scaleVariants, buttonVariants as motionButtonVariants, transitions } from "@/lib/animations";
+import {
+  fadeSlideUpVariants,
+  scaleVariants,
+  buttonVariants,
+  staggerContainerVariants,
+  staggerItemVariants,
+  cardHoverVariants,
+} from "@/lib/animations";
 import { pageCache } from "@/lib/pageCache";
 import { PrefetchLink } from "@/components/PrefetchLink";
 import { useTranslation } from "react-i18next";
@@ -30,9 +40,9 @@ const formatTimeWithDays = (totalSeconds: number): string => {
   const hours = Math.floor((totalSeconds % 86400) / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
-  
+
   const parts: string[] = [];
-  
+
   if (months > 0) {
     parts.push(`${months}M`);
   }
@@ -48,24 +58,35 @@ const formatTimeWithDays = (totalSeconds: number): string => {
   if (seconds > 0 || parts.length === 0) {
     parts.push(`${seconds}s`);
   }
-  
-  return parts.join(' ');
+
+  return parts.join(" ");
 };
 
 const Index = () => {
   const { t } = useTranslation();
   // Check cache first for instant display
-  const cachedRecentRuns = pageCache.get<LeaderboardEntry[]>(CACHE_KEY_RECENT_RUNS);
-  const cachedStats = pageCache.get<{ totalVerifiedRuns: number; totalTime: string }>(CACHE_KEY_STATS);
-  
-  const [recentRunsData, setRecentRunsData] = useState<LeaderboardEntry[]>(cachedRecentRuns || []);
+  const cachedRecentRuns = pageCache.get<LeaderboardEntry[]>(
+    CACHE_KEY_RECENT_RUNS,
+  );
+  const cachedStats = pageCache.get<{
+    totalVerifiedRuns: number;
+    totalTime: string;
+  }>(CACHE_KEY_STATS);
+
+  const [recentRunsData, setRecentRunsData] = useState<LeaderboardEntry[]>(
+    cachedRecentRuns || [],
+  );
   const [loading, setLoading] = useState(!cachedRecentRuns);
-  const [totalVerifiedRuns, setTotalVerifiedRuns] = useState<number>(cachedStats?.totalVerifiedRuns || 0);
-  const [totalTime, setTotalTime] = useState<string>(cachedStats?.totalTime || "00:00:00");
+  const [totalVerifiedRuns, setTotalVerifiedRuns] = useState<number>(
+    cachedStats?.totalVerifiedRuns || 0,
+  );
+  const [totalTime, setTotalTime] = useState<string>(
+    cachedStats?.totalTime || "00:00:00",
+  );
   const [statsLoading, setStatsLoading] = useState(!cachedStats);
   const [isLive, setIsLive] = useState<boolean | null>(null);
   const lastRefreshTimeRef = useRef<number>(Date.now());
-  const channel = 'lsw1live';
+  const channel = "lsw1live";
 
   // Set up real-time listener for recent runs
   useEffect(() => {
@@ -99,22 +120,28 @@ const Index = () => {
 
     // Subscribe to real-time updates for all verified runs
     const unsubscribe = subscribeToAllVerifiedRuns((runs) => {
-      const verifiedRuns = runs.filter(run => run.verified && !run.isObsolete);
+      const verifiedRuns = runs.filter(
+        (run) => run.verified && !run.isObsolete,
+      );
       const totalRuns = verifiedRuns.length;
       setTotalVerifiedRuns(totalRuns);
-      
+
       const totalSeconds = verifiedRuns.reduce((sum, run) => {
         return sum + parseTimeToSeconds(run.time);
       }, 0);
       const formattedTime = formatTimeWithDays(totalSeconds);
       setTotalTime(formattedTime);
       setStatsLoading(false);
-      
+
       // Update cache for instant navigation
-      pageCache.set(CACHE_KEY_STATS, {
-        totalVerifiedRuns: totalRuns,
-        totalTime: formattedTime,
-      }, 1000 * 60 * 10); // 10 minutes
+      pageCache.set(
+        CACHE_KEY_STATS,
+        {
+          totalVerifiedRuns: totalRuns,
+          totalTime: formattedTime,
+        },
+        1000 * 60 * 10,
+      ); // 10 minutes
     });
 
     return () => {
@@ -127,20 +154,22 @@ const Index = () => {
     const checkStreamStatus = async () => {
       try {
         // Use proxy API endpoint which returns "live" or "offline"
-        const response = await fetch(`/api/twitch/status?username=${encodeURIComponent(channel)}`);
-        
+        const response = await fetch(
+          `/api/twitch/status?username=${encodeURIComponent(channel)}`,
+        );
+
         if (!response.ok) {
           setIsLive(false);
           return;
         }
-        
+
         const data = await response.text();
         const trimmedData = data.trim().toLowerCase();
-        
+
         // The status endpoint should return "live" or "offline"
-        if (trimmedData === 'live') {
+        if (trimmedData === "live") {
           setIsLive(true);
-        } else if (trimmedData === 'offline') {
+        } else if (trimmedData === "offline") {
           setIsLive(false);
         } else {
           // If response is unexpected, default to offline for safety
@@ -163,105 +192,105 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-[#1e1e2e] text-ctp-text overflow-x-hidden relative">
-      <FadeIn className="py-20 px-4 sm:px-6 lg:px-8">
+      <motion.div
+        className="py-20 px-4 sm:px-6 lg:px-8"
+        variants={staggerContainerVariants}
+        initial="hidden"
+        animate="visible"
+      >
         <div className="max-w-[1920px] mx-auto w-full">
           {/* Top Row - Stats Cards and Title */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-8 mb-6 lg:mb-8">
+          <motion.div
+            className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-8 mb-6 lg:mb-8"
+            variants={staggerContainerVariants}
+          >
             {/* Left Side - Verified Runs Card */}
-            <div className="lg:col-span-3 lg:order-1 min-w-0">
-              <AnimatedCard 
-                className="glass shadow-colored-green border-ctp-surface1/50 w-full group overflow-hidden relative rounded-none"
-                delay={0.1}
-              >
-                <CardHeader className="pb-2 pt-4 px-4 relative z-10">
-                  <CardTitle className="flex items-center gap-2 text-card-foreground text-base sm:text-lg lg:text-xl whitespace-nowrap">
-                    <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-ctp-green flex-shrink-0" />
-                    <span className="truncate font-semibold">{t("home.verifiedRuns")}</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="px-4 pb-4 pt-2 relative z-10">
-                  {statsLoading ? (
-                    <Skeleton className="h-10 w-28 mb-1 bg-ctp-surface0/50" />
-                  ) : (
-                    <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-ctp-green transition-all duration-300 break-words min-w-0">
-                      {totalVerifiedRuns.toLocaleString()}
-                    </div>
-                  )}
-                  <p className="text-xs sm:text-sm lg:text-base text-muted-foreground mt-1.5 whitespace-nowrap">
-                    {t("home.totalVerifiedSpeedruns")}
-                  </p>
-                  <div className="mt-2">
-                    <Badge variant="outline" className="border-green-600/50 bg-green-600/10 text-green-400 text-xs px-2 py-0.5 flex items-center gap-1.5 w-fit">
-                      <CheckCircle className="h-3 w-3" />
-                      <span>{t("home.linkedWithSpeedrunCom")}</span>
-                      <a
-                        href="https://www.speedrun.com/lsw1"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
-                    </Badge>
+            <motion.div
+              className="lg:col-span-3 lg:order-1 min-w-0 glass shadow-colored-green border-ctp-surface1/50 w-full group overflow-hidden relative rounded-none"
+              variants={{ ...staggerItemVariants, ...cardHoverVariants }}
+              whileHover="hover"
+            >
+              <CardHeader className="pb-2 pt-4 px-4 relative z-10">
+                <CardTitle className="flex items-center gap-2 text-card-foreground text-base sm:text-lg lg:text-xl whitespace-nowrap">
+                  <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-ctp-green flex-shrink-0" />
+                  <span className="truncate font-semibold">
+                    {t("home.verifiedRuns")}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4 pt-2 relative z-10">
+                {statsLoading ? (
+                  <Skeleton className="h-10 w-28 mb-1 bg-ctp-surface0/50" />
+                ) : (
+                  <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-ctp-green transition-all duration-300 break-words min-w-0">
+                    {totalVerifiedRuns.toLocaleString()}
                   </div>
-                </CardContent>
-              </AnimatedCard>
-            </div>
+                )}
+                <p className="text-xs sm:text-sm lg:text-base text-muted-foreground mt-1.5 whitespace-nowrap">
+                  {t("home.totalVerifiedSpeedruns")}
+                </p>
+                <div className="mt-2">
+                  <Badge
+                    variant="outline"
+                    className="border-green-600/50 bg-green-600/10 text-green-400 text-xs px-2 py-0.5 flex items-center gap-1.5 w-fit"
+                  >
+                    <CheckCircle className="h-3 w-3" />
+                    <span>{t("home.linkedWithSpeedrunCom")}</span>
+                    <a
+                      href="https://www.speedrun.com/lsw1"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </Badge>
+                </div>
+              </CardContent>
+            </motion.div>
 
             {/* Center Content - Title, Subtext, Buttons */}
-            <motion.div 
+            <motion.div
               className="lg:col-span-6 text-center lg:order-2 min-w-0"
-              variants={fadeSlideUpVariants}
-              initial="hidden"
-              animate="visible"
-              transition={{ ...transitions.spring, delay: 0.2 }}
+              variants={staggerContainerVariants}
             >
-              <motion.h1 
+              <motion.h1
                 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-6 whitespace-nowrap truncate"
                 variants={scaleVariants}
-                initial="hidden"
-                animate="visible"
-                transition={{ ...transitions.spring, delay: 0.3 }}
               >
                 <span className="text-[#74c7ec]">{t("home.title")}</span>
               </motion.h1>
-              <motion.p 
+              <motion.p
                 className="text-lg sm:text-xl md:text-2xl lg:text-3xl mb-10 text-ctp-subtext1 max-w-3xl mx-auto px-2 leading-relaxed"
-                variants={fadeSlideUpVariants}
-                initial="hidden"
-                animate="visible"
-                transition={{ ...transitions.spring, delay: 0.4 }}
+                variants={staggerItemVariants}
               >
                 <span>{t("home.subtitle")}</span>
               </motion.p>
-              <motion.div 
+              <motion.div
                 className="flex flex-col sm:flex-row justify-center gap-4 lg:gap-6 px-2"
-                variants={fadeSlideUpVariants}
-                initial="hidden"
-                animate="visible"
-                transition={{ ...transitions.spring, delay: 0.5 }}
+                variants={staggerItemVariants}
               >
-                <MotionLink 
+                <MotionLink
                   to="/submit"
                   className={cn(
                     buttonVariants({ size: "lg" }),
-                    "bg-gradient-to-r from-ctp-mauve via-ctp-pink to-ctp-mauve text-ctp-crust font-bold animate-gradient bg-[length:200%_auto] whitespace-nowrap text-base sm:text-lg lg:text-xl px-6 sm:px-8 lg:px-10 py-6 sm:py-7 lg:py-8 rounded-none border-0 shadow-colored"
+                    "bg-gradient-to-r from-ctp-mauve via-ctp-pink to-ctp-mauve text-ctp-crust font-bold animate-gradient bg-[length:200%_auto] whitespace-nowrap text-base sm:text-lg lg:text-xl px-6 sm:px-8 lg:px-10 py-6 sm:py-7 lg:py-8 rounded-none border-0 shadow-colored",
                   )}
-                  variants={motionButtonVariants}
+                  variants={buttonVariants}
                   initial="rest"
                   whileHover="hover"
                   whileTap="tap"
                 >
                   {t("home.submitRun")}
                 </MotionLink>
-                <MotionLink 
+                <MotionLink
                   to="/leaderboards"
                   className={cn(
                     buttonVariants({ size: "lg", variant: "outline" }),
-                    "text-ctp-text border-ctp-surface1/50 bg-glass whitespace-nowrap text-base sm:text-lg lg:text-xl px-6 sm:px-8 lg:px-10 py-6 sm:py-7 lg:py-8 rounded-none backdrop-blur-sm"
+                    "text-ctp-text border-ctp-surface1/50 bg-glass whitespace-nowrap text-base sm:text-lg lg:text-xl px-6 sm:px-8 lg:px-10 py-6 sm:py-7 lg:py-8 rounded-none backdrop-blur-sm",
                   )}
-                  variants={motionButtonVariants}
+                  variants={buttonVariants}
                   initial="rest"
                   whileHover="hover"
                   whileTap="tap"
@@ -272,44 +301,54 @@ const Index = () => {
             </motion.div>
 
             {/* Right Side - Total Time Card */}
-            <div className="lg:col-span-3 lg:order-3 min-w-0">
-              <AnimatedCard 
-                className="glass shadow-colored border-ctp-surface1/50 w-full group overflow-hidden relative rounded-none"
-                delay={0.1}
-              >
-                <CardHeader className="pb-2 pt-4 px-4 relative z-10">
-                  <CardTitle className="flex items-center gap-2 text-card-foreground text-base sm:text-lg lg:text-xl whitespace-nowrap">
-                    <Clock className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-ctp-mauve flex-shrink-0" />
-                    <span className="truncate font-semibold">{t("home.totalTime")}</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="px-4 pb-4 pt-2 relative z-10">
-                  {statsLoading ? (
-                    <Skeleton className="h-10 w-36 mb-1 bg-ctp-surface0/50" />
-                  ) : (
-                    <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-ctp-text transition-all duration-300 break-words min-w-0 leading-tight">
-                      {totalTime}
-                    </div>
-                  )}
-                  <p className="text-xs sm:text-sm lg:text-base text-muted-foreground mt-1.5 whitespace-nowrap">
-                    {t("home.combinedRuntime")}
-                  </p>
-                </CardContent>
-              </AnimatedCard>
-            </div>
-          </div>
+            <motion.div
+              className="lg:col-span-3 lg:order-3 min-w-0 glass shadow-colored border-ctp-surface1/50 w-full group overflow-hidden relative rounded-none"
+              variants={{ ...staggerItemVariants, ...cardHoverVariants }}
+              whileHover="hover"
+            >
+              <CardHeader className="pb-2 pt-4 px-4 relative z-10">
+                <CardTitle className="flex items-center gap-2 text-card-foreground text-base sm:text-lg lg:text-xl whitespace-nowrap">
+                  <Clock className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-ctp-mauve flex-shrink-0" />
+                  <span className="truncate font-semibold">
+                    {t("home.totalTime")}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4 pt-2 relative z-10">
+                {statsLoading ? (
+                  <Skeleton className="h-10 w-36 mb-1 bg-ctp-surface0/50" />
+                ) : (
+                  <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-ctp-text transition-all duration-300 break-words min-w-0 leading-tight">
+                    {totalTime}
+                  </div>
+                )}
+                <p className="text-xs sm:text-sm lg:text-base text-muted-foreground mt-1.5 whitespace-nowrap">
+                  {t("home.combinedRuntime")}
+                </p>
+              </CardContent>
+            </motion.div>
+          </motion.div>
 
           {/* Bottom Row - Twitch Embed and Recent Runs */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-8 items-stretch">
+          <motion.div
+            className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-8 items-stretch"
+            variants={staggerContainerVariants}
+          >
             {/* Left Side - Twitch Embed (under Verified Runs) - Only show when live */}
             {isLive === true && (
-              <div className="lg:col-span-8 min-w-0 flex flex-col">
+              <motion.div
+                className="lg:col-span-8 min-w-0 flex flex-col"
+                variants={staggerItemVariants}
+              >
                 <TwitchEmbed channel={channel} />
-              </div>
+              </motion.div>
             )}
 
             {/* Right Side - Recent Runs */}
-            <div className={`${isLive === true ? 'lg:col-span-4' : 'lg:col-span-12'} min-w-0 flex flex-col`}>
+            <motion.div
+              className={`${isLive === true ? "lg:col-span-4" : "lg:col-span-12"} min-w-0 flex flex-col`}
+              variants={staggerItemVariants}
+            >
               <div className="mb-3 flex-shrink-0">
                 <h2 className="text-lg sm:text-xl lg:text-2xl font-bold mb-1.5 text-ctp-text">
                   {t("home.recentRuns")}
@@ -320,40 +359,23 @@ const Index = () => {
               </div>
 
               <div className="flex-1 min-h-0 flex flex-col">
-                <style>{`
-                  .homepage-recent-runs [class*="CardContent"] { padding: 0.75rem !important; }
-                  .homepage-recent-runs [class*="space-y-5"] > * + * { margin-top: 0.5rem !important; }
-                  .homepage-recent-runs div[class*="p-6"], .homepage-recent-runs div[class*="p-8"] { padding: 0.75rem !important; }
-                  .homepage-recent-runs .text-xl { font-size: 1rem !important; }
-                  .homepage-recent-runs .text-2xl { font-size: 1.25rem !important; }
-                  .homepage-recent-runs div[class*="min-w-"] { min-width: 180px !important; }
-                  .homepage-recent-runs .text-sm { font-size: 0.625rem !important; }
-                  .homepage-recent-runs span[class*="px-3"] { padding-left: 0.375rem !important; padding-right: 0.375rem !important; }
-                  .homepage-recent-runs span[class*="py-1"] { padding-top: 0.125rem !important; padding-bottom: 0.125rem !important; }
-                  .homepage-recent-runs div[class*="gap-8"] { gap: 1rem !important; }
-                  .homepage-recent-runs div[class*="gap-6"] { gap: 0.5rem !important; }
-                  .homepage-recent-runs div[class*="gap-3"] { gap: 0.375rem !important; }
-                  .homepage-recent-runs .mb-3 { margin-bottom: 0.5rem !important; }
-                  .homepage-recent-runs .mb-2 { margin-bottom: 0.25rem !important; }
-                  .homepage-recent-runs .mt-2 { margin-top: 0.25rem !important; }
-                  .homepage-recent-runs a[class*="text-xl"] { font-size: 1.125rem !important; font-weight: 700 !important; }
-                  .homepage-recent-runs a[class*="text-2xl"] { font-size: 1.375rem !important; font-weight: 700 !important; }
-                  .homepage-recent-runs p[class*="text-xl"] { font-size: 1.125rem !important; }
-                  .homepage-recent-runs p[class*="text-2xl"] { font-size: 1.375rem !important; }
-                `}</style>
                 <div className="homepage-recent-runs [&_header]:hidden h-full flex-1 min-h-0">
-                  <RecentRuns runs={recentRunsData} loading={loading} showRankBadge={false} />
+                  <RecentRuns
+                    runs={recentRunsData}
+                    loading={loading}
+                    showRankBadge={false}
+                  />
                 </div>
               </div>
 
               <div className="mt-4 text-center flex-shrink-0">
-                <MotionLink 
+                <MotionLink
                   to="/leaderboards"
                   className={cn(
                     buttonVariants({ variant: "outline", size: "sm" }),
-                    "text-sm lg:text-base text-ctp-text border-ctp-surface1/50 bg-glass whitespace-nowrap px-4 lg:px-6 py-2 lg:py-3 rounded-none backdrop-blur-sm"
+                    "text-sm lg:text-base text-ctp-text border-ctp-surface1/50 bg-glass whitespace-nowrap px-4 lg:px-6 py-2 lg:py-3 rounded-none backdrop-blur-sm",
                   )}
-                  variants={motionButtonVariants}
+                  variants={buttonVariants}
                   initial="rest"
                   whileHover="hover"
                   whileTap="tap"
@@ -361,10 +383,10 @@ const Index = () => {
                   {t("home.viewFullLeaderboards")}
                 </MotionLink>
               </div>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         </div>
-      </FadeIn>
+      </motion.div>
     </div>
   );
 };
