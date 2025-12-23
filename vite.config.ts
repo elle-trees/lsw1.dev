@@ -5,39 +5,39 @@ import { visualizer } from "rollup-plugin-visualizer";
 import viteCompression from "vite-plugin-compression";
 import { VitePWA } from "vite-plugin-pwa";
 import checker from "vite-plugin-checker";
-import { TanStackRouterVite } from '@tanstack/router-vite-plugin';
+import { TanStackRouterVite } from "@tanstack/router-vite-plugin";
 
 export default defineConfig(({ mode }) => {
   // Always read from environment variable, fallback to 8080
   const port = parseInt(process.env.PORT || "8080", 10);
   const host = "0.0.0.0";
   const isProduction = mode === "production";
-  
+
   return {
     // Enable Rolldown's native plugins for better performance
     experimental: {
-      enableNativePlugin: 'v1',
+      enableNativePlugin: "v1",
     },
     // Optimize dependency pre-bundling
     optimizeDeps: {
       // Include dependencies that should be pre-bundled
       include: [
-        'react',
-        'react-dom',
-        '@tanstack/react-router',
-        '@tanstack/react-query',
-        'firebase/app',
-        'firebase/auth',
-        'firebase/firestore',
-        'lucide-react',
-        'framer-motion',
-        'date-fns',
-        'i18next',
-        'react-i18next',
-        'i18next-browser-languagedetector',
+        "react",
+        "react-dom",
+        "@tanstack/react-router",
+        "@tanstack/react-query",
+        "firebase/app",
+        "firebase/auth",
+        "firebase/firestore",
+        "lucide-react",
+        "framer-motion",
+        "date-fns",
+        "i18next",
+        "react-i18next",
+        "i18next-browser-languagedetector",
       ],
       // Exclude dependencies from pre-bundling (let them be handled by the bundler)
-      exclude: ['recharts'], // Large library, better to code-split
+      exclude: ["recharts"], // Large library, better to code-split
       // Force optimization for better dev experience
       force: false, // Set to true to force re-optimization when needed
     },
@@ -47,7 +47,7 @@ export default defineConfig(({ mode }) => {
       strictPort: true,
       // Enable HMR (Hot Module Replacement) for instant updates
       hmr: {
-        protocol: 'ws',
+        protocol: "ws",
         host: host,
         port: port,
       },
@@ -56,18 +56,14 @@ export default defineConfig(({ mode }) => {
         // Use polling for better compatibility (especially in Docker/VM environments)
         usePolling: false,
         // Watch for changes in these directories
-        ignored: [
-          '**/node_modules/**',
-          '**/dist/**',
-          '**/.git/**',
-        ],
+        ignored: ["**/node_modules/**", "**/dist/**", "**/.git/**"],
       },
       // Faster file system operations
       fs: {
         // Allow serving files from one level up to the project root
         strict: false,
         // Allow serving files from these directories
-        allow: ['..'],
+        allow: [".."],
       },
     },
     preview: {
@@ -155,16 +151,12 @@ export default defineConfig(({ mode }) => {
             "!**/stats.html.br",
           ],
           // Exclude source maps and dev files from cache
-          globIgnores: [
-            "**/*.map",
-            "**/stats.html*",
-            "**/node_modules/**/*",
-          ],
+          globIgnores: ["**/*.map", "**/stats.html*", "**/node_modules/**/*"],
           // Skip waiting and claim clients immediately for faster updates
           skipWaiting: true,
           clientsClaim: true,
           // Offline fallback strategy
-          navigateFallback: '/index.html',
+          navigateFallback: "/index.html",
           navigateFallbackDenylist: [/^\/api\//], // Don't fallback for API routes
           // Offline fallback page
           offlineGoogleAnalytics: false,
@@ -213,7 +205,8 @@ export default defineConfig(({ mode }) => {
             },
             {
               // Cache static assets with CacheFirst
-              urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|ico|woff|woff2|ttf|eot)$/,
+              urlPattern:
+                /\.(?:png|jpg|jpeg|svg|gif|webp|ico|woff|woff2|ttf|eot)$/,
               handler: "CacheFirst",
               options: {
                 cacheName: "static-assets-cache",
@@ -231,55 +224,37 @@ export default defineConfig(({ mode }) => {
       }),
       // Bundle analyzer - only in production to avoid dev overhead
       // Disable during regular builds for speed, enable when needed for analysis
-      isProduction && process.env.ANALYZE && visualizer({
-        filename: "dist/stats.html",
-        open: false,
-        gzipSize: true,
-        brotliSize: true,
-        template: "treemap", // or "sunburst", "network"
-      }),
+      isProduction &&
+        process.env.ANALYZE &&
+        visualizer({
+          filename: "dist/stats.html",
+          open: false,
+          gzipSize: true,
+          brotliSize: true,
+          template: "treemap", // or "sunburst", "network"
+        }),
       // Compression plugin - generates .gz and .br files for better performance
-      isProduction && viteCompression({
-        algorithm: "gzip",
-        ext: ".gz",
-        threshold: 1024, // Only compress files larger than 1KB
-        deleteOriginFile: false, // Keep original files
-      }),
-      isProduction && viteCompression({
-        algorithm: "brotliCompress",
-        ext: ".br",
-        threshold: 1024,
-        deleteOriginFile: false,
-      }),
+      isProduction &&
+        viteCompression({
+          algorithm: "gzip",
+          ext: ".gz",
+          threshold: 1024, // Only compress files larger than 1KB
+          deleteOriginFile: false, // Keep original files
+        }),
+      isProduction &&
+        viteCompression({
+          algorithm: "brotliCompress",
+          ext: ".br",
+          threshold: 1024,
+          deleteOriginFile: false,
+        }),
     ].filter(Boolean), // Remove false values
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
       },
     },
-    // SSR configuration
-    ssr: {
-      // Externalize dependencies that should not be bundled for SSR
-      noExternal: [
-        // Keep these internal for SSR
-        '@tanstack/react-router',
-        '@tanstack/react-query',
-      ],
-      // Externalize Node.js built-ins and problematic packages
-      external: [
-        // Node.js built-ins
-        'fs',
-        'path',
-        'url',
-        'stream',
-        'http',
-        'https',
-        'util',
-        'crypto',
-        'buffer',
-        'events',
-      ],
-    },
+
     build: {
       // Optimize build performance
       // Rolldown has built-in minification, no need to specify
@@ -290,7 +265,7 @@ export default defineConfig(({ mode }) => {
       // Minify CSS
       cssMinify: true,
       // Enable minification (Rolldown handles this efficiently)
-      minify: 'esbuild', // Use esbuild for faster minification
+      minify: "esbuild", // Use esbuild for faster minification
       // Optimize build output
       emptyOutDir: true,
       // Reduce build output verbosity
@@ -299,9 +274,6 @@ export default defineConfig(({ mode }) => {
       target: "esnext", // Target modern browsers for smaller bundles
       // Disable compressed size reporting to speed up build
       reportCompressedSize: false,
-      // SSR build configuration
-      // Note: SSR build is done separately via build:server script
-      // This config is for client build only
     },
   };
 });
