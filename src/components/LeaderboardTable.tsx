@@ -1,54 +1,47 @@
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { PrefetchLink } from "@/components/PrefetchLink";
 import { User, Users, ExternalLink, Trophy, MapPin, Check } from "lucide-react";
 import { LeaderboardEntry } from "@/types/database";
 import LegoStudIcon from "@/components/icons/LegoStudIcon";
 import { formatTime } from "@/lib/utils";
 import { getPlatformName, getLevelName } from "@/lib/dataValidation";
-import { motion } from "framer-motion";
-import { tableRowVariants } from "@/lib/animations";
-import { useState, useEffect } from "react";
-import { usePrefetchVisible } from "@/hooks/usePrefetch";
 import { useTranslation } from "react-i18next";
-
-const MotionTableRow = motion(TableRow);
 
 interface LeaderboardTableProps {
   data: LeaderboardEntry[];
   platforms?: { id: string; name: string }[];
   categories?: { id: string; name: string }[];
   levels?: { id: string; name: string }[];
-  leaderboardType?: 'regular' | 'individual-level' | 'community-golds';
+  leaderboardType?: "regular" | "individual-level" | "community-golds";
 }
 
-export function LeaderboardTable({ data, platforms = [], categories = [], levels = [], leaderboardType }: LeaderboardTableProps) {
+export function LeaderboardTable({
+  data,
+  platforms = [],
+  categories = [],
+  levels = [],
+  leaderboardType,
+}: LeaderboardTableProps) {
   const { t } = useTranslation();
-  const [highlightedId, setHighlightedId] = useState<string | null>(null);
-  const { prefetchItem } = usePrefetchVisible([]);
   // Determine if we should show level column (for IL and Community Golds)
-  const showLevelColumn = leaderboardType === 'individual-level' || leaderboardType === 'community-golds';
-
-  // Prefetch data for visible items
-  useEffect(() => {
-    // Prefetch first 10 items immediately
-    data.slice(0, 10).forEach(entry => {
-      if (entry.id) {
-        prefetchItem({ id: entry.id, type: "run" });
-      }
-      if (entry.playerId) {
-        prefetchItem({ id: entry.playerId, type: "player" });
-      }
-      if (entry.player2Id) {
-        prefetchItem({ id: entry.player2Id, type: "player" });
-      }
-    });
-  }, [data, prefetchItem]);
+  const showLevelColumn =
+    leaderboardType === "individual-level" ||
+    leaderboardType === "community-golds";
   if (data.length === 0) {
     return (
       <div className="text-center py-12">
         <Trophy className="h-12 w-12 mx-auto mb-3 text-ctp-overlay0 opacity-50" />
-        <p className="text-base text-ctp-overlay0">{t("components.noRunsFoundForFilters")}</p>
+        <p className="text-base text-ctp-overlay0">
+          {t("components.noRunsFoundForFilters")}
+        </p>
       </div>
     );
   }
@@ -58,16 +51,32 @@ export function LeaderboardTable({ data, platforms = [], categories = [], levels
       <Table>
         <TableHeader>
           <TableRow className="border-b border-ctp-surface1/50 hover:bg-transparent bg-ctp-surface0/50">
-            <TableHead className="py-3 pl-3 pr-1 text-left text-sm font-semibold text-ctp-text whitespace-nowrap w-16">{t("components.rank")}</TableHead>
-            <TableHead className="py-3 pl-1 pr-2 text-left text-sm font-semibold text-ctp-text min-w-[200px]">{t("components.player")}</TableHead>
+            <TableHead className="py-3 pl-3 pr-1 text-left text-sm font-semibold text-ctp-text whitespace-nowrap w-16">
+              {t("components.rank")}
+            </TableHead>
+            <TableHead className="py-3 pl-1 pr-2 text-left text-sm font-semibold text-ctp-text min-w-[200px]">
+              {t("components.player")}
+            </TableHead>
             {showLevelColumn && (
-              <TableHead className="py-3 px-2 text-left text-sm font-semibold text-ctp-text hidden md:table-cell whitespace-nowrap w-32">{t("components.level")}</TableHead>
+              <TableHead className="py-3 px-2 text-left text-sm font-semibold text-ctp-text hidden md:table-cell whitespace-nowrap w-32">
+                {t("components.level")}
+              </TableHead>
             )}
-            <TableHead className="py-3 px-2 text-left text-sm font-semibold text-ctp-text hidden sm:table-cell whitespace-nowrap w-24">{t("components.time")}</TableHead>
-            <TableHead className="py-3 px-2 text-left text-sm font-semibold text-ctp-text hidden md:table-cell whitespace-nowrap w-28">{t("components.date")}</TableHead>
-            <TableHead className="py-3 px-2 text-left text-sm font-semibold text-ctp-text hidden lg:table-cell whitespace-nowrap w-32">{t("components.platform")}</TableHead>
-            <TableHead className="py-3 px-2 text-left text-sm font-semibold text-ctp-text hidden lg:table-cell whitespace-nowrap w-24">{t("components.type")}</TableHead>
-            <TableHead className="py-3 px-2 text-left text-sm font-semibold text-ctp-text whitespace-nowrap w-20">{t("components.video")}</TableHead>
+            <TableHead className="py-3 px-2 text-left text-sm font-semibold text-ctp-text hidden sm:table-cell whitespace-nowrap w-24">
+              {t("components.time")}
+            </TableHead>
+            <TableHead className="py-3 px-2 text-left text-sm font-semibold text-ctp-text hidden md:table-cell whitespace-nowrap w-28">
+              {t("components.date")}
+            </TableHead>
+            <TableHead className="py-3 px-2 text-left text-sm font-semibold text-ctp-text hidden lg:table-cell whitespace-nowrap w-32">
+              {t("components.platform")}
+            </TableHead>
+            <TableHead className="py-3 px-2 text-left text-sm font-semibold text-ctp-text hidden lg:table-cell whitespace-nowrap w-24">
+              {t("components.type")}
+            </TableHead>
+            <TableHead className="py-3 px-2 text-left text-sm font-semibold text-ctp-text whitespace-nowrap w-20">
+              {t("components.video")}
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -76,186 +85,262 @@ export function LeaderboardTable({ data, platforms = [], categories = [], levels
             const platformName = getPlatformName(
               entry.platform,
               platforms,
-              entry.srcPlatformName
+              entry.srcPlatformName,
             );
-            
+
             // Get level name for IL/Community Gold runs
-            const levelName = showLevelColumn && entry.level
-              ? getLevelName(entry.level, levels, entry.srcLevelName)
-              : undefined;
-            
-            const isHighlighted = highlightedId === entry.id;
-            
+            const levelName =
+              showLevelColumn && entry.level
+                ? getLevelName(entry.level, levels, entry.srcLevelName)
+                : undefined;
+
             return (
-            <MotionTableRow
-              key={entry.id}
-              variants={tableRowVariants}
-              initial="hidden"
-              animate="visible"
-              custom={index}
-              onMouseEnter={() => setHighlightedId(entry.id)}
-              onMouseLeave={() => setHighlightedId(null)}
-              className={`border-b border-ctp-surface1/20 cursor-pointer transition-colors duration-50 ${isHighlighted ? 'bg-ctp-surface0' : ''} ${entry.isObsolete ? 'opacity-60 italic' : ''}`}
-            >
-              <TableCell className="py-2.5 pl-3 pr-1">
-                <PrefetchLink to="/run/$runId" params={{ runId: entry.id }} className="block">
-                  <div className="flex items-center gap-1.5">
-                    {entry.rank === 1 ? (
-                      <LegoStudIcon size={28} color="#0055BF" />
-                    ) : entry.rank === 2 ? (
-                      <LegoStudIcon size={28} color="#FFD700" />
-                    ) : entry.rank === 3 ? (
-                      <LegoStudIcon size={28} color="#C0C0C0" />
-                    ) : (
-                      <span className="font-semibold text-sm text-ctp-text w-7 h-7 flex items-center justify-center">
-                        #{entry.rank}
-                      </span>
-                    )}
-                    {entry.isObsolete && (
-                      <Badge variant="destructive" className="bg-red-800/50 text-red-200 text-xs px-1.5 py-0.5 border border-red-700/30">
-                        {t("components.obsolete")}
-                      </Badge>
-                    )}
-                  </div>
-                </PrefetchLink>
-              </TableCell>
-              <TableCell className="py-2.5 pl-1 pr-2 min-w-[200px]">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                {(() => {
-                  // Check if run is unclaimed - simply check if playerId is empty/null
-                  const isUnclaimed = !entry.playerId || entry.playerId.trim() === "";
-                  
-                  if (isUnclaimed) {
-                    // For unclaimed runs, show name without link
-                    return (
-                      <>
-                        <span className="font-semibold text-sm whitespace-nowrap text-ctp-text">{entry.playerName}</span>
-                        {entry.player2Name && (
-                          <>
-                            <span className="text-ctp-overlay0 text-sm"> & </span>
-                            <span className="font-semibold text-sm whitespace-nowrap text-ctp-text">
-                              {entry.player2Name}
-                            </span>
-                          </>
-                        )}
-                        {entry.rank === 1 && !entry.isObsolete && (
-                          <Badge className="bg-gradient-to-r from-[#0055BF] to-[#0070f3] text-white text-xs px-1.5 py-0.5 border border-[#0055BF]/50 flex items-center gap-1 font-semibold">
-                            <Trophy className="h-2.5 w-2.5" />
-                            <span className="hidden sm:inline">{t("components.worldRecord")}</span>
-                            <span className="sm:hidden">{t("components.worldRecordShort")}</span>
-                          </Badge>
-                        )}
-                      </>
-                    );
-                  } else {
-                    // For claimed runs, show with link and check icon
-                    return (
-                      <>
-                        <PrefetchLink 
-                          to="/player/$playerId" 
-                          params={{ playerId: entry.playerId }}
-                          className="inline-block"
-                          style={{ color: entry.nameColor || '#cba6f7' }}
-                          onClick={(e) => e.stopPropagation()}
+              <TableRow
+                key={entry.id}
+                className={`border-b border-ctp-surface1/20 cursor-pointer transition-colors duration-50 hover:bg-ctp-surface0 ${entry.isObsolete ? "opacity-60 italic" : ""}`}
+              >
+                <TableCell className="py-2.5 pl-3 pr-1">
+                  <PrefetchLink
+                    to="/run/$runId"
+                    params={{ runId: entry.id }}
+                    className="block"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      {entry.rank === 1 ? (
+                        <LegoStudIcon size={28} color="#0055BF" />
+                      ) : entry.rank === 2 ? (
+                        <LegoStudIcon size={28} color="#FFD700" />
+                      ) : entry.rank === 3 ? (
+                        <LegoStudIcon size={28} color="#C0C0C0" />
+                      ) : (
+                        <span className="font-semibold text-sm text-ctp-text w-7 h-7 flex items-center justify-center">
+                          #{entry.rank}
+                        </span>
+                      )}
+                      {entry.isObsolete && (
+                        <Badge
+                          variant="destructive"
+                          className="bg-red-800/50 text-red-200 text-xs px-1.5 py-0.5 border border-red-700/30"
                         >
-                          <span className="font-semibold text-sm whitespace-nowrap">{entry.playerName}</span>
-                        </PrefetchLink>
-                        {entry.player2Name && (
+                          {t("components.obsolete")}
+                        </Badge>
+                      )}
+                    </div>
+                  </PrefetchLink>
+                </TableCell>
+                <TableCell className="py-2.5 pl-1 pr-2 min-w-[200px]">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {(() => {
+                      // Check if run is unclaimed - simply check if playerId is empty/null
+                      const isUnclaimed =
+                        !entry.playerId || entry.playerId.trim() === "";
+
+                      if (isUnclaimed) {
+                        // For unclaimed runs, show name without link
+                        return (
                           <>
-                            <span className="text-ctp-overlay0 text-sm"> & </span>
-                            {entry.player2Id && entry.player2Id.trim() !== "" ? (
-                              <PrefetchLink 
-                                to="/player/$playerId" 
-                                params={{ playerId: entry.player2Id }}
-                                className="inline-block"
-                                style={{ color: entry.player2Color || '#cba6f7' }}
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <span className="font-semibold text-sm whitespace-nowrap">{entry.player2Name}</span>
-                              </PrefetchLink>
-                            ) : (
-                              <span className="font-semibold text-sm whitespace-nowrap text-ctp-text">{entry.player2Name}</span>
+                            <span className="font-semibold text-sm whitespace-nowrap text-ctp-text">
+                              {entry.playerName}
+                            </span>
+                            {entry.player2Name && (
+                              <>
+                                <span className="text-ctp-overlay0 text-sm">
+                                  {" "}
+                                  &{" "}
+                                </span>
+                                <span className="font-semibold text-sm whitespace-nowrap text-ctp-text">
+                                  {entry.player2Name}
+                                </span>
+                              </>
+                            )}
+                            {entry.rank === 1 && !entry.isObsolete && (
+                              <Badge className="bg-gradient-to-r from-[#0055BF] to-[#0070f3] text-white text-xs px-1.5 py-0.5 border border-[#0055BF]/50 flex items-center gap-1 font-semibold">
+                                <Trophy className="h-2.5 w-2.5" />
+                                <span className="hidden sm:inline">
+                                  {t("components.worldRecord")}
+                                </span>
+                                <span className="sm:hidden">
+                                  {t("components.worldRecordShort")}
+                                </span>
+                              </Badge>
                             )}
                           </>
-                        )}
-                        <Check className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
-                        {entry.rank === 1 && !entry.isObsolete && (
-                          <Badge className="bg-gradient-to-r from-[#0055BF] to-[#0070f3] text-white text-xs px-1.5 py-0.5 border border-[#0055BF]/50 flex items-center gap-1 font-semibold">
-                            <Trophy className="h-2.5 w-2.5" />
-                            <span className="hidden sm:inline">{t("components.worldRecord")}</span>
-                            <span className="sm:hidden">{t("components.worldRecordShort")}</span>
-                          </Badge>
-                        )}
-                      </>
-                    );
-                  }
-                })()}
-                </div>
-                <div className="sm:hidden mt-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-semibold text-ctp-text">{formatTime(entry.time)}</span>
-                    <Badge variant="outline" className="border-ctp-surface1 bg-ctp-surface0 text-ctp-text text-xs px-1.5 py-0.5">
-                      {platformName}
-                    </Badge>
-                    <Badge variant="outline" className="border-ctp-surface1 bg-ctp-surface0 text-ctp-text flex items-center gap-1 w-fit text-xs px-1.5 py-0.5">
-                      {entry.runType === 'solo' ? <User className="h-3 w-3" /> : <Users className="h-3 w-3" />}
-                      {entry.runType === 'solo' ? t("stats.solo") : t("stats.coop")}
-                    </Badge>
+                        );
+                      } else {
+                        // For claimed runs, show with link and check icon
+                        return (
+                          <>
+                            <PrefetchLink
+                              to="/player/$playerId"
+                              params={{ playerId: entry.playerId }}
+                              className="inline-block"
+                              style={{ color: entry.nameColor || "#cba6f7" }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <span className="font-semibold text-sm whitespace-nowrap">
+                                {entry.playerName}
+                              </span>
+                            </PrefetchLink>
+                            {entry.player2Name && (
+                              <>
+                                <span className="text-ctp-overlay0 text-sm">
+                                  {" "}
+                                  &{" "}
+                                </span>
+                                {entry.player2Id &&
+                                entry.player2Id.trim() !== "" ? (
+                                  <PrefetchLink
+                                    to="/player/$playerId"
+                                    params={{ playerId: entry.player2Id }}
+                                    className="inline-block"
+                                    style={{
+                                      color: entry.player2Color || "#cba6f7",
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <span className="font-semibold text-sm whitespace-nowrap">
+                                      {entry.player2Name}
+                                    </span>
+                                  </PrefetchLink>
+                                ) : (
+                                  <span className="font-semibold text-sm whitespace-nowrap text-ctp-text">
+                                    {entry.player2Name}
+                                  </span>
+                                )}
+                              </>
+                            )}
+                            <Check className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
+                            {entry.rank === 1 && !entry.isObsolete && (
+                              <Badge className="bg-gradient-to-r from-[#0055BF] to-[#0070f3] text-white text-xs px-1.5 py-0.5 border border-[#0055BF]/50 flex items-center gap-1 font-semibold">
+                                <Trophy className="h-2.5 w-2.5" />
+                                <span className="hidden sm:inline">
+                                  {t("components.worldRecord")}
+                                </span>
+                                <span className="sm:hidden">
+                                  {t("components.worldRecordShort")}
+                                </span>
+                              </Badge>
+                            )}
+                          </>
+                        );
+                      }
+                    })()}
                   </div>
-                </div>
-              </TableCell>
-              {showLevelColumn && (
-                <TableCell className="py-2.5 px-2 hidden md:table-cell">
-                  <PrefetchLink to={`/run/${entry.id}`} params={{ runId: entry.id }} className="flex items-center gap-1">
-                    <MapPin className="h-3.5 w-3.5 text-ctp-overlay0" />
-                    <span className="text-sm text-ctp-subtext1">
-                      {levelName || entry.srcLevelName || t("notifications.unknownLevel")}
+                  <div className="sm:hidden mt-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-semibold text-ctp-text">
+                        {formatTime(entry.time)}
+                      </span>
+                      <Badge
+                        variant="outline"
+                        className="border-ctp-surface1 bg-ctp-surface0 text-ctp-text text-xs px-1.5 py-0.5"
+                      >
+                        {platformName}
+                      </Badge>
+                      <Badge
+                        variant="outline"
+                        className="border-ctp-surface1 bg-ctp-surface0 text-ctp-text flex items-center gap-1 w-fit text-xs px-1.5 py-0.5"
+                      >
+                        {entry.runType === "solo" ? (
+                          <User className="h-3 w-3" />
+                        ) : (
+                          <Users className="h-3 w-3" />
+                        )}
+                        {entry.runType === "solo"
+                          ? t("stats.solo")
+                          : t("stats.coop")}
+                      </Badge>
+                    </div>
+                  </div>
+                </TableCell>
+                {showLevelColumn && (
+                  <TableCell className="py-2.5 px-2 hidden md:table-cell">
+                    <PrefetchLink
+                      to={`/run/${entry.id}`}
+                      params={{ runId: entry.id }}
+                      className="flex items-center gap-1"
+                    >
+                      <MapPin className="h-3.5 w-3.5 text-ctp-overlay0" />
+                      <span className="text-sm text-ctp-subtext1">
+                        {levelName ||
+                          entry.srcLevelName ||
+                          t("notifications.unknownLevel")}
+                      </span>
+                    </PrefetchLink>
+                  </TableCell>
+                )}
+                <TableCell className="py-2.5 px-2 hidden sm:table-cell text-left">
+                  <PrefetchLink
+                    to="/run/$runId"
+                    params={{ runId: entry.id }}
+                    className="block"
+                  >
+                    <span className="text-sm font-semibold text-ctp-text">
+                      {formatTime(entry.time)}
                     </span>
                   </PrefetchLink>
                 </TableCell>
-              )}
-              <TableCell className="py-2.5 px-2 hidden sm:table-cell text-left">
-                <PrefetchLink to="/run/$runId" params={{ runId: entry.id }} className="block">
-                  <span className="text-sm font-semibold text-ctp-text">
-                    {formatTime(entry.time)}
-                  </span>
-                </PrefetchLink>
-              </TableCell>
-              <TableCell className="py-2.5 px-2 hidden md:table-cell text-left">
-                <PrefetchLink to="/run/$runId" params={{ runId: entry.id }} className="block">
-                  <span className="text-sm text-ctp-subtext1 whitespace-nowrap">{entry.date}</span>
-                </PrefetchLink>
-              </TableCell>
-              <TableCell className="py-2.5 px-2 hidden lg:table-cell">
-                <PrefetchLink to="/run/$runId" params={{ runId: entry.id }} className="block">
-                  <Badge variant="outline" className="border-ctp-surface1/50 bg-ctp-surface0/50 text-ctp-text text-xs px-1.5 py-0.5">
-                    {platformName}
-                  </Badge>
-                </PrefetchLink>
-              </TableCell>
-              <TableCell className="py-2.5 px-2 hidden lg:table-cell">
-                <PrefetchLink to="/run/$runId" params={{ runId: entry.id }} className="block">
-                    <Badge variant="outline" className="border-ctp-surface1/50 bg-ctp-surface0/50 text-ctp-text flex items-center gap-1 w-fit text-xs px-1.5 py-0.5">
-                    {entry.runType === 'solo' ? <User className="h-3 w-3" /> : <Users className="h-3 w-3" />}
-                    {entry.runType === 'solo' ? t("stats.solo") : t("stats.coop")}
-                  </Badge>
-                </PrefetchLink>
-              </TableCell>
-              <TableCell className="py-2.5 px-2">
-                {entry.videoUrl && (
-                  <a 
-                    href={entry.videoUrl} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    className="text-[#cba6f7] flex items-center gap-1"
-                    onClick={(e) => e.stopPropagation()}
+                <TableCell className="py-2.5 px-2 hidden md:table-cell text-left">
+                  <PrefetchLink
+                    to="/run/$runId"
+                    params={{ runId: entry.id }}
+                    className="block"
                   >
-                    <ExternalLink className="h-3 w-3" />
-                    <span className="text-xs">{t("components.watch")}</span>
-                  </a>
-                )}
-              </TableCell>
-            </MotionTableRow>
+                    <span className="text-sm text-ctp-subtext1 whitespace-nowrap">
+                      {entry.date}
+                    </span>
+                  </PrefetchLink>
+                </TableCell>
+                <TableCell className="py-2.5 px-2 hidden lg:table-cell">
+                  <PrefetchLink
+                    to="/run/$runId"
+                    params={{ runId: entry.id }}
+                    className="block"
+                  >
+                    <Badge
+                      variant="outline"
+                      className="border-ctp-surface1/50 bg-ctp-surface0/50 text-ctp-text text-xs px-1.5 py-0.5"
+                    >
+                      {platformName}
+                    </Badge>
+                  </PrefetchLink>
+                </TableCell>
+                <TableCell className="py-2.5 px-2 hidden lg:table-cell">
+                  <PrefetchLink
+                    to="/run/$runId"
+                    params={{ runId: entry.id }}
+                    className="block"
+                  >
+                    <Badge
+                      variant="outline"
+                      className="border-ctp-surface1/50 bg-ctp-surface0/50 text-ctp-text flex items-center gap-1 w-fit text-xs px-1.5 py-0.5"
+                    >
+                      {entry.runType === "solo" ? (
+                        <User className="h-3 w-3" />
+                      ) : (
+                        <Users className="h-3 w-3" />
+                      )}
+                      {entry.runType === "solo"
+                        ? t("stats.solo")
+                        : t("stats.coop")}
+                    </Badge>
+                  </PrefetchLink>
+                </TableCell>
+                <TableCell className="py-2.5 px-2">
+                  {entry.videoUrl && (
+                    <a
+                      href={entry.videoUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[#cba6f7] flex items-center gap-1"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      <span className="text-xs">{t("components.watch")}</span>
+                    </a>
+                  )}
+                </TableCell>
+              </TableRow>
             );
           })}
         </TableBody>
