@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import { FadeIn } from "@/components/ui/fade-in";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -9,15 +8,13 @@ import {
   subscribeToAllVerifiedRunsFirestore as subscribeToAllVerifiedRuns,
 } from "@/lib/data/firestore/runs";
 import { LeaderboardEntry } from "@/types/database";
-import type { Unsubscribe } from "firebase/firestore";
 import { RecentRuns } from "@/components/RecentRuns";
 import TwitchEmbed from "@/components/TwitchEmbed";
 import { parseTimeToSeconds, cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
-import { AnimatedCard } from "@/components/ui/animated-card";
+import { buttonVariants as uiButtonVariants } from "@/components/ui/button";
 import {
-  fadeSlideUpVariants,
   scaleVariants,
   buttonVariants,
   staggerContainerVariants,
@@ -274,7 +271,7 @@ const Index = () => {
                 <MotionLink
                   to="/submit"
                   className={cn(
-                    buttonVariants({ size: "lg" }),
+                    uiButtonVariants({ size: "lg" }),
                     "bg-gradient-to-r from-ctp-mauve via-ctp-pink to-ctp-mauve text-ctp-crust font-bold animate-gradient bg-[length:200%_auto] whitespace-nowrap text-base sm:text-lg lg:text-xl px-6 sm:px-8 lg:px-10 py-6 sm:py-7 lg:py-8 rounded-none border-0 shadow-colored",
                   )}
                   variants={buttonVariants}
@@ -287,7 +284,7 @@ const Index = () => {
                 <MotionLink
                   to="/leaderboards"
                   className={cn(
-                    buttonVariants({ size: "lg", variant: "outline" }),
+                    uiButtonVariants({ size: "lg", variant: "outline" }),
                     "text-ctp-text border-ctp-surface1/50 bg-glass whitespace-nowrap text-base sm:text-lg lg:text-xl px-6 sm:px-8 lg:px-10 py-6 sm:py-7 lg:py-8 rounded-none backdrop-blur-sm",
                   )}
                   variants={buttonVariants}
@@ -372,7 +369,7 @@ const Index = () => {
                 <MotionLink
                   to="/leaderboards"
                   className={cn(
-                    buttonVariants({ variant: "outline", size: "sm" }),
+                    uiButtonVariants({ variant: "outline", size: "sm" }),
                     "text-sm lg:text-base text-ctp-text border-ctp-surface1/50 bg-glass whitespace-nowrap px-4 lg:px-6 py-2 lg:py-3 rounded-none backdrop-blur-sm",
                   )}
                   variants={buttonVariants}
