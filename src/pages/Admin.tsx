@@ -120,8 +120,8 @@ import {
   getPlatformTranslation,
   getSubcategoryTranslation,
 } from "@/lib/i18n/entity-translations";
+import { gameConfigs } from "@/lib/speedruncom/gameConfigs";
 import { useGame } from "@/contexts/GameContext";
-import { GameConfig } from "@/lib/speedruncom/types";
 import {
   setAdminTranslation,
   getAllAdminTranslations,
@@ -1247,10 +1247,6 @@ const Admin = () => {
       setSavingImportedRun(false);
     }
   };
-
-  import { gameConfigs } from "@/lib/speedruncom/gameConfigs";
-
-  // ...
 
   const handleImportFromSRC = async () => {
     if (importingRuns) return;
