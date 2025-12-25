@@ -1,4 +1,14 @@
 // src/components/GameSearch.tsx
+import { useState, useEffect } from "react";
+import {
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Button } from "@/components/ui/button";
 import { useGame } from "@/contexts/GameContext";
 import { Search } from "lucide-react";
 
