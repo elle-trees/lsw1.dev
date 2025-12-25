@@ -203,7 +203,7 @@ const Index = () => {
           >
             {/* Left Side - Verified Runs Card */}
             <motion.div
-              className="lg:col-span-3 lg:order-1 min-w-0 glass shadow-colored-green border-ctp-surface1/50 w-full group overflow-hidden relative rounded-none flex flex-col"
+              className="lg:col-span-3 lg:order-1 min-w-0 glass shadow-colored-green border-ctp-surface1/50 w-full group overflow-hidden relative rounded-none h-full"
               variants={{ ...staggerItemVariants, ...cardHoverVariants }}
               whileHover="hover"
             >
@@ -215,7 +215,7 @@ const Index = () => {
                   </span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-3 relative z-10 flex-grow">
+              <CardContent className="p-3 relative z-10">
                 {statsLoading ? (
                   <Skeleton className="h-10 w-28 mb-1 bg-ctp-surface0/50" />
                 ) : (
@@ -299,7 +299,7 @@ const Index = () => {
 
             {/* Right Side - Total Time Card */}
             <motion.div
-              className="lg:col-span-3 lg:order-3 min-w-0 glass shadow-colored border-ctp-surface1/50 w-full group overflow-hidden relative rounded-none flex flex-col"
+              className="lg:col-span-3 lg:order-3 min-w-0 glass shadow-colored border-ctp-surface1/50 w-full group overflow-hidden relative rounded-none h-full"
               variants={{ ...staggerItemVariants, ...cardHoverVariants }}
               whileHover="hover"
             >
@@ -311,7 +311,7 @@ const Index = () => {
                   </span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-3 relative z-10 flex-grow">
+              <CardContent className="p-3 relative z-10">
                 {statsLoading ? (
                   <Skeleton className="h-10 w-36 mb-1 bg-ctp-surface0/50" />
                 ) : (
