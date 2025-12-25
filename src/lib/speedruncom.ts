@@ -10,21 +10,24 @@ const SPEEDRUNCOM_API_BASE = "https://www.speedrun.com/api/v1";
 /**
  * Generic API fetch helper with error handling and rate limiting
  */
-async function fetchSRCAPI<T>(endpoint: string): Promise<T> {
+async function fetchSRCAPI<T>(
+  endpoint: string,
+  userAgent: string = "lsw1.dev/1.0",
+): Promise<T> {
   return srcRateLimiter.execute(async () => {
     const response = await fetch(`${SPEEDRUNCOM_API_BASE}${endpoint}`, {
       headers: {
-        'User-Agent': 'lsw1.dev/1.0',
+        "User-Agent": userAgent,
       },
     });
-    
+
     if (!response.ok) {
       // Include status code in error for retry logic
       const error: any = new Error(`SRC API error: ${response.statusText}`);
       error.status = response.status;
       throw error;
     }
-    
+
     return await response.json();
   });
 }
@@ -136,17 +139,17 @@ export interface SRCRunData {
 export function isoDurationToTime(duration: string): string {
   const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?/);
   if (!match) return "00:00:00";
-  
+
   const hours = parseInt(match[1] || "0", 10);
   const minutes = parseInt(match[2] || "0", 10);
   const seconds = parseFloat(match[3] || "0");
-  
+
   const secondsInt = Math.floor(seconds);
-  
+
   const hoursStr = hours.toString().padStart(2, "0");
   const minutesStr = minutes.toString().padStart(2, "0");
   const secondsStr = secondsInt.toString().padStart(2, "0");
-  
+
   return `${hoursStr}:${minutesStr}:${secondsStr}`;
 }
 
@@ -157,19 +160,26 @@ export function secondsToTime(seconds: number): string {
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
   const secs = Math.floor(seconds % 60);
-  
+
   return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
 }
 
 /**
- * Get game ID for LEGO Star Wars: The Video Game
+ * Get game ID for a given game name and abbreviation
  */
-export async function getLSWGameId(): Promise<string | null> {
+export async function getGameId(
+  name: string,
+  abbreviation: string,
+): Promise<string | null> {
   try {
-    const data = await fetchSRCAPI<{ data: SRCGame[] }>("/games?name=LEGO%20Star%20Wars&abbreviation=lsw");
+    const data = await fetchSRCAPI<{ data: SRCGame[] }>(
+      `/games?name=${encodeURIComponent(name)}&abbreviation=${encodeURIComponent(abbreviation)}`,
+    );
     if (data.data && data.data.length > 0) {
-      const lswGame = data.data.find((game: SRCGame) => game.abbreviation === "lsw");
-      return lswGame?.id || null;
+      const game = data.data.find(
+        (g: SRCGame) => g.abbreviation === abbreviation,
+      );
+      return game?.id || null;
     }
     return null;
   } catch (error) {
@@ -188,14 +198,14 @@ export async function getLSWGameId(): Promise<string | null> {
  * @param startOffset - Optional offset to start fetching from (for pagination)
  */
 export async function fetchRunsNotOnLeaderboards(
-  gameId: string, 
+  gameId: string,
   limit: number = 500,
-  startOffset: number = 0
+  startOffset: number = 0,
 ): Promise<SRCRun[]> {
   const allRuns: SRCRun[] = [];
   let offset = startOffset;
   const max = 200; // SRC API max per request
-  
+
   try {
     while (allRuns.length < limit) {
       // Embed platform in system field - SRC API embeds platform when requested
@@ -204,7 +214,7 @@ export async function fetchRunsNotOnLeaderboards(
         // Embed all necessary data: players, category (with variables), level, and platform
         // This ensures we have category.type to properly identify per-level categories
         data = await fetchSRCAPI<SRCRunData>(
-          `/runs?game=${gameId}&status=verified&orderby=submitted&direction=desc&max=${max}&offset=${offset}&embed=players,category.variables,level,platform`
+          `/runs?game=${gameId}&status=verified&orderby=submitted&direction=desc&max=${max}&offset=${offset}&embed=players,category.variables,level,platform`,
         );
       } catch (error) {
         // If we have some runs, return what we have; otherwise throw
@@ -213,20 +223,23 @@ export async function fetchRunsNotOnLeaderboards(
         }
         throw error;
       }
-      
+
       if (!data.data || data.data.length === 0) {
         break;
       }
-      
+
       allRuns.push(...data.data);
       offset += data.data.length;
-      
+
       // Check pagination limits
-      if (data.data.length < max || (data.pagination && offset >= data.pagination.max)) {
+      if (
+        data.data.length < max ||
+        (data.pagination && offset >= data.pagination.max)
+      ) {
         break;
       }
     }
-    
+
     return allRuns.slice(0, limit);
   } catch (error) {
     throw error;
@@ -240,7 +253,7 @@ export async function fetchRunsNotOnLeaderboards(
 export async function fetchSRCRunById(runId: string): Promise<SRCRun | null> {
   try {
     const data = await fetchSRCAPI<{ data: SRCRun }>(
-      `/runs/${runId}?embed=players,category,level,platform`
+      `/runs/${runId}?embed=players,category,level,platform`,
     );
     return data.data || null;
   } catch (error) {
@@ -253,7 +266,9 @@ export async function fetchSRCRunById(runId: string): Promise<SRCRun | null> {
  */
 export async function fetchCategories(gameId: string): Promise<SRCCategory[]> {
   try {
-    const data = await fetchSRCAPI<{ data: SRCCategory[] }>(`/games/${gameId}/categories`);
+    const data = await fetchSRCAPI<{ data: SRCCategory[] }>(
+      `/games/${gameId}/categories`,
+    );
     return data.data || [];
   } catch (error) {
     return [];
@@ -263,9 +278,13 @@ export async function fetchCategories(gameId: string): Promise<SRCCategory[]> {
 /**
  * Fetch variables for a specific category
  */
-export async function fetchCategoryVariables(categoryId: string): Promise<SRCCategory['variables']> {
+export async function fetchCategoryVariables(
+  categoryId: string,
+): Promise<SRCCategory["variables"]> {
   try {
-    const data = await fetchSRCAPI<{ data: SRCCategory }>(`/categories/${categoryId}?embed=variables`);
+    const data = await fetchSRCAPI<{ data: SRCCategory }>(
+      `/categories/${categoryId}?embed=variables`,
+    );
     return data.data?.variables || undefined;
   } catch (error) {
     return undefined;
@@ -277,7 +296,9 @@ export async function fetchCategoryVariables(categoryId: string): Promise<SRCCat
  */
 export async function fetchLevels(gameId: string): Promise<SRCLevel[]> {
   try {
-    const data = await fetchSRCAPI<{ data: SRCLevel[] }>(`/games/${gameId}/levels`);
+    const data = await fetchSRCAPI<{ data: SRCLevel[] }>(
+      `/games/${gameId}/levels`,
+    );
     return data.data || [];
   } catch (error) {
     return [];
@@ -300,9 +321,13 @@ export async function fetchPlatforms(): Promise<SRCPlatform[]> {
  * Fetch a single platform by ID from speedrun.com
  * Returns the platform name (from names.international)
  */
-export async function fetchPlatformById(platformId: string): Promise<string | null> {
+export async function fetchPlatformById(
+  platformId: string,
+): Promise<string | null> {
   try {
-    const data = await fetchSRCAPI<{ data: SRCPlatform }>(`/platforms/${platformId}`);
+    const data = await fetchSRCAPI<{ data: SRCPlatform }>(
+      `/platforms/${platformId}`,
+    );
     if (data.data) {
       return data.data.names?.international || data.data.name || null;
     }
@@ -316,7 +341,9 @@ export async function fetchPlatformById(platformId: string): Promise<string | nu
  * Normalize SRC username for consistent comparison
  * This ensures the same normalization is used during import and claiming
  */
-export function normalizeSRCUsername(username: string | null | undefined): string {
+export function normalizeSRCUsername(
+  username: string | null | undefined,
+): string {
   if (!username) return "";
   return username.trim().toLowerCase();
 }
@@ -326,9 +353,11 @@ export function normalizeSRCUsername(username: string | null | undefined): strin
  * SRC weblink format: https://www.speedrun.com/users/{username}
  * Returns the username portion of the URL, normalized (lowercase, trimmed)
  */
-export function extractSRCUsernameFromWeblink(weblink: string | undefined): string | undefined {
-  if (!weblink || typeof weblink !== 'string') return undefined;
-  
+export function extractSRCUsernameFromWeblink(
+  weblink: string | undefined,
+): string | undefined {
+  if (!weblink || typeof weblink !== "string") return undefined;
+
   try {
     // Match pattern: /users/{username} or /users/{username}?
     const match = weblink.match(/\/users\/([^/?]+)/);
@@ -339,7 +368,7 @@ export function extractSRCUsernameFromWeblink(weblink: string | undefined): stri
   } catch (error) {
     // Silent fail
   }
-  
+
   return undefined;
 }
 
@@ -347,34 +376,45 @@ export function extractSRCUsernameFromWeblink(weblink: string | undefined): stri
  * Get SRC username from player data
  * Tries to extract from weblink first, falls back to display name if weblink not available
  */
-export function getSRCUsername(player: SRCRun['players'][0]): string | undefined {
+export function getSRCUsername(
+  player: SRCRun["players"][0],
+): string | undefined {
   if (!player) return undefined;
-  
+
   // Handle embedded player data
   let actualPlayer = player;
-  if (typeof player === 'object' && 'data' in player && Array.isArray((player as any).data) && (player as any).data.length > 0) {
+  if (
+    typeof player === "object" &&
+    "data" in player &&
+    Array.isArray((player as any).data) &&
+    (player as any).data.length > 0
+  ) {
     actualPlayer = (player as any).data[0];
-  } else if (typeof player === 'object' && 'data' in player && !Array.isArray((player as any).data)) {
+  } else if (
+    typeof player === "object" &&
+    "data" in player &&
+    !Array.isArray((player as any).data)
+  ) {
     actualPlayer = (player as any).data;
   }
-  
+
   // Try to get username from weblink (most reliable)
   if (actualPlayer?.weblink) {
     const username = extractSRCUsernameFromWeblink(actualPlayer.weblink);
     if (username) return username;
   }
-  
+
   // Try from player.data.weblink if available
   if (actualPlayer?.data?.weblink) {
     const username = extractSRCUsernameFromWeblink(actualPlayer.data.weblink);
     if (username) return username;
   }
-  
+
   // Fallback: for guest players, use the name field (normalize it)
   if (actualPlayer?.rel === "guest" && actualPlayer?.name) {
     return normalizeSRCUsername(actualPlayer.name);
   }
-  
+
   return undefined;
 }
 
@@ -383,7 +423,9 @@ export function getSRCUsername(player: SRCRun['players'][0]): string | undefined
  * Returns the player's username (from names.international)
  * This is the same field used during import, ensuring consistency
  */
-export async function fetchPlayerById(playerId: string): Promise<string | null> {
+export async function fetchPlayerById(
+  playerId: string,
+): Promise<string | null> {
   try {
     const data = await fetchSRCAPI<{ data: SRCPlayer }>(`/users/${playerId}`);
     const name = data?.data?.names?.international || null;
@@ -397,14 +439,14 @@ export async function fetchPlayerById(playerId: string): Promise<string | null> 
 /**
  * Normalize players array from various SRC API response formats
  */
-function normalizePlayersArray(players: any): SRCRun['players'] {
+function normalizePlayersArray(players: any): SRCRun["players"] {
   if (Array.isArray(players)) return players;
-  if (!players || typeof players !== 'object') return [];
-  
-  if ('data' in players && Array.isArray(players.data)) {
+  if (!players || typeof players !== "object") return [];
+
+  if ("data" in players && Array.isArray(players.data)) {
     return players.data;
   }
-  if ('rel' in players || 'id' in players || 'name' in players) {
+  if ("rel" in players || "id" in players || "name" in players) {
     return [players];
   }
   return [];
@@ -415,36 +457,49 @@ function normalizePlayersArray(players: any): SRCRun['players'] {
  * Handles various SRC API response structures per SRC API documentation
  * If only ID is available, can optionally fetch from API (async version available)
  */
-export function getPlayerName(player: SRCRun['players'][0]): string {
+export function getPlayerName(player: SRCRun["players"][0]): string {
   if (!player) return "";
-  
+
   // Guest runs (rel: "guest") have direct name field (anonymous/unregistered players)
-  if (player.rel === "guest" && player.name && typeof player.name === 'string' && player.name.trim()) {
+  if (
+    player.rel === "guest" &&
+    player.name &&
+    typeof player.name === "string" &&
+    player.name.trim()
+  ) {
     return String(player.name).trim();
   }
-  
+
   // Registered users (rel: "user") have embedded data: player.data.names.international
-  if (player.rel === "user" && player.data?.names?.international && typeof player.data.names.international === 'string') {
+  if (
+    player.rel === "user" &&
+    player.data?.names?.international &&
+    typeof player.data.names.international === "string"
+  ) {
     const name = String(player.data.names.international).trim();
     if (name) return name;
   }
-  
+
   // Fallback: check other name fields
-  if (player.data?.name && typeof player.data.name === 'string' && player.data.name.trim()) {
+  if (
+    player.data?.name &&
+    typeof player.data.name === "string" &&
+    player.data.name.trim()
+  ) {
     return String(player.data.name).trim();
   }
-  
+
   // If we have an ID but no name, return empty string to signal we need to fetch
   // The async version will handle fetching
   if (player.id && player.rel === "user") {
     return ""; // Return empty string to signal we need to fetch
   }
-  
+
   // If it's a guest without a name, return empty
   if (player.rel === "guest") {
     return "";
   }
-  
+
   return "";
 }
 
@@ -453,8 +508,8 @@ export function getPlayerName(player: SRCRun['players'][0]): string {
  * Fetches player name from SRC API if embedded data is missing
  */
 export async function getPlayerNameAsync(
-  player: SRCRun['players'][0],
-  playerIdToNameCache?: Map<string, string>
+  player: SRCRun["players"][0],
+  playerIdToNameCache?: Map<string, string>,
 ): Promise<string> {
   if (!player) {
     return "Unknown";
@@ -463,41 +518,66 @@ export async function getPlayerNameAsync(
   // Handle case where player might be wrapped in { data: [...] } structure
   // This can happen if the API returns embedded data in a different format
   let actualPlayer = player;
-  if (typeof player === 'object' && 'data' in player && Array.isArray((player as any).data) && (player as any).data.length > 0) {
+  if (
+    typeof player === "object" &&
+    "data" in player &&
+    Array.isArray((player as any).data) &&
+    (player as any).data.length > 0
+  ) {
     // Extract first player from data array
     actualPlayer = (player as any).data[0];
-  } else if (typeof player === 'object' && 'data' in player && !Array.isArray((player as any).data)) {
+  } else if (
+    typeof player === "object" &&
+    "data" in player &&
+    !Array.isArray((player as any).data)
+  ) {
     // Single player in data object
     actualPlayer = (player as any).data;
   }
-  
+
   // Guest players (rel: "guest") have name field directly
   if (actualPlayer?.rel === "guest") {
-    if (actualPlayer.name && typeof actualPlayer.name === 'string' && actualPlayer.name.trim()) {
+    if (
+      actualPlayer.name &&
+      typeof actualPlayer.name === "string" &&
+      actualPlayer.name.trim()
+    ) {
       return String(actualPlayer.name).trim();
     }
     return "Guest Player";
   }
-  
+
   // If player has direct name field (sometimes present even for registered users)
-  if (actualPlayer?.name && typeof actualPlayer.name === 'string' && actualPlayer.name.trim()) {
+  if (
+    actualPlayer?.name &&
+    typeof actualPlayer.name === "string" &&
+    actualPlayer.name.trim()
+  ) {
     return String(actualPlayer.name).trim();
   }
-  
+
   // Try synchronous extraction first (handles embedded data)
-  const syncName = getPlayerName(actualPlayer as SRCRun['players'][0]);
+  const syncName = getPlayerName(actualPlayer as SRCRun["players"][0]);
   if (syncName && syncName !== "") {
     return syncName;
   }
-  
+
   // For registered users, if we have an ID but no name, fetch from API
   let playerId: string | undefined;
-  if (actualPlayer?.id && typeof actualPlayer.id === 'string' && actualPlayer.id.trim()) {
+  if (
+    actualPlayer?.id &&
+    typeof actualPlayer.id === "string" &&
+    actualPlayer.id.trim()
+  ) {
     playerId = actualPlayer.id.trim();
-  } else if (actualPlayer?.data?.id && typeof actualPlayer.data.id === 'string' && actualPlayer.data.id.trim()) {
+  } else if (
+    actualPlayer?.data?.id &&
+    typeof actualPlayer.data.id === "string" &&
+    actualPlayer.data.id.trim()
+  ) {
     playerId = actualPlayer.data.id.trim();
   }
-  
+
   if (playerId) {
     // Check cache first
     if (playerIdToNameCache?.has(playerId)) {
@@ -506,7 +586,7 @@ export async function getPlayerNameAsync(
         return cachedName;
       }
     }
-    
+
     // Fetch from API
     try {
       const name = await fetchPlayerById(playerId);
@@ -514,13 +594,12 @@ export async function getPlayerNameAsync(
         playerIdToNameCache?.set(playerId, name);
         return name;
       }
-    } catch (error) {
-    }
-    
+    } catch (error) {}
+
     // Last resort: return placeholder with ID
     return `Player ${playerId}`;
   }
-  
+
   return "Unknown";
 }
 
@@ -529,49 +608,73 @@ export async function getPlayerNameAsync(
  * Handles SRC API response structures: embedded { data: { ... } } or plain string ID
  */
 export function extractIdAndName(
-  value: string | { data: { id?: string; name?: string; names?: { international?: string } } } | { data: Array<{ id?: string; name?: string; names?: { international?: string } }> } | undefined
+  value:
+    | string
+    | {
+        data: {
+          id?: string;
+          name?: string;
+          names?: { international?: string };
+        };
+      }
+    | {
+        data: Array<{
+          id?: string;
+          name?: string;
+          names?: { international?: string };
+        }>;
+      }
+    | undefined,
 ): { id: string; name: string } {
   if (!value) return { id: "", name: "" };
-  
+
   // Plain string = ID only (no embed)
   if (typeof value === "string") {
     return { id: value.trim(), name: "" };
   }
-  
+
   // Embedded object: { data: { id, name } } or { data: { id, names: { international } } }
   if (value.data && !Array.isArray(value.data)) {
     const data = value.data;
     const id = data.id ? String(data.id).trim() : "";
-    
+
     // Try direct name field first (categories use this)
-    if (data.name && typeof data.name === 'string' && data.name.trim()) {
+    if (data.name && typeof data.name === "string" && data.name.trim()) {
       return { id, name: String(data.name).trim() };
     }
-    
+
     // Try names.international (platforms use this)
-    if (data.names?.international && typeof data.names.international === 'string' && data.names.international.trim()) {
+    if (
+      data.names?.international &&
+      typeof data.names.international === "string" &&
+      data.names.international.trim()
+    ) {
       return { id, name: String(data.names.international).trim() };
     }
-    
+
     return { id, name: "" };
   }
-  
+
   // Embedded array: { data: [{ id, name }] }
   if (Array.isArray(value.data) && value.data.length > 0) {
     const first = value.data[0];
     const id = first.id ? String(first.id).trim() : "";
-    
-    if (first.name && typeof first.name === 'string' && first.name.trim()) {
+
+    if (first.name && typeof first.name === "string" && first.name.trim()) {
       return { id, name: String(first.name).trim() };
     }
-    
-    if (first.names?.international && typeof first.names.international === 'string' && first.names.international.trim()) {
+
+    if (
+      first.names?.international &&
+      typeof first.names.international === "string" &&
+      first.names.international.trim()
+    ) {
       return { id, name: String(first.names.international).trim() };
     }
-    
+
     return { id, name: "" };
   }
-  
+
   return { id: "", name: "" };
 }
 
@@ -579,24 +682,29 @@ export function extractIdAndName(
  * Extract platform name from various SRC API structures
  * Platforms use names.international, not name field
  */
-function extractPlatformName(platform: string | { data: SRCPlatform } | undefined, fallbackMap?: Map<string, string>): string {
+function extractPlatformName(
+  platform: string | { data: SRCPlatform } | undefined,
+  fallbackMap?: Map<string, string>,
+): string {
   if (!platform) return "";
-  
+
   // If it's a string ID, try fallback map
   if (typeof platform === "string") {
     return fallbackMap?.get(platform) || "";
   }
-  
+
   // Embedded: { data: SRCPlatform }
   if (platform.data) {
     return platform.data.names?.international || platform.data.name || "";
   }
-  
+
   // Direct platform object (rare)
-  if ('names' in platform) {
-    return (platform as any).names?.international || (platform as any).name || "";
+  if ("names" in platform) {
+    return (
+      (platform as any).names?.international || (platform as any).name || ""
+    );
   }
-  
+
   return "";
 }
 
@@ -607,26 +715,26 @@ function extractPlatformName(platform: string | { data: SRCPlatform } | undefine
 async function extractPlatformNameAsync(
   platform: string | { data: SRCPlatform } | undefined,
   fallbackMap?: Map<string, string>,
-  platformIdToNameCache?: Map<string, string>
+  platformIdToNameCache?: Map<string, string>,
 ): Promise<string> {
   if (!platform) return "";
-  
+
   // Try synchronous extraction first
   const syncName = extractPlatformName(platform, fallbackMap);
   if (syncName) {
     return syncName;
   }
-  
+
   // If it's a string ID and we don't have it, try to fetch
   if (typeof platform === "string") {
     const platformId = platform.trim();
     if (!platformId) return "";
-    
+
     // Check cache first
     if (platformIdToNameCache?.has(platformId)) {
       return platformIdToNameCache.get(platformId)!;
     }
-    
+
     // Fetch from API
     try {
       const name = await fetchPlatformById(platformId);
@@ -635,11 +743,92 @@ async function extractPlatformNameAsync(
         platformIdToNameCache?.set(platformId, name);
         return name;
       }
-    } catch (error) {
-    }
+    } catch (error) {}
   }
-  
+
   return "";
+}
+
+async function extractPlayers(
+  run: SRCRun,
+  playerIdToNameCache?: Map<string, string>,
+) {
+  const players = normalizePlayersArray(run.players);
+
+  // Extract SRC player IDs for claiming
+  const extractSRCPlayerId = (
+    player: SRCRun["players"][0],
+  ): string | undefined => {
+    if (!player) return undefined;
+    // Handle unwrapped player data
+    if (
+      typeof player === "object" &&
+      "data" in player &&
+      Array.isArray((player as any).data) &&
+      (player as any).data.length > 0
+    ) {
+      const actualPlayer = (player as any).data[0];
+      return actualPlayer?.id || player.id;
+    } else if (
+      typeof player === "object" &&
+      "data" in player &&
+      !Array.isArray((player as any).data)
+    ) {
+      return (player as any).data?.id || player.id;
+    }
+    return player.id;
+  };
+
+  const srcPlayerId = players[0] ? extractSRCPlayerId(players[0]) : undefined;
+  const srcPlayer2Id =
+    players.length > 1 ? extractSRCPlayerId(players[1]) : undefined;
+
+  // Extract SRC usernames from weblinks (for proper matching)
+  const srcPlayer1Username = players[0]
+    ? getSRCUsername(players[0])
+    : undefined;
+  const srcPlayer2Username =
+    players.length > 1 ? getSRCUsername(players[1]) : undefined;
+
+  // Determine run type based on player count
+  const runType: "solo" | "co-op" = players.length > 1 ? "co-op" : "solo";
+
+  // Use async version to fetch names if needed (for display)
+  let player1Name = players[0]
+    ? await getPlayerNameAsync(players[0], playerIdToNameCache)
+    : "Unknown";
+  let player2Name: string | undefined;
+
+  if (runType === "co-op" && players.length > 1) {
+    player2Name =
+      (await getPlayerNameAsync(players[1], playerIdToNameCache)) || "Unknown";
+  }
+
+  // Ensure we have valid names - but don't clear player2Name for co-op runs
+  if (!player1Name || player1Name.trim() === "") {
+    player1Name = "Unknown";
+  }
+
+  // For co-op runs, ensure player2Name is set (even if Unknown)
+  // For solo runs, clear it
+  if (runType === "solo") {
+    player2Name = undefined;
+  } else if (
+    runType === "co-op" &&
+    (!player2Name || player2Name.trim() === "")
+  ) {
+    player2Name = "Unknown";
+  }
+
+  return {
+    runType,
+    player1Name,
+    player2Name,
+    srcPlayerId,
+    srcPlayer2Id,
+    srcPlayer1Username,
+    srcPlayer2Username,
+  };
 }
 
 /**
@@ -666,221 +855,354 @@ export async function mapSRCRunToLeaderboardEntry(
   srcLevelIdToName?: Map<string, string>,
   playerIdToNameCache?: Map<string, string>,
   platformIdToNameCache?: Map<string, string>,
-  localCategories?: import("@/types/database").Category[] // Local categories with subcategories for matching
-): Promise<Partial<import("@/types/database").LeaderboardEntry> & {
-  srcRunId: string;
-  importedFromSRC: boolean;
-}> {
+  localCategories?: import("@/types/database").Category[], // Local categories with subcategories for matching
+): Promise<
+  Partial<import("@/types/database").LeaderboardEntry> & {
+    srcRunId: string;
+    importedFromSRC: boolean;
+  }
+> {
   if (!run?.id) {
     throw new Error("Invalid run object or missing ID");
   }
 
-  // Extract and normalize players array
-  const players = normalizePlayersArray(run.players);
-  
-  // Extract SRC player IDs for claiming
-  const extractSRCPlayerId = (player: SRCRun['players'][0]): string | undefined => {
-    if (!player) return undefined;
-    // Handle unwrapped player data
-    if (typeof player === 'object' && 'data' in player && Array.isArray((player as any).data) && (player as any).data.length > 0) {
-      const actualPlayer = (player as any).data[0];
-      return actualPlayer?.id || player.id;
-    } else if (typeof player === 'object' && 'data' in player && !Array.isArray((player as any).data)) {
-      return (player as any).data?.id || player.id;
-    }
-    return player.id;
-  };
-  
-  const srcPlayerId = players[0] ? extractSRCPlayerId(players[0]) : undefined;
-  const srcPlayer2Id = players.length > 1 ? extractSRCPlayerId(players[1]) : undefined;
-  
-  // Extract SRC usernames from weblinks (for proper matching)
-  const srcPlayer1Username = players[0] ? getSRCUsername(players[0]) : undefined;
-  const srcPlayer2Username = players.length > 1 ? getSRCUsername(players[1]) : undefined;
-  
-  // Determine run type based on player count
-  const runType: 'solo' | 'co-op' = players.length > 1 ? 'co-op' : 'solo';
-  
-  // Use async version to fetch names if needed (for display)
-  let player1Name = players[0] ? await getPlayerNameAsync(players[0], playerIdToNameCache) : "Unknown";
-  let player2Name: string | undefined;
-  
-  if (runType === 'co-op' && players.length > 1) {
-    player2Name = await getPlayerNameAsync(players[1], playerIdToNameCache) || "Unknown";
-  }
-  
-  // Ensure we have valid names - but don't clear player2Name for co-op runs
-  if (!player1Name || player1Name.trim() === "") {
-    player1Name = "Unknown";
-  }
-  
-  // For co-op runs, ensure player2Name is set (even if Unknown)
-  // For solo runs, clear it
-  if (runType === 'solo') {
-    player2Name = undefined;
-  } else if (runType === 'co-op' && (!player2Name || player2Name.trim() === "")) {
-    player2Name = "Unknown";
-  }
-  
-  // === Extract Category ===
+  const {
+    runType,
+    player1Name,
+    player2Name,
+    srcPlayerId,
+    srcPlayer2Id,
+    srcPlayer1Username,
+    srcPlayer2Username,
+  } = await extractPlayers(run, playerIdToNameCache);
+function extractCategory(run: SRCRun, categoryMapping: Map<string, string>, srcCategoryIdToName?: Map<string, string>, categoryNameMapping?: Map<string, string>) {
   const categoryData = extractIdAndName(run.category);
   let ourCategoryId = categoryMapping.get(categoryData.id);
   let categoryName = categoryData.name;
-  
+
   // Fallback to ID->name map if we don't have name yet (do this first!)
   if (!categoryName && categoryData.id && srcCategoryIdToName) {
     categoryName = srcCategoryIdToName.get(categoryData.id) || "";
   }
-  
+
   // Try name-based mapping if ID mapping failed
   if (!ourCategoryId && categoryName && categoryNameMapping) {
     const normalizedName = categoryName.toLowerCase().trim();
     ourCategoryId = categoryNameMapping.get(normalizedName);
-    
+
     // Also try with common variations (remove special characters for fuzzy matching)
     if (!ourCategoryId) {
-      const simplifiedName = normalizedName.replace(/[^a-z0-9]/g, '');
+      const simplifiedName = normalizedName.replace(/[^a-z0-9]/g, "");
       for (const [key, value] of categoryNameMapping.entries()) {
-        if (key.replace(/[^a-z0-9]/g, '') === simplifiedName) {
+        if (key.replace(/[^a-z0-9]/g, "") === simplifiedName) {
           ourCategoryId = value;
           break;
         }
       }
     }
   }
-  
-  // === Extract Platform ===
+
+  return { ourCategoryId, categoryName };
+}
+
+/**
+ * Map speedrun.com run to our LeaderboardEntry format
+ * Simplified, cleaner implementation
+ * Now supports async fetching of player and platform names when only IDs are available
+ */
+export async function mapSRCRunToLeaderboardEntry(
+  run: SRCRun,
+  categoryMapping: Map<string, string>,
+  platformMapping: Map<string, string>,
+  levelMapping: Map<string, string>,
+  defaultPlayerId: string = "",
+  embeddedData?: {
+    players?: SRCPlayer[];
+    category?: SRCCategory;
+    level?: SRCLevel;
+    platform?: SRCPlatform;
+  },
+  categoryNameMapping?: Map<string, string>,
+  platformNameMapping?: Map<string, string>,
+  srcPlatformIdToName?: Map<string, string>,
+  srcCategoryIdToName?: Map<string, string>,
+  srcLevelIdToName?: Map<string, string>,
+  playerIdToNameCache?: Map<string, string>,
+  platformIdToNameCache?: Map<string, string>,
+  localCategories?: import("@/types/database").Category[], // Local categories with subcategories for matching
+): Promise<
+  Partial<import("@/types/database").LeaderboardEntry> & {
+    srcRunId: string;
+    importedFromSRC: boolean;
+  }
+> {
+  if (!run?.id) {
+    throw new Error("Invalid run object or missing ID");
+  }
+
+  const {
+    runType,
+    player1Name,
+    player2Name,
+    srcPlayerId,
+    srcPlayer2Id,
+    srcPlayer1Username,
+    srcPlayer2Username,
+  } = await extractPlayers(run, playerIdToNameCache);
+
+  const { ourCategoryId, categoryName } = extractCategory(run, categoryMapping, srcCategoryIdToName, categoryNameMapping);
+async function extractPlatform(run: SRCRun, platformMapping: Map<string, string>, srcPlatformIdToName?: Map<string, string>, platformNameMapping?: Map<string, string>, platformIdToNameCache?: Map<string, string>) {
   const platformData = extractIdAndName(run.system?.platform);
   let ourPlatformId = platformMapping.get(platformData.id);
   let platformName = platformData.name;
-  
+
   // Try direct extraction from embedded platform (more reliable)
   if (!platformName && run.system?.platform) {
-    platformName = extractPlatformName(run.system.platform, srcPlatformIdToName);
+    platformName = extractPlatformName(
+      run.system.platform,
+      srcPlatformIdToName,
+    );
   }
-  
+
   // Fallback to ID->name map
   if (!platformName && platformData.id && srcPlatformIdToName) {
     platformName = srcPlatformIdToName.get(platformData.id) || "";
   }
-  
+
   // If still no name, try async fetch from API
   if (!platformName && platformData.id && run.system?.platform) {
     platformName = await extractPlatformNameAsync(
       run.system.platform,
       srcPlatformIdToName,
-      platformIdToNameCache
+      platformIdToNameCache,
     );
   }
-  
+
   // Try name-based mapping if ID mapping failed
   if (!ourPlatformId && platformName && platformNameMapping) {
     ourPlatformId = platformNameMapping.get(platformName.toLowerCase().trim());
   }
-  
-  // === Extract Level ===
+
+  return { ourPlatformId, platformName };
+}
+
+/**
+ * Map speedrun.com run to our LeaderboardEntry format
+ * Simplified, cleaner implementation
+ * Now supports async fetching of player and platform names when only IDs are available
+ */
+export async function mapSRCRunToLeaderboardEntry(
+  run: SRCRun,
+  categoryMapping: Map<string, string>,
+  platformMapping: Map<string, string>,
+  levelMapping: Map<string, string>,
+  defaultPlayerId: string = "",
+  embeddedData?: {
+    players?: SRCPlayer[];
+    category?: SRCCategory;
+    level?: SRCLevel;
+    platform?: SRCPlatform;
+  },
+  categoryNameMapping?: Map<string, string>,
+  platformNameMapping?: Map<string, string>,
+  srcPlatformIdToName?: Map<string, string>,
+  srcCategoryIdToName?: Map<string, string>,
+  srcLevelIdToName?: Map<string, string>,
+  playerIdToNameCache?: Map<string, string>,
+  platformIdToNameCache?: Map<string, string>,
+  localCategories?: import("@/types/database").Category[], // Local categories with subcategories for matching
+): Promise<
+  Partial<import("@/types/database").LeaderboardEntry> & {
+    srcRunId: string;
+    importedFromSRC: boolean;
+  }
+> {
+  if (!run?.id) {
+    throw new Error("Invalid run object or missing ID");
+  }
+
+  const {
+    runType,
+    player1Name,
+    player2Name,
+    srcPlayerId,
+    srcPlayer2Id,
+    srcPlayer1Username,
+    srcPlayer2Username,
+  } = await extractPlayers(run, playerIdToNameCache);
+
+  const { ourCategoryId, categoryName } = extractCategory(run, categoryMapping, srcCategoryIdToName, categoryNameMapping);
+
+  const { ourPlatformId, platformName } = await extractPlatform(run, platformMapping, srcPlatformIdToName, platformNameMapping, platformIdToNameCache);
+
+function extractLevel(run: SRCRun, levelMapping: Map<string, string>, srcLevelIdToName?: Map<string, string>) {
   const levelData = extractIdAndName(run.level);
   const ourLevelId = levelData.id ? levelMapping.get(levelData.id) : undefined;
   let levelName = levelData.name;
-  
+
   // Fallback to ID->name map
   if (!levelName && levelData.id && srcLevelIdToName) {
     levelName = srcLevelIdToName.get(levelData.id) || "";
   }
-  
+
+  return { ourLevelId, levelName };
+}
+
+/**
+ * Map speedrun.com run to our LeaderboardEntry format
+ * Simplified, cleaner implementation
+ * Now supports async fetching of player and platform names when only IDs are available
+ */
+export async function mapSRCRunToLeaderboardEntry(
+  run: SRCRun,
+  categoryMapping: Map<string, string>,
+  platformMapping: Map<string, string>,
+  levelMapping: Map<string, string>,
+  defaultPlayerId: string = "",
+  embeddedData?: {
+    players?: SRCPlayer[];
+    category?: SRCCategory;
+    level?: SRCLevel;
+    platform?: SRCPlatform;
+  },
+  categoryNameMapping?: Map<string, string>,
+  platformNameMapping?: Map<string, string>,
+  srcPlatformIdToName?: Map<string, string>,
+  srcCategoryIdToName?: Map<string, string>,
+  srcLevelIdToName?: Map<string, string>,
+  playerIdToNameCache?: Map<string, string>,
+  platformIdToNameCache?: Map<string, string>,
+  localCategories?: import("@/types/database").Category[], // Local categories with subcategories for matching
+): Promise<
+  Partial<import("@/types/database").LeaderboardEntry> & {
+    srcRunId: string;
+    importedFromSRC: boolean;
+  }
+> {
+  if (!run?.id) {
+    throw new Error("Invalid run object or missing ID");
+  }
+
+  const {
+    runType,
+    player1Name,
+    player2Name,
+    srcPlayerId,
+    srcPlayer2Id,
+    srcPlayer1Username,
+    srcPlayer2Username,
+  } = await extractPlayers(run, playerIdToNameCache);
+
+  const { ourCategoryId, categoryName } = extractCategory(run, categoryMapping, srcCategoryIdToName, categoryNameMapping);
+
+  const { ourPlatformId, platformName } = await extractPlatform(run, platformMapping, srcPlatformIdToName, platformNameMapping, platformIdToNameCache);
+
+  const { ourLevelId, levelName } = extractLevel(run, levelMapping, srcLevelIdToName);
+
   // === Determine Leaderboard Type ===
   // SRC categories have type: "per-game" or "per-level"
   // Per-level categories are Individual Level runs
   // Per-game categories are Full Game runs
-  let leaderboardType: 'regular' | 'individual-level' | 'community-golds' = 'regular';
-  
+  let leaderboardType: "regular" | "individual-level" | "community-golds" =
+    "regular";
+
   let categoryType: "per-game" | "per-level" | undefined;
   let categoryDataObj: SRCCategory | undefined;
-  
+
   // Extract category type from embedded data
-  if (typeof run.category === 'object' && run.category?.data) {
+  if (typeof run.category === "object" && run.category?.data) {
     categoryDataObj = run.category.data as SRCCategory;
     categoryType = categoryDataObj.type;
   } else if (embeddedData?.category) {
     categoryDataObj = embeddedData.category;
     categoryType = embeddedData.category.type;
   }
-  
-  const hasLevel = levelData.id && levelData.id.trim() !== '';
-  
+
+  const hasLevel = ourLevelId && ourLevelId.trim() !== "";
+
   // Determine leaderboard type based on category type and level presence
   // Per-level categories are always IL runs
-  if (categoryType === 'per-level') {
-    leaderboardType = 'individual-level';
+  if (categoryType === "per-level") {
+    leaderboardType = "individual-level";
     // Ensure we have level data for IL runs
     if (!hasLevel && !levelName) {
     }
-  } else if (categoryType === 'per-game') {
-    leaderboardType = 'regular';
+  } else if (categoryType === "per-game") {
+    leaderboardType = "regular";
     // Per-game runs should not have levels (unless it's a community golds category)
     // Community golds are identified separately by category name or other markers
   } else if (hasLevel || levelName) {
     // Fallback: if we have a level but category type is unknown, assume IL
     // This handles edge cases where category type might not be embedded
-    leaderboardType = 'individual-level';
+    leaderboardType = "individual-level";
   }
-  
+
   // Note: Community Golds are typically identified by category name or special handling
   // For now, we'll handle them as regular or individual-level based on category type
-  
+
   // === Convert Time ===
   let time = "00:00:00";
   if (run.times.primary) {
     time = isoDurationToTime(run.times.primary);
-  } else if (run.times.primary_t !== undefined && run.times.primary_t !== null) {
+  } else if (
+    run.times.primary_t !== undefined &&
+    run.times.primary_t !== null
+  ) {
     time = secondsToTime(run.times.primary_t);
   }
-  
+
   // Validate time conversion - log if conversion failed or returned 00:00:00 for a real run
   if (time === "00:00:00" && run.times.primary_t && run.times.primary_t > 0) {
   }
-  
+
   // === Convert Date ===
-  const date = run.date ? run.date.split('T')[0] : new Date().toISOString().split('T')[0];
-  
+  const date = run.date
+    ? run.date.split("T")[0]
+    : new Date().toISOString().split("T")[0];
+
   // === Extract Video URL ===
   const videoUrl = run.videos?.links?.[0]?.uri || undefined;
-  
-  // === Extract Subcategory from SRC Variables ===
-  // Only extract subcategories for regular (full game) runs
+function extractSubcategory(run: SRCRun, leaderboardType: "regular" | "individual-level" | "community-golds", ourCategoryId?: string, localCategories?: import("@/types/database").Category[], embeddedData?: any) {
   let subcategoryId: string | undefined;
   let srcSubcategory: string | undefined;
-  
-  if (leaderboardType === 'regular' && run.values && Object.keys(run.values).length > 0) {
+
+  if (
+    leaderboardType === "regular" &&
+    run.values &&
+    Object.keys(run.values).length > 0
+  ) {
     // Get all variables from the run
     const variableEntries = Object.entries(run.values);
-    
+
     if (variableEntries.length > 0) {
       // Get category data to access variable definitions
       let categoryData: SRCCategory | undefined;
-      if (typeof run.category === 'object' && run.category?.data) {
+      if (typeof run.category === "object" && run.category?.data) {
         categoryData = run.category.data as SRCCategory;
       } else if (embeddedData?.category) {
         categoryData = embeddedData.category;
       }
-      
+
       // Determine which variable to use for subcategories
       let selectedVariableId: string | undefined;
       let selectedValueId: string | undefined;
-      
+
       // Get local category to check for preferred variable name
-      const localCategory = ourCategoryId && localCategories 
-        ? localCategories.find(c => c.id === ourCategoryId)
-        : undefined;
-      
+      const localCategory =
+        ourCategoryId && localCategories
+          ? localCategories.find((c) => c.id === ourCategoryId)
+          : undefined;
+
       const preferredVariableName = localCategory?.srcSubcategoryVariableName;
-      
+
       if (preferredVariableName && categoryData?.variables?.data) {
         // Find the variable that matches the preferred name
         const preferredVariable = categoryData.variables.data.find(
-          v => v.name.toLowerCase().trim() === preferredVariableName.toLowerCase().trim()
+          (v) =>
+            v.name.toLowerCase().trim() ===
+            preferredVariableName.toLowerCase().trim(),
         );
-        
+
         if (preferredVariable) {
           // Use the preferred variable if it exists in the run's values
           const preferredValueId = run.values[preferredVariable.id];
@@ -890,50 +1212,63 @@ export async function mapSRCRunToLeaderboardEntry(
           }
         }
       }
-      
+
       // Fallback: use the first variable if no preferred variable is set or found
       if (!selectedVariableId || !selectedValueId) {
         const [firstVariableId, firstValueId] = variableEntries[0];
         selectedVariableId = firstVariableId;
         selectedValueId = firstValueId;
       }
-      
+
       // Get the variable name and value label
       let variableName: string | undefined;
       let valueLabel: string | undefined;
-      
+
       if (categoryData?.variables?.data) {
-        const variable = categoryData.variables.data.find(v => v.id === selectedVariableId);
+        const variable = categoryData.variables.data.find(
+          (v) => v.id === selectedVariableId,
+        );
         if (variable) {
           variableName = variable.name;
           valueLabel = variable.values?.values?.[selectedValueId]?.label;
         }
       }
-      
+
       // Store the SRC subcategory name for display
       if (valueLabel) {
         srcSubcategory = valueLabel;
       } else if (variableName) {
         srcSubcategory = variableName;
       }
-      
+
       // Map to local subcategory ID if we have the category and subcategories
-      if (ourCategoryId && localCategories && selectedVariableId && selectedValueId) {
-        if (localCategory && localCategory.subcategories && localCategory.subcategories.length > 0) {
+      if (
+        ourCategoryId &&
+        localCategories &&
+        selectedVariableId &&
+        selectedValueId
+      ) {
+        if (
+          localCategory &&
+          localCategory.subcategories &&
+          localCategory.subcategories.length > 0
+        ) {
           // Try to find subcategory by SRC variable ID and value ID (most reliable)
           const matchedSubcategory = localCategory.subcategories.find(
-            sub => sub.srcVariableId === selectedVariableId && sub.srcValueId === selectedValueId
+            (sub) =>
+              sub.srcVariableId === selectedVariableId &&
+              sub.srcValueId === selectedValueId,
           );
-          
+
           if (matchedSubcategory) {
             subcategoryId = matchedSubcategory.id;
           } else if (valueLabel) {
             // Fallback: try to match by name (case-insensitive)
             const normalizedValueLabel = valueLabel.toLowerCase().trim();
             const nameMatchedSubcategory = localCategory.subcategories.find(
-              sub => sub.name.toLowerCase().trim() === normalizedValueLabel
+              (sub) => sub.name.toLowerCase().trim() === normalizedValueLabel,
             );
-            
+
             if (nameMatchedSubcategory) {
               subcategoryId = nameMatchedSubcategory.id;
             }
@@ -942,14 +1277,136 @@ export async function mapSRCRunToLeaderboardEntry(
       }
     }
   }
-  
+
+  return { subcategoryId, srcSubcategory };
+}
+
+/**
+ * Map speedrun.com run to our LeaderboardEntry format
+ * Simplified, cleaner implementation
+ * Now supports async fetching of player and platform names when only IDs are available
+ */
+export async function mapSRCRunToLeaderboardEntry(
+  run: SRCRun,
+  categoryMapping: Map<string, string>,
+  platformMapping: Map<string, string>,
+  levelMapping: Map<string, string>,
+  defaultPlayerId: string = "",
+  embeddedData?: {
+    players?: SRCPlayer[];
+    category?: SRCCategory;
+    level?: SRCLevel;
+    platform?: SRCPlatform;
+  },
+  categoryNameMapping?: Map<string, string>,
+  platformNameMapping?: Map<string, string>,
+  srcPlatformIdToName?: Map<string, string>,
+  srcCategoryIdToName?: Map<string, string>,
+  srcLevelIdToName?: Map<string, string>,
+  playerIdToNameCache?: Map<string, string>,
+  platformIdToNameCache?: Map<string, string>,
+  localCategories?: import("@/types/database").Category[], // Local categories with subcategories for matching
+): Promise<
+  Partial<import("@/types/database").LeaderboardEntry> & {
+    srcRunId: string;
+    importedFromSRC: boolean;
+  }
+> {
+  if (!run?.id) {
+    throw new Error("Invalid run object or missing ID");
+  }
+
+  const {
+    runType,
+    player1Name,
+    player2Name,
+    srcPlayerId,
+    srcPlayer2Id,
+    srcPlayer1Username,
+    srcPlayer2Username,
+  } = await extractPlayers(run, playerIdToNameCache);
+
+  const { ourCategoryId, categoryName } = extractCategory(run, categoryMapping, srcCategoryIdToName, categoryNameMapping);
+
+  const { ourPlatformId, platformName } = await extractPlatform(run, platformMapping, srcPlatformIdToName, platformNameMapping, platformIdToNameCache);
+
+  const { ourLevelId, levelName } = extractLevel(run, levelMapping, srcLevelIdToName);
+
+  // === Determine Leaderboard Type ===
+  // SRC categories have type: "per-game" or "per-level"
+  // Per-level categories are Individual Level runs
+  // Per-game categories are Full Game runs
+  let leaderboardType: "regular" | "individual-level" | "community-golds" =
+    "regular";
+
+  let categoryType: "per-game" | "per-level" | undefined;
+  let categoryDataObj: SRCCategory | undefined;
+
+  // Extract category type from embedded data
+  if (typeof run.category === "object" && run.category?.data) {
+    categoryDataObj = run.category.data as SRCCategory;
+    categoryType = categoryDataObj.type;
+  } else if (embeddedData?.category) {
+    categoryDataObj = embeddedData.category;
+    categoryType = embeddedData.category.type;
+  }
+
+  const hasLevel = ourLevelId && ourLevelId.trim() !== "";
+
+  // Determine leaderboard type based on category type and level presence
+  // Per-level categories are always IL runs
+  if (categoryType === "per-level") {
+    leaderboardType = "individual-level";
+    // Ensure we have level data for IL runs
+    if (!hasLevel && !levelName) {
+    }
+  } else if (categoryType === "per-game") {
+    leaderboardType = "regular";
+    // Per-game runs should not have levels (unless it's a community golds category)
+    // Community golds are identified separately by category name or other markers
+  } else if (hasLevel || levelName) {
+    // Fallback: if we have a level but category type is unknown, assume IL
+    // This handles edge cases where category type might not be embedded
+    leaderboardType = "individual-level";
+  }
+
+  // Note: Community Golds are typically identified by category name or special handling
+  // For now, we'll handle them as regular or individual-level based on category type
+
+  // === Convert Time ===
+  let time = "00:00:00";
+  if (run.times.primary) {
+    time = isoDurationToTime(run.times.primary);
+  } else if (
+    run.times.primary_t !== undefined &&
+    run.times.primary_t !== null
+  ) {
+    time = secondsToTime(run.times.primary_t);
+  }
+
+  // Validate time conversion - log if conversion failed or returned 00:00:00 for a real run
+  if (time === "00:00:00" && run.times.primary_t && run.times.primary_t > 0) {
+  }
+
+  // === Convert Date ===
+  const date = run.date
+    ? run.date.split("T")[0]
+    : new Date().toISOString().split("T")[0];
+
+  // === Extract Video URL ===
+  const videoUrl = run.videos?.links?.[0]?.uri || undefined;
+
+  // === Extract Subcategory from SRC Variables ===
+  const { subcategoryId, srcSubcategory } = extractSubcategory(run, leaderboardType, ourCategoryId, localCategories, embeddedData);
+
   // === Build Result ===
   return {
     playerId: defaultPlayerId,
     playerName: player1Name.trim(),
-    player2Name: runType === 'solo' ? undefined : (player2Name?.trim() || 'Unknown'),
-    category: ourCategoryId || '',
-    platform: ourPlatformId || '',
+    player2Name:
+      runType === "solo" ? undefined : player2Name?.trim() || "Unknown",
+    category: ourCategoryId || "",
+    platform: ourPlatformId || "",
     runType,
     leaderboardType,
     level: ourLevelId || undefined,
@@ -969,8 +1426,19 @@ export async function mapSRCRunToLeaderboardEntry(
     // CRITICAL: Always normalize usernames to lowercase for consistent matching during claiming
     srcPlayerId: srcPlayerId || undefined,
     srcPlayer2Id: srcPlayer2Id || undefined,
-    srcPlayerName: srcPlayer1Username ? normalizeSRCUsername(srcPlayer1Username) : (player1Name.trim() ? normalizeSRCUsername(player1Name.trim()) : undefined),
-    srcPlayer2Name: runType === 'co-op' ? (srcPlayer2Username ? normalizeSRCUsername(srcPlayer2Username) : (player2Name ? normalizeSRCUsername(player2Name.trim()) : undefined)) : undefined,
+    srcPlayerName: srcPlayer1Username
+      ? normalizeSRCUsername(srcPlayer1Username)
+      : player1Name.trim()
+        ? normalizeSRCUsername(player1Name.trim())
+        : undefined,
+    srcPlayer2Name:
+      runType === "co-op"
+        ? srcPlayer2Username
+          ? normalizeSRCUsername(srcPlayer2Username)
+          : player2Name
+            ? normalizeSRCUsername(player2Name.trim())
+            : undefined
+        : undefined,
     // Store subcategory info
     subcategory: subcategoryId,
     srcSubcategory: srcSubcategory,

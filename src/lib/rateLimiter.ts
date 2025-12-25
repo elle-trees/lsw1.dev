@@ -25,7 +25,7 @@ export class RateLimiter {
   constructor(
     minInterval: number = 100,
     maxRetries: number = 3,
-    retryDelay: number = 1000
+    retryDelay: number = 1000,
   ) {
     this.minInterval = minInterval;
     this.maxRetries = maxRetries;
@@ -57,7 +57,7 @@ export class RateLimiter {
       const now = Date.now();
       const waitTime = Math.max(0, this.minInterval - (now - this.lastRequest));
       if (waitTime > 0) {
-        await new Promise(resolve => setTimeout(resolve, waitTime));
+        await new Promise((resolve) => setTimeout(resolve, waitTime));
       }
 
       // Execute with retry logic
@@ -70,9 +70,9 @@ export class RateLimiter {
           break;
         } catch (error) {
           lastError = error instanceof Error ? error : new Error(String(error));
-          
+
           // Don't retry on certain errors (4xx client errors except 429)
-          if (error instanceof Error && 'status' in error) {
+          if (error instanceof Error && "status" in error) {
             const status = (error as any).status;
             if (status >= 400 && status < 500 && status !== 429) {
               item.reject(lastError);
@@ -88,7 +88,7 @@ export class RateLimiter {
 
           // Exponential backoff: wait longer for each retry
           const backoffDelay = this.retryDelay * Math.pow(2, attempt);
-          await new Promise(resolve => setTimeout(resolve, backoffDelay));
+          await new Promise((resolve) => setTimeout(resolve, backoffDelay));
         }
       }
     }
@@ -107,7 +107,7 @@ export class RateLimiter {
    * Clear the queue
    */
   clearQueue(): void {
-    this.queue.forEach(item => {
+    this.queue.forEach((item) => {
       item.reject(new Error("Queue cleared"));
     });
     this.queue = [];
@@ -116,8 +116,7 @@ export class RateLimiter {
 
 // Singleton instance for Speedrun.com API
 export const srcRateLimiter = new RateLimiter(
-  100, // 100ms between requests (10 requests per second max)
-  3,   // 3 retries
-  1000 // 1 second base retry delay
+  600, // 600ms between requests (100 requests per minute max)
+  3, // 3 retries
+  1000, // 1 second base retry delay
 );
-

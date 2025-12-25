@@ -14,6 +14,7 @@ import { FpsMonitor } from "@/components/dev/FpsMonitor";
 import { initializeRoutePrefetches } from "@/lib/prefetch";
 import { useEffect } from "react";
 import { router } from "./router";
+import { GameProvider } from "./contexts/GameContext";
 import "./globals.css";
 
 function createQueryClient() {
@@ -72,13 +73,15 @@ export function App({
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <FpsMonitor />
-            <RouterProvider router={router} />
-            <Analytics />
-          </TooltipProvider>
+          <GameProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <FpsMonitor />
+              <RouterProvider router={router} />
+              <Analytics />
+            </TooltipProvider>
+          </GameProvider>
         </AuthProvider>
       </QueryClientProvider>
     </ErrorBoundary>

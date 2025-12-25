@@ -16,6 +16,7 @@ import { useGameDetailsLogic } from "./GameDetails/useGameDetailsLogic";
 import { GameHeader } from "./GameDetails/GameHeader";
 import { MobileNavigation } from "./GameDetails/MobileNavigation";
 import { DesktopNavigation } from "./GameDetails/DesktopNavigation";
+import { GameSearch } from "./GameSearch";
 
 interface GameDetailsProps {
   className?: string;
@@ -23,7 +24,10 @@ interface GameDetailsProps {
 
 export function GameDetails({ className }: GameDetailsProps) {
   const routerState = useRouterState();
-  const location = { pathname: routerState.location.pathname, search: routerState.location.search };
+  const location = {
+    pathname: routerState.location.pathname,
+    search: routerState.location.search,
+  };
   const { currentUser, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [isLoginOpen, setIsLoginOpen] = useState(false);
@@ -32,7 +36,13 @@ export function GameDetails({ className }: GameDetailsProps) {
   const { isScrolled } = useScrollHook({ threshold: 10 });
 
   // Use custom hooks for data and logic
-  const { config, loading, unclaimedRunsCount, unverifiedRunsCount, resetNotificationCounts } = useGameDetails(currentUser, authLoading);
+  const {
+    config,
+    loading,
+    unclaimedRunsCount,
+    unverifiedRunsCount,
+    resetNotificationCounts,
+  } = useGameDetails(currentUser, authLoading);
 
   // Use handlers hook
   const { handleLogout, handleNotificationClick } = useGameDetailsHandlers({
@@ -43,7 +53,13 @@ export function GameDetails({ className }: GameDetailsProps) {
   });
 
   // Use logic hook
-  const { sortedHeaderLinks, sortedPlatforms, activeTab, activeLinkColor, isVisible } = useGameDetailsLogic({
+  const {
+    sortedHeaderLinks,
+    sortedPlatforms,
+    activeTab,
+    activeLinkColor,
+    isVisible,
+  } = useGameDetailsLogic({
     config,
     currentUser,
     currentPath: location.pathname,
@@ -81,7 +97,9 @@ export function GameDetails({ className }: GameDetailsProps) {
     }
   };
 
-  const notificationCount = currentUser?.isAdmin ? unverifiedRunsCount : unclaimedRunsCount;
+  const notificationCount = currentUser?.isAdmin
+    ? unverifiedRunsCount
+    : unclaimedRunsCount;
   const hasNotifications = notificationCount > 0;
 
   // Don't render if loading, disabled, or not visible on current page
@@ -92,7 +110,7 @@ export function GameDetails({ className }: GameDetailsProps) {
         ref={headerRef}
         className={cn(
           "bg-[#1e1e2e] shadow-lg sticky top-0 z-40 w-full overflow-x-hidden transition-all duration-300",
-          isScrolled && "shadow-xl"
+          isScrolled && "shadow-xl",
         )}
         style={{
           opacity: smoothOpacity,
@@ -106,6 +124,12 @@ export function GameDetails({ className }: GameDetailsProps) {
             <div className="flex items-center justify-between h-14 sm:h-16 min-w-0 w-full">
               <div className="flex items-center gap-2 sm:gap-4 lg:gap-10 min-w-0 flex-shrink">
                 {/* Empty space where game details would be */}
+              </div>
+
+              <div className="flex-1 flex justify-center px-4">
+                <div className="w-full max-w-md">
+                  <GameSearch />
+                </div>
               </div>
 
               <div className="flex items-center gap-1.5 sm:gap-2 xl:gap-3 flex-shrink-0">
@@ -147,7 +171,7 @@ export function GameDetails({ className }: GameDetailsProps) {
         className={cn(
           "bg-[#1e1e2e] shadow-lg sticky top-0 z-40 w-full overflow-x-hidden transition-all duration-300",
           isScrolled && "shadow-xl",
-          className
+          className,
         )}
         style={{
           opacity: smoothOpacity,
@@ -173,6 +197,12 @@ export function GameDetails({ className }: GameDetailsProps) {
                     onNavigate={(route) => navigate({ to: route })}
                   />
                 ) : null}
+              </div>
+
+              <div className="flex-1 flex justify-center px-4">
+                <div className="w-full max-w-md">
+                  <GameSearch />
+                </div>
               </div>
 
               {/* Mobile Menu Button */}
@@ -209,4 +239,3 @@ export function GameDetails({ className }: GameDetailsProps) {
     </>
   );
 }
-
