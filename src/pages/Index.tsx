@@ -203,11 +203,11 @@ const Index = () => {
           >
             {/* Left Side - Verified Runs Card */}
             <motion.div
-              className="lg:col-span-3 lg:order-1 min-w-0 glass shadow-colored-green border-ctp-surface1/50 w-full group overflow-hidden relative rounded-none"
+              className="lg:col-span-3 lg:order-1 min-w-0 glass shadow-colored-green border-ctp-surface1/50 w-full group overflow-hidden relative rounded-none flex flex-col"
               variants={{ ...staggerItemVariants, ...cardHoverVariants }}
               whileHover="hover"
             >
-              <CardHeader className="pb-2 pt-4 px-4 relative z-10">
+              <CardHeader className="p-3 relative z-10">
                 <CardTitle className="flex items-center gap-2 text-card-foreground text-base sm:text-lg lg:text-xl whitespace-nowrap">
                   <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-ctp-green flex-shrink-0" />
                   <span className="truncate font-semibold">
@@ -215,7 +215,7 @@ const Index = () => {
                   </span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="px-4 pb-4 pt-2 relative z-10">
+              <CardContent className="p-3 relative z-10 flex-grow">
                 {statsLoading ? (
                   <Skeleton className="h-10 w-28 mb-1 bg-ctp-surface0/50" />
                 ) : (
@@ -299,11 +299,11 @@ const Index = () => {
 
             {/* Right Side - Total Time Card */}
             <motion.div
-              className="lg:col-span-3 lg:order-3 min-w-0 glass shadow-colored border-ctp-surface1/50 w-full group overflow-hidden relative rounded-none"
+              className="lg:col-span-3 lg:order-3 min-w-0 glass shadow-colored border-ctp-surface1/50 w-full group overflow-hidden relative rounded-none flex flex-col"
               variants={{ ...staggerItemVariants, ...cardHoverVariants }}
               whileHover="hover"
             >
-              <CardHeader className="pb-2 pt-4 px-4 relative z-10">
+              <CardHeader className="p-3 relative z-10">
                 <CardTitle className="flex items-center gap-2 text-card-foreground text-base sm:text-lg lg:text-xl whitespace-nowrap">
                   <Clock className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-ctp-mauve flex-shrink-0" />
                   <span className="truncate font-semibold">
@@ -311,7 +311,7 @@ const Index = () => {
                   </span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="px-4 pb-4 pt-2 relative z-10">
+              <CardContent className="p-3 relative z-10 flex-grow">
                 {statsLoading ? (
                   <Skeleton className="h-10 w-36 mb-1 bg-ctp-surface0/50" />
                 ) : (
