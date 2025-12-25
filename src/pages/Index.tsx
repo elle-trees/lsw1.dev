@@ -198,12 +198,12 @@ const Index = () => {
         <div className="max-w-[1920px] mx-auto w-full">
           {/* Top Row - Stats Cards and Title */}
           <motion.div
-            className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-8 mb-6 lg:mb-8"
+            className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-8 mb-6 lg:mb-8 items-center"
             variants={staggerContainerVariants}
           >
             {/* Left Side - Verified Runs Card */}
             <motion.div
-              className="lg:col-span-3 lg:order-1 min-w-0 glass shadow-colored-green border-ctp-surface1/50 w-full group overflow-hidden relative rounded-none h-full"
+              className="lg:col-span-3 lg:order-1 min-w-0 glass shadow-colored-green border-ctp-surface1/50 w-full group overflow-hidden relative rounded-none"
               variants={{ ...staggerItemVariants, ...cardHoverVariants }}
               whileHover="hover"
             >
@@ -299,7 +299,7 @@ const Index = () => {
 
             {/* Right Side - Total Time Card */}
             <motion.div
-              className="lg:col-span-3 lg:order-3 min-w-0 glass shadow-colored border-ctp-surface1/50 w-full group overflow-hidden relative rounded-none h-full"
+              className="lg:col-span-3 lg:order-3 min-w-0 glass shadow-colored border-ctp-surface1/50 w-full group overflow-hidden relative rounded-none"
               variants={{ ...staggerItemVariants, ...cardHoverVariants }}
               whileHover="hover"
             >
