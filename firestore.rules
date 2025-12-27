@@ -5,34 +5,34 @@ service cloud.firestore {
     function isAuthenticated() {
       return request.auth != null;
     }
-    
+
     // Helper function to check if user is the owner of a document
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
-    
+
     // Helper function to check if user is admin
     // Assumes users who can access the admin page are already verified as admins
     function isAdmin() {
-      return isAuthenticated() && 
+      return isAuthenticated() &&
              exists(/databases/$(database)/documents/players/$(request.auth.uid)) &&
              get(/databases/$(database)/documents/players/$(request.auth.uid)).data.isAdmin == true;
     }
-    
+
     // Players collection
     match /players/{playerId} {
       // Anyone can read player data (needed for leaderboards)
       allow read: if true;
       // Users can create their own player document, but cannot set isAdmin to true
-      allow create: if isOwner(playerId) && 
+      allow create: if isOwner(playerId) &&
                        (!('isAdmin' in request.resource.data) || request.resource.data.isAdmin == false);
       // Admins can create/update/delete any player document
       allow create, update, delete: if isAdmin();
       // Users can update their own player data (except isAdmin field)
-      allow update: if isOwner(playerId) && 
+      allow update: if isOwner(playerId) &&
                        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin']));
     }
-    
+
     // Leaderboard entries
     match /leaderboardEntries/{entryId} {
       // Anyone can read verified entries OR imported entries
@@ -45,38 +45,38 @@ service cloud.firestore {
       // Check this FIRST before other rules
       allow create: if isAuthenticated() && 'importedFromSRC' in request.resource.data;
       // Authenticated users can create entries (for submissions)
-      allow create: if isAuthenticated() && 
+      allow create: if isAuthenticated() &&
                        request.resource.data.playerId == request.auth.uid;
       // Admins can create any entry
       allow create: if isAdmin();
       // Admins can update/delete any entry
       allow update, delete: if isAdmin();
       // Users can update their own entries (before verification)
-      allow update: if isOwner(resource.data.playerId) && 
+      allow update: if isOwner(resource.data.playerId) &&
                        resource.data.verified != true;
       // Users can update only comment and date on their own entries (even if verified)
-      allow update: if isOwner(resource.data.playerId) && 
+      allow update: if isOwner(resource.data.playerId) &&
                        resource.data.verified == true &&
                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['comment', 'date']);
       // Users can claim runs imported from SRC
-      allow update: if isAuthenticated() && 
+      allow update: if isAuthenticated() &&
                        request.resource.data.playerId == request.auth.uid &&
                        ('playerId' in request.resource.data.diff(resource.data).affectedKeys()) &&
                        resource.data.importedFromSRC == true;
       // Admins can update/delete any entry
       allow update, delete: if isAdmin();
       // Users can update their own entries (before verification)
-      allow update: if isOwner(resource.data.playerId) && 
+      allow update: if isOwner(resource.data.playerId) &&
                        resource.data.verified != true;
       // Users can update only comment and date on their own entries (even if verified)
-      allow update: if isOwner(resource.data.playerId) && 
+      allow update: if isOwner(resource.data.playerId) &&
                        resource.data.verified == true &&
                        // Only allow updates to comment and date fields
                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['comment', 'date']);
       // Users can claim runs imported from SRC by updating playerId if srcPlayerName/srcPlayer2Name matches their SRC username
       // Only imported runs can be claimed - manual runs are automatically assigned to the submitting user
       // This rule allows authenticated users to claim imported runs by updating playerId to their own uid
-      allow update: if isAuthenticated() && 
+      allow update: if isAuthenticated() &&
                        // User is setting playerId to their own uid (claiming the run)
                        request.resource.data.playerId == request.auth.uid &&
                        // Only allowing update to playerId field (must be in the changed fields)
@@ -84,7 +84,7 @@ service cloud.firestore {
                        // Only allow claiming runs imported from SRC
                        resource.data.importedFromSRC == true;
     }
-    
+
     // Download entries
     match /downloads/{entryId} {
       // Anyone can read
@@ -92,7 +92,7 @@ service cloud.firestore {
       // Only admins can create/update/delete
       allow create, update, delete: if isAdmin();
     }
-    
+
     // Categories
     match /categories/{categoryId} {
       // Anyone can read
@@ -100,7 +100,7 @@ service cloud.firestore {
       // Only admins can create/update/delete
       allow create, update, delete: if isAdmin();
     }
-    
+
     // Platforms
     match /platforms/{platformId} {
       // Anyone can read
@@ -108,7 +108,7 @@ service cloud.firestore {
       // Only admins can create/update/delete
       allow create, update, delete: if isAdmin();
     }
-    
+
     // Levels
     match /levels/{levelId} {
       // Anyone can read
@@ -116,7 +116,19 @@ service cloud.firestore {
       // Only admins can create/update/delete
       allow create, update, delete: if isAdmin();
     }
-    
+
+    // Games collection
+    match /games/{gameId} {
+      allow read: if true;
+
+      // Config subcollection
+      match /config/{configDocId} {
+        allow read: if true;
+        // Only admins can create/update/delete
+        allow create, update, delete: if isAdmin();
+      }
+    }
+
   // Points Configuration
   match /pointsConfig/{configId} {
     // Anyone can read (needed for points calculation)
@@ -127,7 +139,7 @@ service cloud.firestore {
     // No one can delete (points config should always exist)
     allow delete: if false;
   }
-  
+
   // Game Details Configuration
   match /gameDetailsConfig/{configId} {
     // Anyone can read (needed for displaying game details)
@@ -138,7 +150,7 @@ service cloud.firestore {
     // No one can delete (game details config should always exist)
     allow delete: if false;
   }
-  
+
     // Download Categories
     match /downloadCategories/{categoryId} {
       // Anyone can read
@@ -151,19 +163,19 @@ service cloud.firestore {
     match /notifications/{notificationId} {
       // Users can read their own notifications
       allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
-      
+
       // Admins can create notifications
       allow create: if isAdmin();
-      
+
       // Users can update (mark as read) their own notifications
-      allow update: if isAuthenticated() && 
+      allow update: if isAuthenticated() &&
                        resource.data.userId == request.auth.uid &&
                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
-                       
+
       // Users can delete their own notifications
       allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
     }
-    
+
     // Admin Translations - language-specific overrides
     match /adminTranslations/{translationId} {
       // Anyone can read (needed for displaying translations)

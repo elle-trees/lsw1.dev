@@ -105,7 +105,7 @@ export function GameDetails({ className }: GameDetailsProps) {
   const hasNotifications = notificationCount > 0;
 
   // Don't render if loading, disabled, or not visible on current page
-  if (loading) {
+  if (loading || !config || !config.enabled) {
     // Still render header controls even if game details are disabled
     return (
       <motion.header
