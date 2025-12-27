@@ -29,7 +29,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
     name: "Lego Star Wars: The Video Game",
     abbreviation: "lsw",
   });
-  const [availableGames, setAvailableGames] = useState<Game[]>([]);
+  const [availableGames, setAvailableGames] = useState<Game[]>([
+    {
+      id: "lsw",
+      name: "Lego Star Wars: The Video Game",
+      abbreviation: "lsw",
+    },
+  ]);
 
   useEffect(() => {
     const fetchGames = async () => {
@@ -39,7 +45,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
         name: config.title,
         abbreviation: config.id, // Assuming id is the abbreviation
       }));
-      setAvailableGames(games);
+      // Merge with default game, preventing duplicates
+      setAvailableGames((prevGames) => {
+        const gameIds = new Set(prevGames.map((g) => g.id));
+        const newGames = games.filter((g) => !gameIds.has(g.id));
+        return [...prevGames, ...newGames];
+      });
     };
 
     fetchGames();

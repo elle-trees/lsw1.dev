@@ -51,9 +51,9 @@ export function useGameDetailsConfig(activeTab: string) {
           setGameDetailsConfig(config);
           setGameDetailsConfigForm(
             config || {
-              id: "default",
-              title: "LEGO Star Wars: The Video Game",
-              subtitle: "2005",
+              id: currentGame.id,
+              title: "New Game",
+              subtitle: "",
               categories: [],
               platforms: [],
               headerLinks: [],
