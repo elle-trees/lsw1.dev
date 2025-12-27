@@ -25,7 +25,7 @@ export function useGameDetailsLogic({
     if (!config) return [];
     let headerLinks = [...(config.headerLinks || [])];
     if (currentUser?.isAdmin) {
-      const hasAdminLink = headerLinks.some(link => link.route === "/admin");
+      const hasAdminLink = headerLinks.some((link) => link.route === "/admin");
       if (!hasAdminLink) {
         headerLinks.push({
           id: "admin",
@@ -39,7 +39,7 @@ export function useGameDetailsLogic({
       }
     }
     return headerLinks
-      .filter(link => !link.adminOnly || currentUser?.isAdmin)
+      .filter((link) => !link.adminOnly || currentUser?.isAdmin)
       .sort((a, b) => {
         const orderA = a.order ?? Infinity;
         const orderB = b.order ?? Infinity;
@@ -62,7 +62,7 @@ export function useGameDetailsLogic({
     const activeLink = sortedHeaderLinks.find(
       (link) =>
         currentPath === link.route ||
-        (link.route !== "/" && currentPath.startsWith(link.route))
+        (link.route !== "/" && currentPath.startsWith(link.route)),
     );
     return activeLink?.id || sortedHeaderLinks[0]?.id || "";
   }, [sortedHeaderLinks, currentPath]);
@@ -72,21 +72,12 @@ export function useGameDetailsLogic({
     const activeLink = sortedHeaderLinks.find(
       (link) =>
         currentPath === link.route ||
-        (link.route !== "/" && currentPath.startsWith(link.route))
+        (link.route !== "/" && currentPath.startsWith(link.route)),
     );
     return activeLink?.color || "#89b4fa"; // Default to ctp-blue
   }, [sortedHeaderLinks, currentPath]);
 
-  // Check if component should be visible on current page
-  const isVisible = useMemo(() => {
-    if (!config) return false;
-    return config.visibleOnPages.some(page => {
-      if (page === "/") {
-        return currentPath === "/";
-      }
-      return currentPath.startsWith(page);
-    });
-  }, [config, currentPath]);
+  const isVisible = true;
 
   return {
     sortedHeaderLinks,
@@ -96,4 +87,3 @@ export function useGameDetailsLogic({
     isVisible,
   };
 }
-
