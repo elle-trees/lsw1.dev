@@ -1,27 +1,30 @@
 import { db } from "@/lib/firebase";
-import { 
-  collection, 
-  doc, 
-  setDoc, 
-  getDocs, 
-  query, 
-  limit as firestoreLimit
+import {
+  collection,
+  doc,
+  setDoc,
+  getDoc,
+  getDocs,
+  query,
 } from "firebase/firestore";
 import { GameDetailsConfig } from "@/types/database";
 import { gameDetailsConfigConverter } from "./converters";
 import { DEFAULT_GAME_CONFIG } from "@/config";
 
-export const getGameDetailsConfigFirestore = async (): Promise<GameDetailsConfig | null> => {
+export const getGameDetailsConfigFirestore = async (
+  gameId: string,
+): Promise<GameDetailsConfig | null> => {
   if (!db) return null;
   try {
-    // There should be only one config document, but we query the collection
-    const q = query(collection(db, "gameDetailsConfig").withConverter(gameDetailsConfigConverter), firestoreLimit(1));
-    const snapshot = await getDocs(q);
-    
-    if (!snapshot.empty) {
-      return snapshot.docs[0].data();
+    const docRef = doc(db, `games/${gameId}/config`, gameId).withConverter(
+      gameDetailsConfigConverter,
+    );
+    const docSnap = await getDoc(docRef);
+
+    if (docSnap.exists()) {
+      return docSnap.data();
     }
-    
+
     // Return default config if none exists
     return DEFAULT_GAME_CONFIG;
   } catch (error) {
@@ -30,22 +33,42 @@ export const getGameDetailsConfigFirestore = async (): Promise<GameDetailsConfig
   }
 };
 
-export const updateGameDetailsConfigFirestore = async (config: GameDetailsConfig): Promise<boolean> => {
+export const getAllGameDetailsConfigsFirestore = async (): Promise<
+  GameDetailsConfig[]
+> => {
+  if (!db) return [];
+  try {
+    const gamesCollection = collection(db, "games");
+    const gamesSnapshot = await getDocs(gamesCollection);
+    const configs: GameDetailsConfig[] = [];
+
+    for (const gameDoc of gamesSnapshot.docs) {
+      const configCollection = collection(
+        db,
+        `games/${gameDoc.id}/config`,
+      ).withConverter(gameDetailsConfigConverter);
+      const configSnapshot = await getDocs(query(configCollection));
+      if (!configSnapshot.empty) {
+        configs.push(configSnapshot.docs[0].data());
+      }
+    }
+
+    return configs;
+  } catch (error) {
+    console.error("Error fetching all game details configs:", error);
+    return [];
+  }
+};
+
+export const updateGameDetailsConfigFirestore = async (
+  gameId: string,
+  config: GameDetailsConfig,
+): Promise<boolean> => {
   if (!db) return false;
   try {
-    // Check if config exists
-    const q = query(collection(db, "gameDetailsConfig").withConverter(gameDetailsConfigConverter), firestoreLimit(1));
-    const snapshot = await getDocs(q);
-    
-    let docRef;
-    if (!snapshot.empty) {
-      docRef = snapshot.docs[0].ref;
-    } else {
-      docRef = doc(collection(db, "gameDetailsConfig")).withConverter(gameDetailsConfigConverter);
-    }
-    
-    // Ensure we don't save the ID as part of the data if using setDoc with merge or similar
-    // The converter handles stripping ID on toFirestore
+    const docRef = doc(db, `games/${gameId}/config`, gameId).withConverter(
+      gameDetailsConfigConverter,
+    );
     await setDoc(docRef, config);
     return true;
   } catch (error) {
@@ -53,4 +76,3 @@ export const updateGameDetailsConfigFirestore = async (config: GameDetailsConfig
     return false;
   }
 };
-

@@ -49,6 +49,7 @@ import {
   Save,
   Coins,
   UserCheck,
+  ChevronDown,
 } from "lucide-react";
 import {
   Tabs,
@@ -62,6 +63,10 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Pagination } from "@/components/Pagination";
@@ -134,7 +139,7 @@ const Admin = () => {
   const { currentUser, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { currentGame } = useGame();
+  const { currentGame, switchGame, availableGames } = useGame();
 
   const [unverifiedRuns, setUnverifiedRuns] = useState<LeaderboardEntry[]>([]);
   const [importedSRCRuns, setImportedSRCRuns] = useState<LeaderboardEntry[]>(
@@ -3254,6 +3259,28 @@ const Admin = () => {
     <div className="min-h-screen bg-[#1e1e2e] text-ctp-text py-4 sm:py-6 overflow-x-hidden">
       <div className="max-w-7xl mx-auto px-2 sm:px-4 w-full">
         <FadeIn>
+          <div className="flex justify-between items-center mb-4">
+            <h1 className="text-2xl font-bold">Admin Panel</h1>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="flex items-center gap-2">
+                  <span>{currentGame.name}</span>
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                {availableGames.map((game) => (
+                  <DropdownMenuItem
+                    key={game.id}
+                    onClick={() => switchGame(game.id)}
+                    disabled={currentGame.id === game.id}
+                  >
+                    {game.name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
           <Tabs
             value={activeTab}
             onValueChange={setActiveTab}

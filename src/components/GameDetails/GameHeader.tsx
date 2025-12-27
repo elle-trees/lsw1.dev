@@ -1,18 +1,39 @@
-/**
- * GameHeader Component
- * Displays game title, cover image, categories, platforms, and desktop navigation tabs
- */
-
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tabs, AnimatedTabsList, AnimatedTabsTrigger } from "@/components/ui/animated-tabs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Tabs,
+  AnimatedTabsList,
+  AnimatedTabsTrigger,
+} from "@/components/ui/animated-tabs";
 import { GameDetailsConfig, GameDetailsHeaderLink } from "@/types/database";
-import { Trophy, Upload, Radio, Download, BarChart3, ShieldAlert } from "lucide-react";
+import {
+  Trophy,
+  Upload,
+  Radio,
+  Download,
+  BarChart3,
+  ShieldAlert,
+  ChevronDown,
+} from "lucide-react";
 import LegoStudIcon from "@/components/icons/LegoStudIcon";
-import { getPlatformTranslation, getHeaderLinkTranslation } from "@/lib/i18n/entity-translations";
+import {
+  getPlatformTranslation,
+  getHeaderLinkTranslation,
+} from "@/lib/i18n/entity-translations";
 import { cn } from "@/lib/utils";
 
+interface Game {
+  id: string;
+  name: string;
+  abbreviation: string;
+}
 interface GameHeaderProps {
   config: GameDetailsConfig;
   sortedPlatforms: Array<{ id: string; label: string; order?: number }>;
@@ -22,10 +43,16 @@ interface GameHeaderProps {
   activeLinkColor: string;
   onTabChange: (value: string) => void;
   onNavigate: (route: string) => void;
+  currentGame: Game;
+  availableGames: Game[];
+  switchGame: (gameId: string) => void;
 }
 
 // Icon mapping for header links
-const iconMap: Record<string, React.ComponentType<{ className?: string; size?: number; color?: string }>> = {
+const iconMap: Record<
+  string,
+  React.ComponentType<{ className?: string; size?: number; color?: string }>
+> = {
   Trophy,
   Upload,
   Radio,
@@ -43,6 +70,9 @@ export function GameHeader({
   activeLinkColor,
   onTabChange,
   onNavigate,
+  currentGame,
+  availableGames,
+  switchGame,
 }: GameHeaderProps) {
   return (
     <motion.div
@@ -77,14 +107,39 @@ export function GameHeader({
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.3 }}
           >
-            <h1 className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-ctp-text mb-0.5 sm:mb-1.5 leading-tight">
-              {config.title}
-              {config.subtitle && (
-                <span className="text-ctp-subtext1 font-normal text-xs sm:text-sm md:text-base">
-                  {" "}({config.subtitle})
-                </span>
-              )}
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-ctp-text mb-0.5 sm:mb-1.5 leading-tight">
+                {config.title}
+                {config.subtitle && (
+                  <span className="text-ctp-subtext1 font-normal text-xs sm:text-sm md:text-base">
+                    {" "}
+                    ({config.subtitle})
+                  </span>
+                )}
+              </h1>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="flex items-center gap-1"
+                  >
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  {availableGames.map((game) => (
+                    <DropdownMenuItem
+                      key={game.id}
+                      onClick={() => switchGame(game.id)}
+                      disabled={currentGame.id === game.id}
+                    >
+                      {game.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
             {config.categories.length > 0 && (
               <div className="flex flex-wrap gap-1 sm:gap-1.5 mb-1 sm:mb-1.5">
                 {config.categories.map((category, index) => (
@@ -140,7 +195,11 @@ export function GameHeader({
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5, duration: 0.3 }}
           >
-            <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
+            <Tabs
+              value={activeTab}
+              onValueChange={onTabChange}
+              className="w-full"
+            >
               <AnimatedTabsList
                 className="h-auto bg-transparent p-0 gap-2 sm:gap-3 lg:gap-4 border-none"
                 indicatorClassName="h-0.5"
@@ -163,7 +222,7 @@ export function GameHeader({
                       key={link.id}
                       value={link.id}
                       className={cn(
-                        "relative flex items-center gap-1.5 px-2 py-1.5 h-auto text-sm font-medium bg-transparent hover:bg-ctp-surface0/50 transition-all duration-300 group"
+                        "relative flex items-center gap-1.5 px-2 py-1.5 h-auto text-sm font-medium bg-transparent hover:bg-ctp-surface0/50 transition-all duration-300 group",
                       )}
                       style={{
                         color: linkColor,
@@ -173,8 +232,8 @@ export function GameHeader({
                         onNavigate(link.route);
                       }}
                     >
-                      {IconComponent && (
-                        link.icon === "LegoStud" ? (
+                      {IconComponent &&
+                        (link.icon === "LegoStud" ? (
                           <LegoStudIcon
                             size={16}
                             color={linkColor}
@@ -185,9 +244,10 @@ export function GameHeader({
                             className="h-4 w-4 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12"
                             style={{ color: linkColor }}
                           />
-                        )
-                      )}
-                      <span>{getHeaderLinkTranslation(link.id, link.label)}</span>
+                        ))}
+                      <span>
+                        {getHeaderLinkTranslation(link.id, link.label)}
+                      </span>
                     </AnimatedTabsTrigger>
                   );
                 })}
@@ -199,4 +259,3 @@ export function GameHeader({
     </motion.div>
   );
 }
-

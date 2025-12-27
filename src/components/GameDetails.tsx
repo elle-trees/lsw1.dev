@@ -17,6 +17,7 @@ import { GameHeader } from "./GameDetails/GameHeader";
 import { MobileNavigation } from "./GameDetails/MobileNavigation";
 import { DesktopNavigation } from "./GameDetails/DesktopNavigation";
 import { GameSearch } from "./GameSearch";
+import { useGame } from "@/contexts/GameContext";
 
 interface GameDetailsProps {
   className?: string;
@@ -29,6 +30,7 @@ export function GameDetails({ className }: GameDetailsProps) {
     search: routerState.location.search,
   };
   const { currentUser, loading: authLoading } = useAuth();
+  const { currentGame, switchGame, availableGames } = useGame();
   const navigate = useNavigate();
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -195,6 +197,9 @@ export function GameDetails({ className }: GameDetailsProps) {
                     activeLinkColor={activeLinkColor}
                     onTabChange={handleTabChange}
                     onNavigate={(route) => navigate({ to: route })}
+                    currentGame={currentGame}
+                    availableGames={availableGames}
+                    switchGame={switchGame}
                   />
                 ) : null}
               </div>

@@ -5,6 +5,7 @@
 import { useState, useEffect } from "react";
 import { GameDetailsConfig } from "@/types/database";
 import type { User as FirebaseUser } from "firebase/auth";
+import { useGame } from "@/contexts/GameContext";
 
 interface UseGameDetailsResult {
   config: GameDetailsConfig | null;
@@ -15,9 +16,10 @@ interface UseGameDetailsResult {
 }
 
 export function useGameDetails(
-  currentUser: FirebaseUser & { isAdmin: boolean } | null,
-  authLoading: boolean
+  currentUser: (FirebaseUser & { isAdmin: boolean }) | null,
+  authLoading: boolean,
 ): UseGameDetailsResult {
+  const { currentGame } = useGame();
   const [config, setConfig] = useState<GameDetailsConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [unclaimedRunsCount, setUnclaimedRunsCount] = useState(0);
@@ -26,9 +28,11 @@ export function useGameDetails(
   // Fetch game details config
   useEffect(() => {
     const fetchConfig = async () => {
+      setLoading(true);
       try {
-        const { getGameDetailsConfigFirestore } = await import("@/lib/data/firestore/game-details");
-        const gameConfig = await getGameDetailsConfigFirestore();
+        const { getGameDetailsConfigFirestore } =
+          await import("@/lib/data/firestore/game-details");
+        const gameConfig = await getGameDetailsConfigFirestore(currentGame.id);
         setConfig(gameConfig);
       } catch (error) {
         console.error("Error fetching game details config:", error);
@@ -38,7 +42,7 @@ export function useGameDetails(
     };
 
     fetchConfig();
-  }, []);
+  }, [currentGame]);
 
   // Fetch notification counts
   useEffect(() => {
@@ -50,15 +54,20 @@ export function useGameDetails(
 
     const fetchNotificationCounts = async () => {
       try {
-        const { getPlayerByUidFirestore } = await import("@/lib/data/firestore/players");
-        const { getUnclaimedRunsBySRCUsernameFirestore } = await import("@/lib/data/firestore/src-imports");
-        const { getUnverifiedLeaderboardEntriesFirestore } = await import("@/lib/data/firestore/runs");
-        
+        const { getPlayerByUidFirestore } =
+          await import("@/lib/data/firestore/players");
+        const { getUnclaimedRunsBySRCUsernameFirestore } =
+          await import("@/lib/data/firestore/src-imports");
+        const { getUnverifiedLeaderboardEntriesFirestore } =
+          await import("@/lib/data/firestore/runs");
+
         // Check for unclaimed runs (for all users)
         const player = await getPlayerByUidFirestore(currentUser.uid);
         if (player?.srcUsername) {
           try {
-            const unclaimedRuns = await getUnclaimedRunsBySRCUsernameFirestore(player.srcUsername);
+            const unclaimedRuns = await getUnclaimedRunsBySRCUsernameFirestore(
+              player.srcUsername,
+            );
             setUnclaimedRunsCount(unclaimedRuns.length);
           } catch (error) {
             setUnclaimedRunsCount(0);
@@ -70,9 +79,12 @@ export function useGameDetails(
         // Check for unverified runs (for admins only)
         if (currentUser.isAdmin) {
           try {
-            const unverifiedRuns = await getUnverifiedLeaderboardEntriesFirestore();
+            const unverifiedRuns =
+              await getUnverifiedLeaderboardEntriesFirestore();
             // Count only manually submitted runs (not imported)
-            const manualUnverified = unverifiedRuns.filter(run => !run.importedFromSRC);
+            const manualUnverified = unverifiedRuns.filter(
+              (run) => !run.importedFromSRC,
+            );
             setUnverifiedRunsCount(manualUnverified.length);
           } catch (error) {
             setUnverifiedRunsCount(0);
@@ -106,4 +118,3 @@ export function useGameDetails(
     resetNotificationCounts,
   };
 }
-

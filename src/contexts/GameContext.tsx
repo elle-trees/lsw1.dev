@@ -1,9 +1,18 @@
 // src/contexts/GameContext.tsx
-import { createContext, useContext, useState, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  ReactNode,
+  useEffect,
+} from "react";
+import { getAllGameDetailsConfigsFirestore } from "@/lib/data/firestore/game-details";
+import { GameDetailsConfig } from "@/types/database";
 
 interface Game {
   id: string;
   name: string;
+  abbreviation: string;
 }
 
 interface GameContextType {
@@ -14,16 +23,27 @@ interface GameContextType {
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
-// Mock data for available games
-const mockGames: Game[] = [
-    { id: "lsw", name: "Lego Star Wars: The Video Game" },
-    { id: "lsw2", name: "Lego Star Wars II: The Original Trilogy" },
-    { id: "lsw_tcs", name: "Lego Star Wars: The Complete Saga" },
-];
-
 export function GameProvider({ children }: { children: ReactNode }) {
-  const [currentGame, setCurrentGame] = useState<Game>(mockGames[0]);
-  const [availableGames] = useState<Game[]>(mockGames);
+  const [currentGame, setCurrentGame] = useState<Game>({
+    id: "lsw",
+    name: "Lego Star Wars: The Video Game",
+    abbreviation: "lsw",
+  });
+  const [availableGames, setAvailableGames] = useState<Game[]>([]);
+
+  useEffect(() => {
+    const fetchGames = async () => {
+      const configs = await getAllGameDetailsConfigsFirestore();
+      const games = configs.map((config) => ({
+        id: config.id,
+        name: config.title,
+        abbreviation: config.id, // Assuming id is the abbreviation
+      }));
+      setAvailableGames(games);
+    };
+
+    fetchGames();
+  }, []);
 
   const switchGame = (gameId: string) => {
     const game = availableGames.find((g) => g.id === gameId);
